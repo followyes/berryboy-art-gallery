@@ -1,0 +1,8 @@
+{
+  "name": "berryboy-art-gallery-v0-10",
+  "version": "0.10.0",
+  "private": true,
+  "scripts": {
+    "start": "python3 -m http.server 8000"
+  }
+}
