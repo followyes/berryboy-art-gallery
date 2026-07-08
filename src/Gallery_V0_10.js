@@ -53,6 +53,7 @@
   - Stage 12C62S6A: Startup Order Rebuild — startup zaczyna preload stanu/storage z Supabase od razu, modele ładują się równolegle/sekwencyjnie na mobile, props nie odpala się po kliknięciu Explore, finalne przypisanie świateł idzie na końcu, a popup pojawia się dopiero po settle. Mobile jakość podniesiona względem C62S6.
   - Stage 12C62S6B: Model3D Storage Delete / Reference Safe Cleanup — Delete Selected i REMOVE MODEL usuwaja GLB ze Storage tylko wtedy, gdy zaden inny slot nie uzywa tego samego modelPath.
   - Stage 12C62S6C: Ceiling + Props GLB Loader Path Fix — loader startowy uzywa Ceiling.glb i Props.glb z raw.githubusercontent.com, bez zmian w Local Lights, retry, mobile startup i Storage delete.
+  - Stage 12C62S6D: Supabase Static Models Root — modele startowe Floor/Wall/Props/Ceiling ladowane jako GLB z publicznego bucketu berryboy-art-gallery-assets/Models/, bez GitHub raw.
   - Stage 12C62S1: Blend Target Coverage Clamp — Blend nie zawęża agresywnie targetowania; targety Spota liczone są po pełnym Angle, a Blend zostaje dla miękkości światła/helpera. Bez Hard Cut.
   - Stage 12C62S: Consolidated Production Cleanup / No Hard Cut — stabilizacja C62N1, bezpieczne mapowanie Blend, audyt budzetow swiatel/cieni, target cache dirty versions, static bounds cache i loading guards. Zero shader Hard Cut / Proof View / native bypass.
   - UI ONLY: Transform przeniesiony pod naglowek GENERAL SETTINGS, mixed-info przeniesione pod Range.
@@ -29735,10 +29736,13 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         );
     }
 
+    // STAGE 12C62S6D - SUPABASE STATIC MODEL ASSETS
+    var gallerySupabaseModelsRootUrl = "https://bazbszvhoxmuekxahokc.supabase.co/storage/v1/object/public/berryboy-art-gallery-assets/Models/";
+
     BABYLON.SceneLoader.ImportMesh(
         "",
-        "https://raw.githubusercontent.com/followyes/berryboy-art-gallery-assets/main/Models/Floor/",
-        "Floor_segment.gltf",
+        gallerySupabaseModelsRootUrl,
+        "Floor_segment.glb",
         scene,
         function (meshes) {
 
@@ -29771,8 +29775,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         },
         null,
         function (scene, message, exception) {
-            console.error("Floor GLTF load failed:", {
-                file: "Floor_segment.gltf",
+            console.error("Floor GLB load failed:", {
+                file: "Floor_segment.glb",
                 message: message,
                 exception: exception
             });
@@ -29781,15 +29785,15 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
     );
 
-    // STAGE 11H - WALL GLTF ASSET PATH UPDATE
-    // Ściany są teraz ładowane z folderu Models/Wall jako GLTF + BIN + tekstury.
-    // Dzięki temu GitHub raw sam dociąga pliki powiązane z Wall_segments.gltf.
-    var wallModelRootUrl = "https://raw.githubusercontent.com/followyes/berryboy-art-gallery-assets/main/Models/Wall/";
+    // STAGE 12C62S6D - SUPABASE STATIC MODELS ROOT
+    // Modele startowe sa teraz w publicznym buckecie Supabase, plasko w folderze Models/.
+    // GLB trzyma geometrie i zaleznosci w jednym pliku, wiec nie uzywamy juz folderow Floor/Wall/props/Ceiling z GitHub raw.
+    var wallModelRootUrl = gallerySupabaseModelsRootUrl;
 
     BABYLON.SceneLoader.ImportMesh(
         "",
         wallModelRootUrl,
-        "Wall_segments.gltf",
+        "Wall_segments.glb",
         scene,
         function (meshes) {
 
@@ -29814,9 +29818,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             });
 
             freezeStaticGalleryMeshes(wallMeshes, "wall");
-            console.log("Wall GLTF loaded", {
+            console.log("Wall GLB loaded", {
                 rootUrl: wallModelRootUrl,
-                file: "Wall_segments.gltf",
+                file: "Wall_segments.glb",
                 meshes: wallMeshes
             });
             refreshViewerCollisionMeshes();
@@ -29828,9 +29832,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         },
         null,
         function (scene, message, exception) {
-            console.error("Wall GLTF load failed:", {
+            console.error("Wall GLB load failed:", {
                 rootUrl: wallModelRootUrl,
-                file: "Wall_segments.gltf",
+                file: "Wall_segments.glb",
                 message: message,
                 exception: exception
             });
@@ -29839,11 +29843,11 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
     );
 
-    // STAGE 12C62S6C - PROPS GLB LOADER PATH FIX
-    // Props are now loaded as one GLB file to reduce raw GitHub dependency/timeout risk.
+    // STAGE 12C62S6D - PROPS GLB SUPABASE PATH
+    // Props are loaded from the shared Supabase Models root.
     BABYLON.SceneLoader.ImportMesh(
         "",
-        "https://raw.githubusercontent.com/followyes/berryboy-art-gallery-assets/main/Models/props/",
+        gallerySupabaseModelsRootUrl,
         "Props.glb",
         scene,
         function (meshes) {
@@ -29882,11 +29886,11 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
     );
 
-    // STAGE 12C62S6C - CEILING GLB LOADER PATH FIX
-    // Ceiling was the most frequent critical startup failure; GLB avoids separate .gltf/.bin dependency failures.
+    // STAGE 12C62S6D - CEILING GLB SUPABASE PATH
+    // Ceiling is loaded from the shared Supabase Models root.
     BABYLON.SceneLoader.ImportMesh(
         "",
-        "https://raw.githubusercontent.com/followyes/berryboy-art-gallery-assets/main/Models/Ceiling/",
+        gallerySupabaseModelsRootUrl,
         "Ceiling.glb",
         scene,
         function (meshes) {
