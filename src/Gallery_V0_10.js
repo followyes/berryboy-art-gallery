@@ -52,6 +52,7 @@
   - Stage 12C62S6: Mobile Startup Survival Mode — na telefonach uruchamia mobile-safe startup: obniża render scale, wyłącza ciężkie postprocessy na starcie, ładuje krytyczne modele sekwencyjnie, propsy odracza po wejściu do sceny, zmniejsza budżet lokalnych cieni i ogranicza jednorazowe obciążenie GPU/RAM.
   - Stage 12C62S6A: Startup Order Rebuild — startup zaczyna preload stanu/storage z Supabase od razu, modele ładują się równolegle/sekwencyjnie na mobile, props nie odpala się po kliknięciu Explore, finalne przypisanie świateł idzie na końcu, a popup pojawia się dopiero po settle. Mobile jakość podniesiona względem C62S6.
   - Stage 12C62S6B: Model3D Storage Delete / Reference Safe Cleanup — Delete Selected i REMOVE MODEL usuwaja GLB ze Storage tylko wtedy, gdy zaden inny slot nie uzywa tego samego modelPath.
+  - Stage 12C62S6C: Ceiling + Props GLB Loader Path Fix — loader startowy uzywa Ceiling.glb i Props.glb z raw.githubusercontent.com, bez zmian w Local Lights, retry, mobile startup i Storage delete.
   - Stage 12C62S1: Blend Target Coverage Clamp — Blend nie zawęża agresywnie targetowania; targety Spota liczone są po pełnym Angle, a Blend zostaje dla miękkości światła/helpera. Bez Hard Cut.
   - Stage 12C62S: Consolidated Production Cleanup / No Hard Cut — stabilizacja C62N1, bezpieczne mapowanie Blend, audyt budzetow swiatel/cieni, target cache dirty versions, static bounds cache i loading guards. Zero shader Hard Cut / Proof View / native bypass.
   - UI ONLY: Transform przeniesiony pod naglowek GENERAL SETTINGS, mixed-info przeniesione pod Range.
@@ -29838,10 +29839,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
     );
 
+    // STAGE 12C62S6C - PROPS GLB LOADER PATH FIX
+    // Props are now loaded as one GLB file to reduce raw GitHub dependency/timeout risk.
     BABYLON.SceneLoader.ImportMesh(
         "",
         "https://raw.githubusercontent.com/followyes/berryboy-art-gallery-assets/main/Models/props/",
-        "Props.gltf",
+        "Props.glb",
         scene,
         function (meshes) {
             meshes.forEach(mesh => {
@@ -29869,8 +29872,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         },
         null,
         function (scene, message, exception) {
-            console.error("Props GLTF load failed:", {
-                file: "Props.gltf",
+            console.error("Props GLB load failed:", {
+                file: "Props.glb",
                 message: message,
                 exception: exception
             });
@@ -29879,10 +29882,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
     );
 
+    // STAGE 12C62S6C - CEILING GLB LOADER PATH FIX
+    // Ceiling was the most frequent critical startup failure; GLB avoids separate .gltf/.bin dependency failures.
     BABYLON.SceneLoader.ImportMesh(
         "",
         "https://raw.githubusercontent.com/followyes/berryboy-art-gallery-assets/main/Models/Ceiling/",
-        "Ceiling.gltf",
+        "Ceiling.glb",
         scene,
         function (meshes) {
             meshes.forEach(mesh => {
@@ -29911,8 +29916,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         },
         null,
         function (scene, message, exception) {
-            console.error("Ceiling GLTF load failed:", {
-                file: "Ceiling.gltf",
+            console.error("Ceiling GLB load failed:", {
+                file: "Ceiling.glb",
                 message: message,
                 exception: exception
             });

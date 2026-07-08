@@ -1,26 +1,27 @@
-# Berryboy Art Gallery — Stage 12C62S6B
+# Berryboy Art Gallery — Stage 12C62S6C
 
 Full project package.
 
-Stage 12C62S6B — Model3D Storage Delete / Reference Safe Cleanup.
+Stage 12C62S6C — Ceiling + Props GLB Loader Path Fix.
 
 ## Base
 
-Base: Stage 12C62S6A — Startup Order Rebuild / Storage First / Models / Final Lights / Popup Last.
+Base: Stage 12C62S6B — Model3D Storage Delete / Reference Safe Cleanup.
 
 ## Fix
 
-- `Delete Selected` for sculpture/model slots now checks `modelPath` before deleting the slot.
-- If no other slot uses the same `modelPath`, the GLB file is removed from Supabase Storage.
-- If another slot still uses the same GLB, only the slot is deleted and the file is kept.
-- `REMOVE MODEL` uses the same reference-safe Storage cleanup.
-- If Storage deletion fails, the slot/model is kept to avoid orphaned GLB files.
+- Startup loader now uses `Ceiling.glb` instead of `Ceiling.gltf`.
+- Startup loader now uses `Props.glb` instead of `Props.gltf`.
+- URLs stay on `raw.githubusercontent.com`, not `github.com/.../blob/...`.
+- `Wall_segments.gltf` and `Floor_segments.gltf` are unchanged.
+- Retry / timeout / mobile startup order are unchanged.
+- Local Lights, target assignment, UI theme and Model3D Storage delete are unchanged.
 
 ## Login split
 
 - `src/Gallery_V0_11.js` — production, login enabled.
 - `src/Gallery_V0_10.js` — production mirror, login enabled.
-- `Gallery_V0_11_STAGE12C62S6B_MODEL3D_STORAGE_DELETE_REFERENCE_SAFE_LOGIN_DISABLED.txt` — test TXT, login disabled.
+- `Gallery_V0_11_STAGE12C62S6C_CEILING_PROPS_GLB_LOADER_PATH_FIX_LOGIN_DISABLED.txt` — test TXT, login disabled.
 
 ## Debug
 
