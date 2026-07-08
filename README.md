@@ -1,27 +1,30 @@
-# Berryboy Art Gallery — Stage 12C62S6A
+# Berryboy Art Gallery — Stage 12C62S6B
 
 Full project package.
 
-Stage 12C62S6A — Startup Order Rebuild / Storage First / Models In Parallel / Final Lights / Popup Last.
+Stage 12C62S6B — Model3D Storage Delete / Reference Safe Cleanup.
 
-## Startup order
+## Base
 
-1. Supabase state/storage preload starts immediately.
-2. Startup models load at the same time. On mobile they are queued to avoid RAM/GPU spikes.
-3. Props are no longer released after the Explore click; they load or fail before the intro popup.
-4. Saved state is applied after models are ready.
-5. Artwork storage textures get a settle window.
-6. Local Lights final target assignment runs at the end.
-7. Viewer intro popup is shown only after the gallery is settled.
+Base: Stage 12C62S6A — Startup Order Rebuild / Storage First / Models / Final Lights / Popup Last.
+
+## Fix
+
+- `Delete Selected` for sculpture/model slots now checks `modelPath` before deleting the slot.
+- If no other slot uses the same `modelPath`, the GLB file is removed from Supabase Storage.
+- If another slot still uses the same GLB, only the slot is deleted and the file is kept.
+- `REMOVE MODEL` uses the same reference-safe Storage cleanup.
+- If Storage deletion fails, the slot/model is kept to avoid orphaned GLB files.
 
 ## Login split
 
 - `src/Gallery_V0_11.js` — production, login enabled.
 - `src/Gallery_V0_10.js` — production mirror, login enabled.
-- `Gallery_V0_11_STAGE12C62S6A_STARTUP_ORDER_STORAGE_MODELS_LIGHTS_POPUP_LOGIN_DISABLED.txt` — test TXT, login disabled.
+- `Gallery_V0_11_STAGE12C62S6B_MODEL3D_STORAGE_DELETE_REFERENCE_SAFE_LOGIN_DISABLED.txt` — test TXT, login disabled.
 
 ## Debug
 
 - `BerryboyArtGalleryLoading.getDebug()`
 - `BerryboyArtGalleryLoading.getRetryConfig()`
 - `BerryboyArtGalleryMobile.getDebug()`
+- `GalleryApp.getModel3dSlotDebug()`
