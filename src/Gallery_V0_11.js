@@ -50,10 +50,28 @@
   - Stage 12C62S5: Asset Retry Loader / Critical Import Resilience — krytyczne assety floor/wall/ceiling mają 3 próby importu z timeoutem per próba; props ma 2 próby jako optional. Viewer jest blokowany dopiero po finalnym failu krytycznych assetów.
   - Stage 12C62S5A: Asset Timeout + Startup Finalization Safety — wszystkie assety startowe floor/wall/ceiling/props mają 3 próby × 30s; loading screen czeka jeszcze na storage artworków/state settle, a finalne przypisanie świateł wykonuje się na końcu startu.
   - Stage 12C62S6: Mobile Startup Survival Mode — na telefonach uruchamia mobile-safe startup: obniża render scale, wyłącza ciężkie postprocessy na starcie, ładuje krytyczne modele sekwencyjnie, propsy odracza po wejściu do sceny, zmniejsza budżet lokalnych cieni i ogranicza jednorazowe obciążenie GPU/RAM.
-  - Stage 12C62S6A: Startup Order Rebuild — startup zaczyna preload stanu/storage z Supabase od razu, modele ładują się równolegle/sekwencyjnie na mobile, props nie odpala się po kliknięciu Explore, finalne przypisanie świateł idzie na końcu, a popup pojawia się dopiero po settle. Mobile jakość podniesiona względem C62S6.
+  - Stage 12C63: Startup Order Rebuild — startup zaczyna preload stanu/storage z Supabase od razu, modele ładują się równolegle/sekwencyjnie na mobile, props nie odpala się po kliknięciu Explore, finalne przypisanie świateł idzie na końcu, a popup pojawia się dopiero po settle. Mobile jakość podniesiona względem C62S6.
   - Stage 12C62S6B: Model3D Storage Delete / Reference Safe Cleanup — Delete Selected i REMOVE MODEL usuwaja GLB ze Storage tylko wtedy, gdy zaden inny slot nie uzywa tego samego modelPath.
   - Stage 12C62S6C: Ceiling + Props GLB Loader Path Fix — loader startowy uzywa Ceiling.glb i Props.glb z raw.githubusercontent.com, bez zmian w Local Lights, retry, mobile startup i Storage delete.
   - Stage 12C62S6D: Supabase Static Models Root — modele startowe Floor/Wall/Props/Ceiling ladowane jako GLB z publicznego bucketu berryboy-art-gallery-assets/Models/, bez GitHub raw.
+  - Stage 12C63: Full Fast Start Architecture — viewer startuje po krytycznym shellu floor/wall/ceiling; Props, artwork previews, pełne tekstury, modele rzeźb i ciężki retarget lamp przechodzą do kolejki tła. Retry nie duplikuje requestów po sztucznym timeoutcie, a Local Lights zapisują i odtwarzają gotowe targetMeshNames.
+  - Stage 12C63A: Balanced Ready Gate — loader trzyma użytkownika do gotowości Props, preview obrazów, modeli rzeźb, środowiska, użytych tekstur ścian i finalnego restore świateł; po wejściu zostają tylko niewidoczne jakościowe upgrade pełnych tekstur.
+  - Stage 12C63B: Image-First Startup Queue — obrazy dostają priorytet nad Props i rzeźbami. Preview obrazów zaczynają prefetch zaraz po preloadzie state z Supabase, wczytują się równolegle z shell geometry, a entry gate blokuje głównie na gotowość obrazów i świateł. Props i rzeźby wracają do tła po wejściu.
+  - Stage 12C64C: Baseline Inspect Rebuild / Bottom Info Composition — Click-to-Inspect zbudowany od nowa na stabilnym focusie 12C63A. Dolny, wyśrodkowany popup pozostaje źródłem kompozycji; Viewer i Edit używają jednego przepływu, a dawny proximity polling i boczny adaptive solver nie są częścią aktywnego kodu.
+  - Stage 12C64D: Rotation-Aware Safe Frame Validation — finalny kadr inspect jest walidowany na rzeczywistych narożnikach world-space po aspect ratio, skali i rotacji. Solver iteracyjnie zwiększa dystans oraz koryguje pionowy target, aż cały obiekt mieści się w bezpiecznym obszarze nad dolnym popupem.
+  - Stage 12C64E: Inspect Navigation / Side Arrows / Remove Close Button — przycisk X usunięty; aktywny inspect artworku może przechodzić do poprzedniej/następnej widocznej pracy na tej samej płaszczyźnie ściany przez boczne strzałki lub klawiaturę. Nawigacja rozszerza jeden wspólny inspect controller i nie tworzy osobnego flow kamery/popupu.
+  - Stage 12C64H: Inspect UI Final Lock / Popup + Arrows — zaakceptowany popup ma jedną kompaktową kapsułę, finalny avatar oraz strzałki pozycjonowane względem rzeczywistego obrysu komponentu; safe-frame uwzględnia cały układ.
+  - Stage 12C64J: Exhibit-Bound Tour Order / Auto Path Rebuild — kolejność należy do artworków i rzeźb (`tourOrder`), automatycznie przebudowuje się po zmianach układu, ręczna zmiana numeru przesuwa pozostałe pozycje, a Viewer i Edit Inspect korzystają z jednego collision-safe pathfindera bez swobodnych waypointów i bez przejazdu przez zablokowany odcinek.
+  - Stage 12C64M: Inspect Collision Broad Phase / Exact Runtime Guard — lokalny snapshot przeszkód należy wyłącznie do jednego przejazdu Inspect; tani broad phase AABB ogranicza kandydatów przed dokładnymi raycastami, bez zmiany Custom Focus, safe-frame, tourOrder, popupu, animacji i częstotliwości runtime guard.
+  - Stage 12C64Q: Inspect Owns Camera Transition / Clean WASD Handoff — jawny stan WALK → TRANSITION → INSPECT daje kamerze jednego właściciela; ruch WASD/Edit, bobbing, kontrolki Babylon i zwykły wall resolver są wstrzymane wyłącznie podczas przejazdu, start pozostaje rzeczywistym transformem, a koniec dokładnym Custom Focus bez recovery, dockingu i teleportu.
+  - Stage 12C64S: Single Startup Gate / Batched Finalization — stary Balanced Entry Gate i blokujący Image prefetch zostały usunięte. Po zastosowaniu stanu działa jedna bramka Interaction Ready: preview artworków, Props i modele rzeźb są ładowane raz, globalne kolizje/materiały/Local Lights finalizują się jednym batchem, a sterowanie odblokowuje się po stabilnych klatkach.
+  - Stage 12C65A: Mobile Cleanup / Boot Recovery — jeden profil urządzenia zastępuje Survival Mode i trzy detektory mobilne; usunięto legacy Mobile Focus oraz konfliktujące publiczne CSS popupu. Statyczny Boot Guard obsługuje błędy CDN/WebGL, context loss, timeout i ekran odzyskiwania zamiast białej strony.
+  - Stage 12C65B: Adaptive Mobile Quality — profile High/Balanced/Safe sterują rozdzielczością, budżetami materiałów i mapami cieni; AUTO mierzy stabilne okna FPS, używa histerezy i zmienia jakość wyłącznie podczas bezczynności widza.
+  - Stage 12C65B1: Adaptive Quality Stabilization / Correct Downshift — AUTO startuje od Balanced (Safe dla ryzykownych urządzeń), High wymaga potwierdzonego zapasu FPS, zmiana profilu nigdy nie odwraca kierunku rozdzielczości, a pomiar pauzuje podczas aktywnego ładowania assetów.
+  - Stage 12C65C: Mobile Viewport / HUD Rebuild — VisualViewport ustala rzeczywistą wysokość galerii, mobilne UI trafia do jednego warstwowego HUD-u, joystick respektuje safe-area, a orientacja i dynamiczne paski przeglądarki odświeżają canvas bez zmian w Inspect.
+  - Stage 12C65D: Mobile Inspect UI / Safe-Frame — mobilny popup otrzymuje jeden finalny układ avatar + treść + nawigacja, strzałki są częścią komponentu, a mierzony safe-frame omija joystick w portrait i wykorzystuje boczne miejsce w niskim landscape.
+  - Stage 12C65E: Mobile Asset Streaming / Memory Budget — przestrzenne strefy galerii sterują kolejkami critical → nearby → deferred, tekstury i modele są zwalniane poza aktywnymi strefami, modele dostają distance LOD, KTX2 ma decoder/fallback, a Local Lights aktywują się dla bieżącej i sąsiednich stref.
+  - Stage 12C65E UI Fix: Stable Inspect Navigation — przyciski Previous/Next zachowują stałą geometrię podczas przejazdu kamery, dzięki czemu mobilny popup i jego safe-frame nie skaczą.
   - Stage 12C62S1: Blend Target Coverage Clamp — Blend nie zawęża agresywnie targetowania; targety Spota liczone są po pełnym Angle, a Blend zostaje dla miękkości światła/helpera. Bez Hard Cut.
   - Stage 12C62S: Consolidated Production Cleanup / No Hard Cut — stabilizacja C62N1, bezpieczne mapowanie Blend, audyt budzetow swiatel/cieni, target cache dirty versions, static bounds cache i loading guards. Zero shader Hard Cut / Proof View / native bypass.
   - UI ONLY: Transform przeniesiony pod naglowek GENERAL SETTINGS, mixed-info przeniesione pod Range.
@@ -80,38 +98,223 @@ export const createScene = function (engineArg, canvasArg) {
 
     var scene = new BABYLON.Scene(engine);
 
-    // STAGE 12C62S6 - MOBILE STARTUP SURVIVAL MODE
-    // Phones can kill the tab when GLTF imports, textures, post-process and light/shadow rebuilds
-    // spike in the same startup window. This mode reduces GPU/RAM pressure and stages the startup.
-    function detectGalleryMobileStartupSurvivalMode() {
+    // STAGE 12C65A - VISIBLE STARTUP TEXTURE TRACKER
+    // Environment and wall-paint textures are part of the single Interaction Ready gate.
+    var galleryStartupVisibleTextureDebug = {
+        started: 0,
+        loaded: 0,
+        failed: 0,
+        pending: {},
+        lastStarted: null,
+        lastFinished: null
+    };
+
+    function registerGalleryStartupVisibleTextureLoad(kind, name, url) {
+        var textureId = "visibleTexture_" + Date.now() + "_" + Math.floor(Math.random() * 1000000);
+        var entry = {
+            id: textureId,
+            kind: kind || "texture",
+            name: name || null,
+            url: url ? String(url) : "",
+            startedAt: Date.now()
+        };
+
+        galleryStartupVisibleTextureDebug.started += 1;
+        galleryStartupVisibleTextureDebug.pending[textureId] = entry;
+        galleryStartupVisibleTextureDebug.lastStarted = Object.assign({}, entry);
+
+        return function finishGalleryStartupVisibleTextureLoad(failed, details) {
+            if (!galleryStartupVisibleTextureDebug.pending[textureId]) {
+                return;
+            }
+
+            delete galleryStartupVisibleTextureDebug.pending[textureId];
+
+            var finishedEntry = Object.assign({}, entry, {
+                failed: !!failed,
+                finishedAt: Date.now(),
+                elapsedMs: Date.now() - entry.startedAt,
+                details: details || null
+            });
+
+            if (failed) {
+                galleryStartupVisibleTextureDebug.failed += 1;
+            } else {
+                galleryStartupVisibleTextureDebug.loaded += 1;
+            }
+
+            galleryStartupVisibleTextureDebug.lastFinished = finishedEntry;
+        };
+    }
+
+    // STAGE 12C65B1 — ADAPTIVE QUALITY STABILIZATION / CORRECT DOWNSHIFT
+    // One profile owns mobile asset choice, controls, render resolution, light budgets and shadow budgets.
+    // Desktop stays on its existing production values. Mobile can use HIGH / BALANCED / SAFE and an AUTO
+    // controller with hysteresis; resolution changes are applied only while the viewer is idle.
+    var galleryMobileQualityProfileDefinitions = {
+        high: {
+            name: "high",
+            label: "High",
+            initialHardwareScalingLevel: 0.96,
+            minHardwareScalingLevel: 0.94,
+            maxHardwareScalingLevel: 1.08,
+            mainShadowMapSize: 1024,
+            mainShadowFilteringQuality: "high",
+            localSpotShadowMapSize: 512,
+            localMaxActiveSpotShadows: 2,
+            materialBudgets: {
+                helper: 1,
+                floor: 5,
+                ceiling: 6,
+                wall: 9,
+                prop: 3,
+                sculpture: 6,
+                artwork: 9,
+                high: 9,
+                default: 5
+            },
+            downshiftFps: 42,
+            upshiftFps: 56
+        },
+        balanced: {
+            name: "balanced",
+            label: "Balanced",
+            initialHardwareScalingLevel: 1.00,
+            minHardwareScalingLevel: 1.00,
+            maxHardwareScalingLevel: 1.22,
+            mainShadowMapSize: 512,
+            mainShadowFilteringQuality: "medium",
+            localSpotShadowMapSize: 512,
+            localMaxActiveSpotShadows: 1,
+            materialBudgets: {
+                helper: 1,
+                floor: 4,
+                ceiling: 5,
+                wall: 7,
+                prop: 3,
+                sculpture: 5,
+                artwork: 7,
+                high: 7,
+                default: 4
+            },
+            downshiftFps: 36,
+            upshiftFps: 53
+        },
+        safe: {
+            name: "safe",
+            label: "Safe",
+            initialHardwareScalingLevel: 1.18,
+            minHardwareScalingLevel: 1.08,
+            maxHardwareScalingLevel: 1.38,
+            mainShadowMapSize: 512,
+            mainShadowFilteringQuality: "low",
+            localSpotShadowMapSize: 256,
+            localMaxActiveSpotShadows: 1,
+            materialBudgets: {
+                helper: 1,
+                floor: 3,
+                ceiling: 4,
+                wall: 5,
+                prop: 2,
+                sculpture: 4,
+                artwork: 5,
+                high: 5,
+                default: 3
+            },
+            downshiftFps: 30,
+            upshiftFps: 48
+        }
+    };
+
+    function getStoredGalleryMobileQualityMode() {
+        var value = "auto";
+        try {
+            value = String(localStorage.getItem("berryboy_mobile_quality_mode") || "auto").toLowerCase();
+        } catch (storageError) {}
+        return ["auto", "high", "balanced", "safe"].indexOf(value) !== -1 ? value : "auto";
+    }
+
+    function getGalleryMobileQualityProfileDefinition(name) {
+        return galleryMobileQualityProfileDefinitions[name] || galleryMobileQualityProfileDefinitions.balanced;
+    }
+
+    function chooseGalleryInitialMobileQualityProfile(deviceInfo, mode) {
+        if (mode && mode !== "auto" && galleryMobileQualityProfileDefinitions[mode]) {
+            return mode;
+        }
+        if (deviceInfo.embeddedBrowser || deviceInfo.lowMemory || deviceInfo.lowCpu) {
+            return "safe";
+        }
+
+        // AUTO never grants High from User Agent, iOS status, core count or deviceMemory alone.
+        // Every regular phone starts at native-like Balanced and earns High only after sustained FPS evidence.
+        return "balanced";
+    }
+
+    function detectGalleryDeviceProfile() {
         var nav = typeof navigator !== "undefined" ? navigator : null;
         var ua = nav && nav.userAgent ? String(nav.userAgent) : "";
-        var isMobileAgent = /Android|iPhone|iPad|iPod|Mobile|IEMobile|Opera Mini/i.test(ua);
         var width = typeof window !== "undefined" && window.innerWidth ? Number(window.innerWidth) : 9999;
+        var height = typeof window !== "undefined" && window.innerHeight ? Number(window.innerHeight) : 9999;
         var touchPoints = nav && nav.maxTouchPoints ? Number(nav.maxTouchPoints) : 0;
         var deviceMemory = nav && nav.deviceMemory !== undefined ? Number(nav.deviceMemory) : null;
+        var hardwareConcurrency = nav && nav.hardwareConcurrency ? Number(nav.hardwareConcurrency) : null;
+        var coarsePointer = false;
+
+        try {
+            coarsePointer = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+        } catch (matchMediaError) {}
+
+        var isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && touchPoints > 1);
+        var isAndroid = /Android/i.test(ua);
+        var mobileAgent = /Android|iPhone|iPad|iPod|Mobile|IEMobile|Opera Mini/i.test(ua);
+        var embeddedBrowser = /FBAN|FBAV|FB_IAB|Instagram|Messenger|Line\//i.test(ua);
+        var narrowTouch = width <= 1024 && (coarsePointer || touchPoints > 0);
+        var mobile = !!(mobileAgent || narrowTouch || isIOS || isAndroid);
         var lowMemory = deviceMemory !== null && isFinite(deviceMemory) && deviceMemory > 0 && deviceMemory <= 4;
-        var narrowTouch = width <= 900 && touchPoints > 0;
-        var enabled = !!(isMobileAgent || narrowTouch || lowMemory);
-        var hardwareScalingLevel = enabled ? (lowMemory ? 1.8 : 1.45) : 1;
+        var lowCpu = hardwareConcurrency !== null && isFinite(hardwareConcurrency) && hardwareConcurrency > 0 && hardwareConcurrency <= 4;
+        var qualityMode = getStoredGalleryMobileQualityMode();
+        var initialQualityProfile = chooseGalleryInitialMobileQualityProfile({
+            embeddedBrowser: embeddedBrowser,
+            lowMemory: lowMemory,
+            lowCpu: lowCpu,
+            isIOS: isIOS,
+            hardwareConcurrency: hardwareConcurrency,
+            deviceMemory: deviceMemory
+        }, qualityMode);
+        var qualityDefinition = getGalleryMobileQualityProfileDefinition(initialQualityProfile);
 
         return {
-            stage: "12C62S6A",
-            enabled: enabled,
-            isMobileAgent: !!isMobileAgent,
+            stage: "12C65E",
+            mobile: mobile,
+            mobileAgent: !!mobileAgent,
             narrowTouch: !!narrowTouch,
-            lowMemory: !!lowMemory,
-            deviceMemory: deviceMemory,
+            coarsePointer: !!coarsePointer,
+            touchPoints: touchPoints,
             viewportWidth: width,
-            maxTouchPoints: touchPoints,
-            hardwareScalingLevel: hardwareScalingLevel,
-            sequentialCriticalAssetImports: enabled,
-            deferOptionalAssetsUntilViewerStart: false,
-            disableHeavyPostProcessOnStartup: enabled,
-            localSpotShadowMapSize: enabled ? 256 : 512,
-            localMaxActiveSpotShadows: enabled ? 1 : 2,
-            artworkTextureSamplingMode: "TRILINEAR",
-            deferredOptionalAssetReleaseDelayMs: 0,
+            viewportHeight: height,
+            devicePixelRatio: typeof window !== "undefined" ? Number(window.devicePixelRatio || 1) : 1,
+            deviceMemory: deviceMemory,
+            hardwareConcurrency: hardwareConcurrency,
+            lowMemory: !!lowMemory,
+            lowCpu: !!lowCpu,
+            isIOS: !!isIOS,
+            isAndroid: !!isAndroid,
+            embeddedBrowser: !!embeddedBrowser,
+            useMobileAssets: mobile,
+            useMobileViewerControls: !!(mobile && (coarsePointer || touchPoints > 0)),
+            modelLoadConcurrency: mobile ? 1 : 2,
+            previewTextureConcurrency: mobile ? 3 : 6,
+            interactionGateTimeoutMs: mobile ? 90000 : 60000,
+            qualityMode: qualityMode,
+            initialQualityProfile: mobile ? initialQualityProfile : "desktop",
+            currentQualityProfile: mobile ? initialQualityProfile : "desktop",
+            initialHardwareScalingLevel: mobile ? qualityDefinition.initialHardwareScalingLevel : 1,
+            mainShadowMapSize: mobile ? qualityDefinition.mainShadowMapSize : 2048,
+            mainShadowFilteringQuality: mobile ? qualityDefinition.mainShadowFilteringQuality : "high",
+            localSpotShadowMapSize: mobile ? qualityDefinition.localSpotShadowMapSize : 512,
+            localMaxActiveSpotShadows: mobile ? qualityDefinition.localMaxActiveSpotShadows : 2,
+            createdAt: Date.now(),
             appliedAt: null,
             engineHardwareScalingBefore: null,
             engineHardwareScalingAfter: null,
@@ -119,178 +322,238 @@ export const createScene = function (engineArg, canvasArg) {
         };
     }
 
-    var galleryMobileStartupSurvival = detectGalleryMobileStartupSurvivalMode();
-    var galleryMobileSequentialStartupImportQueue = [];
-    var galleryMobileSequentialStartupImportActive = false;
-    var galleryMobileDeferredOptionalAssetImports = [];
-    var galleryMobileDeferredOptionalAssetsReleased = false;
 
-    function applyGalleryMobileStartupSurvivalMode(reason) {
-        if (!galleryMobileStartupSurvival || !galleryMobileStartupSurvival.enabled) {
-            return galleryMobileStartupSurvival;
+    var galleryDeviceProfile = detectGalleryDeviceProfile();
+    globalThis.BerryboyArtGalleryDeviceProfile = galleryDeviceProfile;
+
+    // STAGE 12C65E — KTX2 DECODER / FALLBACK CONTRACT
+    // Babylon loads the decoder lazily. Existing JPG/WebP URLs remain authoritative fallbacks;
+    // KTX2 is preferred only when an explicit KTX2 variant exists in gallery_state or inside GLB.
+    var galleryKtx2Runtime = {
+        stage: "12C65E",
+        available: false,
+        configured: false,
+        workerCount: 0,
+        preferredLoads: 0,
+        successfulLoads: 0,
+        fallbackLoads: 0,
+        lastUrl: null,
+        lastError: null,
+        configuredAt: null
+    };
+
+    function configureGalleryKtx2Runtime() {
+        try {
+            var container = BABYLON && BABYLON.KhronosTextureContainer2
+                ? BABYLON.KhronosTextureContainer2
+                : null;
+            if (!container) {
+                galleryKtx2Runtime.available = false;
+                galleryKtx2Runtime.lastError = "KhronosTextureContainer2 unavailable";
+                return galleryKtx2Runtime;
+            }
+
+            var cores = Math.max(1, Number(galleryDeviceProfile.hardwareConcurrency) || 2);
+            var workerCount = galleryDeviceProfile.mobile
+                ? (galleryDeviceProfile.lowCpu ? 1 : Math.min(2, Math.max(1, Math.floor(cores / 2))))
+                : Math.min(4, Math.max(1, Math.floor(cores / 2)));
+
+            container.DefaultNumWorkers = workerCount;
+            galleryKtx2Runtime.available = true;
+            galleryKtx2Runtime.configured = true;
+            galleryKtx2Runtime.workerCount = workerCount;
+            galleryKtx2Runtime.configuredAt = Date.now();
+        } catch (error) {
+            galleryKtx2Runtime.lastError = error && error.message ? error.message : String(error);
         }
+        return galleryKtx2Runtime;
+    }
 
-        galleryMobileStartupSurvival.appliedAt = Date.now();
-        galleryMobileStartupSurvival.lastApplyReason = reason || "startup";
+    function isGalleryKtx2Url(url) {
+        return /\.ktx2(?:$|[?#])/i.test(String(url || ""));
+    }
+
+    function getGalleryArtworkKtx2VariantUrl(imageState) {
+        if (!imageState || imageState._galleryDisableKtx2 || !galleryKtx2Runtime.available) {
+            return "";
+        }
+        if (imageState._galleryFastStartPreferPreview) {
+            return imageState.imageUrlKtx2Preview || imageState.ktx2PreviewUrl || "";
+        }
+        if (isGalleryDeviceProfileMobile()) {
+            return imageState.imageUrlKtx2Mobile || imageState.ktx2MobileUrl || imageState.imageUrlKtx2 || imageState.ktx2Url || "";
+        }
+        return imageState.imageUrlKtx2Web || imageState.ktx2WebUrl || imageState.imageUrlKtx2 || imageState.ktx2Url || "";
+    }
+
+    configureGalleryKtx2Runtime();
+
+    var galleryAdaptiveMobileQualityRuntime = {
+        enabled: !!galleryDeviceProfile.mobile,
+        started: false,
+        startReason: null,
+        startedAt: 0,
+        warmupUntil: 0,
+        currentProfileName: galleryDeviceProfile.currentQualityProfile,
+        currentHardwareScalingLevel: galleryDeviceProfile.initialHardwareScalingLevel,
+        lastAppliedProfileName: galleryDeviceProfile.currentQualityProfile,
+        lastApplyReason: "startup",
+        lastChangeAt: 0,
+        cooldownUntil: 0,
+        sampleStartedAt: 0,
+        sampleElapsedMs: 0,
+        sampleFrameCount: 0,
+        sampleSlowFrames: 0,
+        sampleWorstFrameMs: 0,
+        lastAverageFps: null,
+        lastSlowFrameRatio: null,
+        lowWindows: 0,
+        highWindows: 0,
+        pendingDirection: null,
+        measurementPauseCount: 0,
+        lastMeasurementPauseReason: null,
+        lastMeasurementPauseAt: 0,
+        lastAssetWorkState: null,
+        changeCount: 0,
+        history: []
+    };
+
+    function isGalleryDeviceProfileMobile() {
+        return !!(galleryDeviceProfile && galleryDeviceProfile.mobile);
+    }
+
+    function applyGalleryHardwareScalingLevel(level, reason) {
+        if (!engine || !engine.setHardwareScalingLevel || !isGalleryDeviceProfileMobile()) {
+            return false;
+        }
+        var profile = getGalleryMobileQualityProfileDefinition(galleryAdaptiveMobileQualityRuntime.currentProfileName);
+        var nextLevel = Math.max(profile.minHardwareScalingLevel, Math.min(profile.maxHardwareScalingLevel, Number(level) || profile.initialHardwareScalingLevel));
+        nextLevel = Math.round(nextLevel * 100) / 100;
+        var currentLevel = engine.getHardwareScalingLevel ? Number(engine.getHardwareScalingLevel()) : galleryAdaptiveMobileQualityRuntime.currentHardwareScalingLevel;
+        if (isFinite(currentLevel) && Math.abs(currentLevel - nextLevel) < 0.015) {
+            return false;
+        }
+        try {
+            engine.setHardwareScalingLevel(nextLevel);
+            if (engine.resize) engine.resize();
+            galleryAdaptiveMobileQualityRuntime.currentHardwareScalingLevel = nextLevel;
+            galleryDeviceProfile.engineHardwareScalingAfter = nextLevel;
+            galleryAdaptiveMobileQualityRuntime.lastApplyReason = reason || "adaptive-resolution";
+            galleryAdaptiveMobileQualityRuntime.lastChangeAt = Date.now();
+            galleryAdaptiveMobileQualityRuntime.cooldownUntil = Date.now() + 4500;
+            galleryAdaptiveMobileQualityRuntime.changeCount += 1;
+            galleryAdaptiveMobileQualityRuntime.history.push({
+                type: "resolution",
+                level: nextLevel,
+                reason: reason || "adaptive-resolution",
+                at: Date.now()
+            });
+            if (galleryAdaptiveMobileQualityRuntime.history.length > 24) galleryAdaptiveMobileQualityRuntime.history.shift();
+            return true;
+        } catch (hardwareScalingError) {
+            galleryDeviceProfile.notes.push("adaptive-hardware-scaling-error: " + (hardwareScalingError.message || hardwareScalingError));
+            return false;
+        }
+    }
+
+    function applyGalleryDeviceProfileBaseline(reason) {
+        galleryDeviceProfile.appliedAt = Date.now();
+        galleryDeviceProfile.lastApplyReason = reason || "startup";
 
         try {
             if (engine && engine.getHardwareScalingLevel) {
-                galleryMobileStartupSurvival.engineHardwareScalingBefore = engine.getHardwareScalingLevel();
+                galleryDeviceProfile.engineHardwareScalingBefore = engine.getHardwareScalingLevel();
             }
 
             if (engine && engine.setHardwareScalingLevel) {
-                engine.setHardwareScalingLevel(galleryMobileStartupSurvival.hardwareScalingLevel);
+                engine.setHardwareScalingLevel(galleryDeviceProfile.initialHardwareScalingLevel || 1);
             }
 
             if (engine && engine.getHardwareScalingLevel) {
-                galleryMobileStartupSurvival.engineHardwareScalingAfter = engine.getHardwareScalingLevel();
+                galleryDeviceProfile.engineHardwareScalingAfter = engine.getHardwareScalingLevel();
+                galleryAdaptiveMobileQualityRuntime.currentHardwareScalingLevel = galleryDeviceProfile.engineHardwareScalingAfter;
             }
         } catch (hardwareScalingError) {
-            galleryMobileStartupSurvival.notes.push("hardware-scaling-error: " + (hardwareScalingError.message || hardwareScalingError));
+            galleryDeviceProfile.notes.push("hardware-scaling-error: " + (hardwareScalingError.message || hardwareScalingError));
         }
 
         try {
             scene.skipFrustumClipping = false;
             scene.autoClearDepthAndStencil = true;
+            if (typeof document !== "undefined" && document.documentElement) {
+                document.documentElement.setAttribute("data-gallery-mobile-quality", galleryDeviceProfile.currentQualityProfile || "desktop");
+            }
         } catch (sceneOptimizeError) {}
 
-        return galleryMobileStartupSurvival;
+        return galleryDeviceProfile;
     }
 
-    function isGalleryMobileStartupSurvivalEnabled() {
-        return !!(galleryMobileStartupSurvival && galleryMobileStartupSurvival.enabled);
+    // Props remain deferred by the single startup gate, but this queue is no longer mobile-specific.
+    var galleryStartupDeferredOptionalAssetImports = [];
+    var galleryStartupDeferredOptionalAssetsReleased = false;
+
+    function shouldGalleryDeferOptionalStartupAsset(assetName) {
+        return assetName === "props";
     }
 
-    function shouldGalleryMobileSequentialStartupImport(assetName) {
-        // STAGE 12C62S6A:
-        // On mobile every startup model is queued before the viewer popup.
-        // Props no longer start after the Explore click, because that spike could kill the tab.
-        return isGalleryMobileStartupSurvivalEnabled() && (
-            assetName === "floor" ||
-            assetName === "wall" ||
-            assetName === "ceiling" ||
-            assetName === "props"
-        );
-    }
-
-    function shouldGalleryMobileDeferOptionalStartupAsset(assetName) {
-        // STAGE 12C62S6A: no post-popup props import on mobile.
-        return false;
-    }
-
-    function runNextGalleryMobileSequentialStartupImport() {
-        if (galleryMobileSequentialStartupImportActive) {
-            return;
-        }
-
-        var next = galleryMobileSequentialStartupImportQueue.shift();
-
-        if (!next) {
-            return;
-        }
-
-        galleryMobileSequentialStartupImportActive = true;
-        galleryMobileStartupSurvival.lastSequentialAsset = next.assetName || null;
-
-        try {
-            next.run();
-        } catch (error) {
-            galleryMobileSequentialStartupImportActive = false;
-            galleryMobileStartupSurvival.notes.push("sequential-import-start-error: " + (error.message || error));
-            setTimeout(runNextGalleryMobileSequentialStartupImport, 0);
-        }
-    }
-
-    function queueGalleryMobileSequentialStartupImport(assetName, run) {
-        var entry = {
+    function queueGalleryStartupDeferredOptionalAssetImport(assetName, run) {
+        galleryStartupDeferredOptionalAssetImports.push({
             assetName: assetName,
             run: run,
             queuedAt: Date.now()
-        };
+        });
+    }
 
-        // STAGE 12C62S6A:
-        // Import calls are declared floor/wall/props/ceiling in the old file. On mobile the
-        // queue must still prioritize critical geometry before optional props.
-        if (assetName === "floor" || assetName === "wall" || assetName === "ceiling") {
-            var optionalIndex = galleryMobileSequentialStartupImportQueue.findIndex(function (queuedEntry) {
-                return queuedEntry && queuedEntry.assetName === "props";
-            });
+    function releaseGalleryStartupDeferredOptionalAssetImports(reason) {
+        if (galleryStartupDeferredOptionalAssetsReleased) {
+            return;
+        }
 
-            if (optionalIndex >= 0) {
-                galleryMobileSequentialStartupImportQueue.splice(optionalIndex, 0, entry);
-            } else {
-                galleryMobileSequentialStartupImportQueue.push(entry);
+        galleryStartupDeferredOptionalAssetsReleased = true;
+        galleryDeviceProfile.deferredOptionalReleaseReason = reason || "single-startup-gate";
+        galleryDeviceProfile.deferredOptionalReleasedAt = Date.now();
+
+        var queued = galleryStartupDeferredOptionalAssetImports.slice();
+        galleryStartupDeferredOptionalAssetImports.length = 0;
+
+        queued.forEach(function (entry) {
+            try {
+                entry.run();
+            } catch (error) {
+                galleryDeviceProfile.notes.push("deferred-optional-import-error: " + (error.message || error));
             }
-        } else {
-            galleryMobileSequentialStartupImportQueue.push(entry);
-        }
-
-        galleryMobileStartupSurvival.lastQueuedSequentialAsset = assetName;
-        galleryMobileStartupSurvival.sequentialQueueLength = galleryMobileSequentialStartupImportQueue.length;
-        runNextGalleryMobileSequentialStartupImport();
-    }
-
-    function finishGalleryMobileSequentialStartupImport(assetName) {
-        if (!isGalleryMobileStartupSurvivalEnabled()) {
-            return;
-        }
-
-        galleryMobileSequentialStartupImportActive = false;
-        galleryMobileStartupSurvival.lastFinishedSequentialAsset = assetName || null;
-        galleryMobileStartupSurvival.sequentialQueueLength = galleryMobileSequentialStartupImportQueue.length;
-        setTimeout(runNextGalleryMobileSequentialStartupImport, 180);
-    }
-
-    function queueGalleryMobileDeferredOptionalAssetImport(assetName, run) {
-        galleryMobileDeferredOptionalAssetImports.push({
-            assetName: assetName,
-            run: run,
-            queuedAt: Date.now()
-        });
-        galleryMobileStartupSurvival.deferredOptionalAssets = galleryMobileDeferredOptionalAssetImports.map(function (entry) {
-            return entry.assetName;
         });
     }
 
-    function releaseGalleryMobileDeferredOptionalAssetImports(reason) {
-        if (!isGalleryMobileStartupSurvivalEnabled()) {
-            return;
-        }
-
-        if (galleryMobileDeferredOptionalAssetsReleased) {
-            return;
-        }
-
-        galleryMobileDeferredOptionalAssetsReleased = true;
-        galleryMobileStartupSurvival.deferredOptionalReleaseReason = reason || "viewer-start";
-        galleryMobileStartupSurvival.deferredOptionalReleasedAt = Date.now();
-
-        var queued = galleryMobileDeferredOptionalAssetImports.slice();
-        galleryMobileDeferredOptionalAssetImports.length = 0;
-
-        queued.forEach(function (entry, index) {
-            setTimeout(function () {
-                try {
-                    entry.run();
-                } catch (error) {
-                    galleryMobileStartupSurvival.notes.push("deferred-optional-import-error: " + (error.message || error));
-                }
-            }, index * 600);
-        });
-    }
-
-    applyGalleryMobileStartupSurvivalMode("createScene-start");
+    applyGalleryDeviceProfileBaseline("createScene-start");
 
     globalThis.BerryboyArtGalleryMobile = {
         getDebug: function () {
-            return JSON.parse(JSON.stringify(Object.assign({}, galleryMobileStartupSurvival, {
-                sequentialQueueLength: galleryMobileSequentialStartupImportQueue.length,
-                sequentialActive: galleryMobileSequentialStartupImportActive,
-                deferredOptionalQueueLength: galleryMobileDeferredOptionalAssetImports.length,
-                deferredOptionalReleased: galleryMobileDeferredOptionalAssetsReleased
+            return JSON.parse(JSON.stringify(Object.assign({}, galleryDeviceProfile, {
+                deferredOptionalQueueLength: galleryStartupDeferredOptionalAssetImports.length,
+                deferredOptionalReleased: galleryStartupDeferredOptionalAssetsReleased,
+                adaptiveQuality: typeof getGalleryAdaptiveMobileQualityDebug === "function"
+                    ? getGalleryAdaptiveMobileQualityDebug()
+                    : null,
+                streaming: typeof getGalleryZoneStreamingDebug === "function"
+                    ? getGalleryZoneStreamingDebug()
+                    : null,
+                ktx2: galleryKtx2Runtime
             })));
+        },
+        getQuality: function () {
+            return typeof getGalleryAdaptiveMobileQualityDebug === "function"
+                ? getGalleryAdaptiveMobileQualityDebug()
+                : null;
+        },
+        setQualityMode: function (mode) {
+            return typeof setGalleryMobileQualityMode === "function"
+                ? setGalleryMobileQualityMode(mode)
+                : false;
         }
     };
+
+    globalThis.BerryboyArtGalleryDevice = globalThis.BerryboyArtGalleryMobile;
 
     // Czysci elementy UI po przeladowaniu sceny.
     function cleanupArtworkInfoPopupDom() {
@@ -323,7 +586,8 @@ export const createScene = function (engineArg, canvasArg) {
         "galleryEditorPanel",
         "galleryEditorStyle",
         "mobileViewerControls",
-        "mobileViewerStyle"
+        "mobileViewerStyle",
+        "galleryTourOrderOverlay"
     ].forEach(function (elementId) {
         var oldElement = document.getElementById(elementId);
 
@@ -470,6 +734,10 @@ export const createScene = function (engineArg, canvasArg) {
             return false;
         }
 
+        if (galleryInspectRuntime && galleryInspectRuntime.active) {
+            closeGalleryInspect("desktop-manual-look");
+        }
+
         desktopViewerMiddleLookActive = true;
         desktopViewerMiddleLookPointerId = event.pointerId !== undefined ? event.pointerId : null;
         desktopViewerMiddleLookLastX = event.clientX;
@@ -524,6 +792,7 @@ export const createScene = function (engineArg, canvasArg) {
         camera.rotation.x += dy * desktopViewerMiddleLookSensitivityY;
         camera.rotation.x = BABYLON.Scalar.Clamp(camera.rotation.x, -0.58, 0.58);
         camera.rotation.z = 0;
+        markGalleryViewerActivity("desktop-camera-look");
 
         if (event.preventDefault) {
             event.preventDefault();
@@ -746,7 +1015,24 @@ export const createScene = function (engineArg, canvasArg) {
     scene.imageProcessingConfiguration.exposure = 0.95;
     scene.imageProcessingConfiguration.contrast = 1.05;
     scene.environmentIntensity = 0.35;
-    scene.environmentTexture = BABYLON.CubeTexture.CreateFromPrefilteredData("https://playground.babylonjs.com/textures/environment.env", scene);
+    var galleryEnvironmentTextureUrl = "https://playground.babylonjs.com/textures/environment.env";
+    var finishGalleryEnvironmentTextureLoad = registerGalleryStartupVisibleTextureLoad(
+        "environment",
+        "environment.env",
+        galleryEnvironmentTextureUrl
+    );
+
+    scene.environmentTexture = BABYLON.CubeTexture.CreateFromPrefilteredData(galleryEnvironmentTextureUrl, scene);
+
+    if (scene.environmentTexture && scene.environmentTexture.isReady && scene.environmentTexture.isReady()) {
+        finishGalleryEnvironmentTextureLoad(false, { reason: "already-ready" });
+    } else if (scene.environmentTexture && scene.environmentTexture.onLoadObservable) {
+        scene.environmentTexture.onLoadObservable.addOnce(function () {
+            finishGalleryEnvironmentTextureLoad(false, { reason: "environment-loaded" });
+        });
+    } else {
+        finishGalleryEnvironmentTextureLoad(false, { reason: "no-load-observable" });
+    }
 
     var environmentRotationY = 0;
 
@@ -1248,7 +1534,7 @@ return visualRenderingPipeline;
             }
         });
 
-        if (typeof isGalleryMobileStartupSurvivalEnabled === "function" && isGalleryMobileStartupSurvivalEnabled()) {
+        if (isGalleryDeviceProfileMobile()) {
             normalized.ssaoEnabled = false;
             normalized.bloomEnabled = false;
             normalized.vignetteEnabled = false;
@@ -1710,7 +1996,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     mainDirectionalLight.shadowMinZ = 0.5;
     mainDirectionalLight.shadowMaxZ = 45;
 
-    var mainShadowGenerator = new BABYLON.ShadowGenerator(2048, mainDirectionalLight);
+    var mainShadowGenerator = new BABYLON.ShadowGenerator(
+        isGalleryDeviceProfileMobile() ? galleryDeviceProfile.mainShadowMapSize : 2048,
+        mainDirectionalLight
+    );
 
     // blurKernel w tym przypadku nie dawal stabilnego i widocznego efektu.
     // Do miekkosci uzywamy Contact Hardening / PCSS, ktore lepiej nadaje sie
@@ -1719,7 +2008,13 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     mainShadowGenerator.useKernelBlur = false;
     mainShadowGenerator.usePercentageCloserFiltering = false;
     mainShadowGenerator.useContactHardeningShadow = true;
-    mainShadowGenerator.filteringQuality = BABYLON.ShadowGenerator.QUALITY_HIGH;
+    mainShadowGenerator.filteringQuality = isGalleryDeviceProfileMobile()
+        ? (galleryDeviceProfile.mainShadowFilteringQuality === "low"
+            ? BABYLON.ShadowGenerator.QUALITY_LOW
+            : (galleryDeviceProfile.mainShadowFilteringQuality === "medium"
+                ? BABYLON.ShadowGenerator.QUALITY_MEDIUM
+                : BABYLON.ShadowGenerator.QUALITY_HIGH))
+        : BABYLON.ShadowGenerator.QUALITY_HIGH;
 
     mainShadowGenerator.darkness = 0.34;
     mainShadowGenerator.bias = 0.00005;
@@ -1741,8 +2036,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     // Pierwszy budzet byl zbyt agresywny dla scian/ekspozycji i segmenty zaczely "walczyc" o lampy.
     // Podnosimy bezpieczny budzet powierzchni ekspozycyjnych, ale helpery/propsy zostaja tanie.
     // STAGE 12C62S6: Mobile startup survival lowers local shadow memory before any local Spot creates its shadow map.
-    var localSpotShadowMapSize = isGalleryMobileStartupSurvivalEnabled() ? 256 : 512;
-    var localMaxActiveSpotShadows = isGalleryMobileStartupSurvivalEnabled() ? 1 : 2;
+    var localSpotShadowMapSize = galleryDeviceProfile.localSpotShadowMapSize;
+    var localMaxActiveSpotShadows = galleryDeviceProfile.localMaxActiveSpotShadows;
     // STAGE 12C60A4/A5 HOTFIX:
     // A4 proved that solving floor leakage with stronger darkness is too blunt: it can create
     // a dark contact strip near walls. A5 keeps wall caster priority, but moves the main fix
@@ -1753,18 +2048,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     var localSpotShadowWallCasterPriorityEnabled = true;
     var localShadowRefreshThrottleMs = 90;
     var commonLightingMaxSimultaneousLights = 8;
-    var commonLightingMaterialBudgets = isGalleryMobileStartupSurvivalEnabled()
-        ? {
-            helper: 1,
-            floor: 4,
-            ceiling: 5,
-            wall: 8,
-            prop: 3,
-            sculpture: 5,
-            artwork: 8,
-            high: 8,
-            default: 4
-        }
+    var commonLightingMaterialBudgets = isGalleryDeviceProfileMobile()
+        ? Object.assign({}, getGalleryMobileQualityProfileDefinition(galleryDeviceProfile.currentQualityProfile).materialBudgets)
         : {
             helper: 1,
             floor: 6,
@@ -1776,6 +2061,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             high: 12,
             default: 6
         };
+    if (isGalleryDeviceProfileMobile()) {
+        commonLightingMaxSimultaneousLights = commonLightingMaterialBudgets.default || commonLightingMaxSimultaneousLights;
+    }
     var commonLightingMaterialSupportPassId = 0;
     var commonLightingBudgetDebugStats = {
         materialConfiguredCount: 0,
@@ -1814,7 +2102,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         // 0.001 = prawie twardy cien, 0.085 = wyraznie miekki cien.
         mainShadowGenerator.useContactHardeningShadow = true;
         mainShadowGenerator.contactHardeningLightSizeUVRatio = 0.001 + (softness / 100) * 0.084;
-        mainShadowGenerator.filteringQuality = BABYLON.ShadowGenerator.QUALITY_HIGH;
+        mainShadowGenerator.filteringQuality = isGalleryDeviceProfileMobile()
+            ? getGalleryShadowFilteringQuality(galleryAdaptiveMobileQualityRuntime.currentProfileName)
+            : BABYLON.ShadowGenerator.QUALITY_HIGH;
 
         if (mainShadowGenerator.getShadowMap()) {
             mainShadowGenerator.getShadowMap().refreshRate = BABYLON.RenderTargetTexture.REFRESHRATE_RENDER_ONEVERYFRAME;
@@ -2708,12 +2998,27 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return galleryUiRoot;
     }
 
-    function appendGalleryUiElement(element) {
+    function getGalleryHudLayer(layerName) {
+        var layerIds = {
+            top: "galleryMobileTopLayer",
+            controls: "galleryMobileControlsLayer",
+            inspect: "galleryMobileInspectLayer",
+            system: "galleryMobileSystemLayer"
+        };
+        var layerId = layerIds[layerName] || layerIds.controls;
+        return document.getElementById(layerId);
+    }
+
+    function getGalleryUiElementParent(layerName) {
+        return getGalleryHudLayer(layerName) || prepareGalleryUiRoot();
+    }
+
+    function appendGalleryUiElement(element, layerName) {
         if (!element) {
             return;
         }
 
-        prepareGalleryUiRoot().appendChild(element);
+        getGalleryUiElementParent(layerName).appendChild(element);
     }
 
     var floorMeshes = [];
@@ -3277,6 +3582,11 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
     function updateViewerWallCollisionIfCameraMoved() {
         if (!camera || !camera.position) {
+            return;
+        }
+
+        if (isGalleryInspectCameraOwnedByInspect()) {
+            viewerWallCollisionLastObservedPosition = camera.position.clone();
             return;
         }
 
@@ -5187,7 +5497,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         galleryPerformanceDebugPanel.style.display = "none";
 
         if (typeof appendGalleryUiElement === "function") {
-            appendGalleryUiElement(galleryPerformanceDebugPanel);
+            appendGalleryUiElement(galleryPerformanceDebugPanel, "system");
         } else {
             document.body.appendChild(galleryPerformanceDebugPanel);
         }
@@ -5562,6 +5872,24 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             return false;
         }
 
+        if (galleryZoneStreamingRuntime && galleryZoneStreamingRuntime.started && galleryZoneStreamingRuntime.enabled) {
+            var selectedForEditing = Array.isArray(selectedLocalLights) && selectedLocalLights.indexOf(item) !== -1;
+            var lightZoneId = getGalleryStreamingZoneIdForPosition(getLocalLightPosition(item));
+            item.galleryStreamingZoneId = lightZoneId;
+            item.zoneCulled = !selectedForEditing && !isGalleryStreamingZoneActive(lightZoneId);
+            if (item.zoneCulled) {
+                item.cameraCulled = true;
+                item._cameraCullingDebug = {
+                    inside: false,
+                    reason: "outsideActiveGalleryZone",
+                    zoneId: lightZoneId,
+                    activeZoneIds: galleryZoneStreamingRuntime.activeZoneIds.slice()
+                };
+                galleryZoneStreamingRuntime.lightZoneCullCount += 1;
+                return false;
+            }
+        }
+
         if (!localLightCameraCullingEnabled) {
             item.cameraCulled = false;
             item._cameraCullingDebug = {
@@ -5859,6 +6187,359 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         return getLocalLightBudgetDebug();
     }
+
+
+    // STAGE 12C65B1 — STABLE PROFILE TRANSITIONS + ASSET-AWARE DYNAMIC RESOLUTION
+    function resizeGalleryShadowMapSafely(shadowGenerator, size, reason) {
+        if (!shadowGenerator || !shadowGenerator.getShadowMap) return false;
+        var shadowMap = shadowGenerator.getShadowMap();
+        if (!shadowMap || !shadowMap.resize) return false;
+        try {
+            var currentSize = shadowMap.getSize ? shadowMap.getSize() : null;
+            var currentWidth = currentSize && currentSize.width !== undefined ? Number(currentSize.width) : null;
+            if (currentWidth !== null && currentWidth === size) return false;
+            shadowMap.resize(size);
+            if (shadowMap.resetRefreshCounter) shadowMap.resetRefreshCounter();
+            return true;
+        } catch (resizeError) {
+            galleryDeviceProfile.notes.push("shadow-map-resize-error(" + (reason || "quality") + "): " + (resizeError.message || resizeError));
+            return false;
+        }
+    }
+
+    function getGalleryShadowFilteringQuality(profileName) {
+        var profile = getGalleryMobileQualityProfileDefinition(profileName);
+        if (profile.mainShadowFilteringQuality === "low") return BABYLON.ShadowGenerator.QUALITY_LOW;
+        if (profile.mainShadowFilteringQuality === "medium") return BABYLON.ShadowGenerator.QUALITY_MEDIUM;
+        return BABYLON.ShadowGenerator.QUALITY_HIGH;
+    }
+
+    function applyGalleryMobileQualityProfile(profileName, reason, options) {
+        options = options || {};
+        if (!isGalleryDeviceProfileMobile()) return false;
+        if (!galleryMobileQualityProfileDefinitions[profileName]) profileName = "balanced";
+
+        var profile = getGalleryMobileQualityProfileDefinition(profileName);
+        var previousProfileName = galleryAdaptiveMobileQualityRuntime.currentProfileName;
+        galleryAdaptiveMobileQualityRuntime.currentProfileName = profileName;
+        galleryAdaptiveMobileQualityRuntime.lastAppliedProfileName = profileName;
+        galleryAdaptiveMobileQualityRuntime.lastApplyReason = reason || "quality-profile";
+        galleryDeviceProfile.currentQualityProfile = profileName;
+        galleryDeviceProfile.mainShadowMapSize = profile.mainShadowMapSize;
+        galleryDeviceProfile.mainShadowFilteringQuality = profile.mainShadowFilteringQuality;
+        galleryDeviceProfile.localSpotShadowMapSize = profile.localSpotShadowMapSize;
+        galleryDeviceProfile.localMaxActiveSpotShadows = profile.localMaxActiveSpotShadows;
+
+        localSpotShadowMapSize = profile.localSpotShadowMapSize;
+        localMaxActiveSpotShadows = profile.localMaxActiveSpotShadows;
+        localSpotShadowBudgetDebugStats.shadowMapSize = localSpotShadowMapSize;
+        localSpotShadowBudgetDebugStats.maxActiveSpotShadows = localMaxActiveSpotShadows;
+
+        commonLightingMaterialBudgets = Object.assign({}, profile.materialBudgets);
+        commonLightingMaxSimultaneousLights = commonLightingMaterialBudgets.default || commonLightingMaxSimultaneousLights;
+
+        if (mainShadowGenerator) {
+            mainShadowGenerator.filteringQuality = getGalleryShadowFilteringQuality(profileName);
+            resizeGalleryShadowMapSafely(mainShadowGenerator, profile.mainShadowMapSize, "main-" + profileName);
+        }
+
+        localLightItems.forEach(function (item) {
+            if (item && item.localShadowGenerator) {
+                resizeGalleryShadowMapSafely(item.localShadowGenerator, profile.localSpotShadowMapSize, "local-" + profileName);
+                configureShadowGeneratorForLocalSpot(item.localShadowGenerator);
+            }
+        });
+
+        scheduleCommonLightingMaterialSupport("mobile-quality-" + profileName);
+        refreshAllLocalSpotShadows(true);
+
+        // Stage 12C65E: quality changes also own the streaming memory budget.
+        // The call is guarded because profile functions are declared before the zone runtime is initialized.
+        if (typeof refreshGalleryStreamingBudgetsFromQuality === "function") {
+            refreshGalleryStreamingBudgetsFromQuality(profileName, reason || "quality-profile");
+        }
+
+        var currentLevel = engine && engine.getHardwareScalingLevel
+            ? Number(engine.getHardwareScalingLevel())
+            : galleryAdaptiveMobileQualityRuntime.currentHardwareScalingLevel;
+        var requestedLevel = Number(options.targetHardwareScalingLevel);
+        var hasRequestedLevel = isFinite(requestedLevel) && requestedLevel > 0;
+        var targetLevel = hasRequestedLevel
+            ? requestedLevel
+            : (options.resetResolution
+                ? profile.initialHardwareScalingLevel
+                : Math.max(profile.minHardwareScalingLevel, Math.min(profile.maxHardwareScalingLevel, currentLevel || profile.initialHardwareScalingLevel)));
+        applyGalleryHardwareScalingLevel(targetLevel, reason || "quality-profile");
+
+        galleryAdaptiveMobileQualityRuntime.lowWindows = 0;
+        galleryAdaptiveMobileQualityRuntime.highWindows = 0;
+        galleryAdaptiveMobileQualityRuntime.pendingDirection = null;
+        galleryAdaptiveMobileQualityRuntime.lastChangeAt = Date.now();
+        galleryAdaptiveMobileQualityRuntime.cooldownUntil = Date.now() + 5000;
+        galleryAdaptiveMobileQualityRuntime.history.push({
+            type: "profile",
+            from: previousProfileName,
+            to: profileName,
+            reason: reason || "quality-profile",
+            at: Date.now()
+        });
+        if (galleryAdaptiveMobileQualityRuntime.history.length > 24) galleryAdaptiveMobileQualityRuntime.history.shift();
+
+        try {
+            if (document && document.documentElement) {
+                document.documentElement.setAttribute("data-gallery-mobile-quality", profileName);
+            }
+            window.dispatchEvent(new CustomEvent("gallery-mobile-quality-change", {
+                detail: getGalleryAdaptiveMobileQualityDebug()
+            }));
+        } catch (eventError) {}
+
+        return true;
+    }
+
+    function getGalleryNextQualityProfile(direction) {
+        var order = ["safe", "balanced", "high"];
+        var index = order.indexOf(galleryAdaptiveMobileQualityRuntime.currentProfileName);
+        if (index < 0) index = 1;
+        if (direction === "up") return order[Math.min(order.length - 1, index + 1)];
+        return order[Math.max(0, index - 1)];
+    }
+
+    function getGalleryProfileTransitionHardwareScalingLevel(profileName, direction, currentLevel) {
+        var profile = getGalleryMobileQualityProfileDefinition(profileName);
+        var safeCurrentLevel = Number(currentLevel);
+        if (!isFinite(safeCurrentLevel) || safeCurrentLevel <= 0) {
+            safeCurrentLevel = profile.initialHardwareScalingLevel;
+        }
+
+        var targetLevel = profile.initialHardwareScalingLevel;
+        if (direction === "down") {
+            // A quality downshift must never sharpen the image. Higher scaling level means fewer rendered pixels.
+            targetLevel = Math.max(safeCurrentLevel, profile.initialHardwareScalingLevel);
+        } else if (direction === "up") {
+            // A quality upshift must never reduce resolution. Lower scaling level means more rendered pixels.
+            targetLevel = Math.min(safeCurrentLevel, profile.initialHardwareScalingLevel);
+        }
+
+        return Math.max(profile.minHardwareScalingLevel, Math.min(profile.maxHardwareScalingLevel, targetLevel));
+    }
+
+    function getGalleryAdaptiveQualityAssetWorkState() {
+        var pendingArtworkTextures = 0;
+        var pendingVisibleTextures = 0;
+
+        try {
+            pendingArtworkTextures = galleryStartupArtworkTextureDebug && galleryStartupArtworkTextureDebug.pending
+                ? Object.keys(galleryStartupArtworkTextureDebug.pending).length
+                : 0;
+        } catch (artworkTextureStateError) {}
+
+        try {
+            pendingVisibleTextures = galleryStartupVisibleTextureDebug && galleryStartupVisibleTextureDebug.pending
+                ? Object.keys(galleryStartupVisibleTextureDebug.pending).length
+                : 0;
+        } catch (visibleTextureStateError) {}
+
+        var state = {
+            backgroundDrainActive: !!(galleryFastStartRuntime && galleryFastStartRuntime.backgroundDrainActive),
+            startupBatchHydrationActive: !!(galleryFastStartRuntime && galleryFastStartRuntime.startupBatchHydrationActive),
+            modelLoadActiveCount: galleryFastStartRuntime ? Math.max(0, Number(galleryFastStartRuntime.modelLoadActiveCount) || 0) : 0,
+            pendingArtworkTextures: pendingArtworkTextures,
+            pendingVisibleTextures: pendingVisibleTextures
+        };
+        state.busy = !!(
+            state.backgroundDrainActive ||
+            state.startupBatchHydrationActive ||
+            state.modelLoadActiveCount > 0 ||
+            state.pendingArtworkTextures > 0 ||
+            state.pendingVisibleTextures > 0
+        );
+        return state;
+    }
+
+    function pauseGalleryAdaptiveQualityMeasurement(reason, assetWorkState) {
+        galleryAdaptiveMobileQualityRuntime.measurementPauseCount += 1;
+        galleryAdaptiveMobileQualityRuntime.lastMeasurementPauseReason = reason || "measurement-paused";
+        galleryAdaptiveMobileQualityRuntime.lastMeasurementPauseAt = Date.now();
+        galleryAdaptiveMobileQualityRuntime.lastAssetWorkState = assetWorkState || null;
+        resetGalleryAdaptiveQualitySample(performance.now());
+    }
+
+    function isGalleryAdaptiveQualityChangeSafeNow() {
+        if (isGalleryInspectCameraTransitionActive && isGalleryInspectCameraTransitionActive()) return false;
+        if (typeof document !== "undefined" && document.hidden) return false;
+        if (getGalleryAdaptiveQualityAssetWorkState().busy) return false;
+        if (galleryFastStartRuntime && galleryFastStartRuntime.lastViewerActivityAt) {
+            if (Date.now() - galleryFastStartRuntime.lastViewerActivityAt < 650) return false;
+        }
+        return true;
+    }
+
+    function applyGalleryAdaptiveQualityDirection(direction, reason) {
+        if (!isGalleryDeviceProfileMobile()) return false;
+        var profile = getGalleryMobileQualityProfileDefinition(galleryAdaptiveMobileQualityRuntime.currentProfileName);
+        var currentLevel = engine && engine.getHardwareScalingLevel
+            ? Number(engine.getHardwareScalingLevel())
+            : galleryAdaptiveMobileQualityRuntime.currentHardwareScalingLevel;
+        var nextLevel = currentLevel;
+
+        if (direction === "down") {
+            nextLevel = Math.min(profile.maxHardwareScalingLevel, currentLevel + 0.08);
+            if (nextLevel <= currentLevel + 0.015 && galleryDeviceProfile.qualityMode === "auto") {
+                var lowerProfile = getGalleryNextQualityProfile("down");
+                if (lowerProfile !== galleryAdaptiveMobileQualityRuntime.currentProfileName) {
+                    return applyGalleryMobileQualityProfile(lowerProfile, reason || "auto-profile-down", {
+                        targetHardwareScalingLevel: getGalleryProfileTransitionHardwareScalingLevel(lowerProfile, "down", currentLevel)
+                    });
+                }
+            }
+        } else {
+            nextLevel = Math.max(profile.minHardwareScalingLevel, currentLevel - 0.06);
+            if (nextLevel >= currentLevel - 0.015 && galleryDeviceProfile.qualityMode === "auto") {
+                var higherProfile = getGalleryNextQualityProfile("up");
+                if (higherProfile !== galleryAdaptiveMobileQualityRuntime.currentProfileName) {
+                    return applyGalleryMobileQualityProfile(higherProfile, reason || "auto-profile-up", {
+                        targetHardwareScalingLevel: getGalleryProfileTransitionHardwareScalingLevel(higherProfile, "up", currentLevel)
+                    });
+                }
+            }
+        }
+
+        return applyGalleryHardwareScalingLevel(nextLevel, reason || ("adaptive-" + direction));
+    }
+
+    function resetGalleryAdaptiveQualitySample(now) {
+        galleryAdaptiveMobileQualityRuntime.sampleStartedAt = now || performance.now();
+        galleryAdaptiveMobileQualityRuntime.sampleElapsedMs = 0;
+        galleryAdaptiveMobileQualityRuntime.sampleFrameCount = 0;
+        galleryAdaptiveMobileQualityRuntime.sampleSlowFrames = 0;
+        galleryAdaptiveMobileQualityRuntime.sampleWorstFrameMs = 0;
+    }
+
+    function startGalleryAdaptiveMobileQuality(reason) {
+        if (!isGalleryDeviceProfileMobile() || galleryAdaptiveMobileQualityRuntime.started) return false;
+        galleryAdaptiveMobileQualityRuntime.started = true;
+        galleryAdaptiveMobileQualityRuntime.startReason = reason || "interaction-ready";
+        galleryAdaptiveMobileQualityRuntime.startedAt = Date.now();
+        galleryAdaptiveMobileQualityRuntime.warmupUntil = Date.now() + 3000;
+        resetGalleryAdaptiveQualitySample(performance.now());
+        return true;
+    }
+
+    function updateGalleryAdaptiveMobileQuality() {
+        if (!galleryAdaptiveMobileQualityRuntime.enabled || !galleryAdaptiveMobileQualityRuntime.started) return;
+        if (!galleryFastStartRuntime || !galleryFastStartRuntime.interactionReady) return;
+        if (Date.now() < galleryAdaptiveMobileQualityRuntime.warmupUntil) return;
+        if (typeof document !== "undefined" && document.hidden) {
+            pauseGalleryAdaptiveQualityMeasurement("document-hidden");
+            return;
+        }
+        if (isGalleryInspectCameraTransitionActive && isGalleryInspectCameraTransitionActive()) {
+            pauseGalleryAdaptiveQualityMeasurement("inspect-transition");
+            return;
+        }
+
+        var assetWorkState = getGalleryAdaptiveQualityAssetWorkState();
+        if (assetWorkState.busy) {
+            pauseGalleryAdaptiveQualityMeasurement("asset-work-active", assetWorkState);
+            return;
+        }
+        galleryAdaptiveMobileQualityRuntime.lastAssetWorkState = assetWorkState;
+
+        var frameMs = engine && engine.getDeltaTime ? Number(engine.getDeltaTime()) : 16.67;
+        if (!isFinite(frameMs) || frameMs <= 0 || frameMs > 250) return;
+        galleryAdaptiveMobileQualityRuntime.sampleElapsedMs += frameMs;
+        galleryAdaptiveMobileQualityRuntime.sampleFrameCount += 1;
+        if (frameMs > 24) galleryAdaptiveMobileQualityRuntime.sampleSlowFrames += 1;
+        galleryAdaptiveMobileQualityRuntime.sampleWorstFrameMs = Math.max(galleryAdaptiveMobileQualityRuntime.sampleWorstFrameMs, frameMs);
+
+        if (galleryAdaptiveMobileQualityRuntime.sampleElapsedMs < 1800) return;
+
+        var averageFrameMs = galleryAdaptiveMobileQualityRuntime.sampleElapsedMs / Math.max(1, galleryAdaptiveMobileQualityRuntime.sampleFrameCount);
+        var averageFps = 1000 / Math.max(1, averageFrameMs);
+        var slowRatio = galleryAdaptiveMobileQualityRuntime.sampleSlowFrames / Math.max(1, galleryAdaptiveMobileQualityRuntime.sampleFrameCount);
+        galleryAdaptiveMobileQualityRuntime.lastAverageFps = Math.round(averageFps * 10) / 10;
+        galleryAdaptiveMobileQualityRuntime.lastSlowFrameRatio = Math.round(slowRatio * 1000) / 1000;
+        var profile = getGalleryMobileQualityProfileDefinition(galleryAdaptiveMobileQualityRuntime.currentProfileName);
+
+        if (averageFps < profile.downshiftFps || slowRatio > 0.24) {
+            galleryAdaptiveMobileQualityRuntime.lowWindows += 1;
+            galleryAdaptiveMobileQualityRuntime.highWindows = 0;
+        } else if (averageFps > profile.upshiftFps && slowRatio < 0.07) {
+            galleryAdaptiveMobileQualityRuntime.highWindows += 1;
+            galleryAdaptiveMobileQualityRuntime.lowWindows = 0;
+        } else {
+            galleryAdaptiveMobileQualityRuntime.lowWindows = Math.max(0, galleryAdaptiveMobileQualityRuntime.lowWindows - 1);
+            galleryAdaptiveMobileQualityRuntime.highWindows = Math.max(0, galleryAdaptiveMobileQualityRuntime.highWindows - 1);
+        }
+
+        if (galleryAdaptiveMobileQualityRuntime.lowWindows >= 2) {
+            galleryAdaptiveMobileQualityRuntime.pendingDirection = "down";
+        } else if (galleryAdaptiveMobileQualityRuntime.highWindows >= 4) {
+            galleryAdaptiveMobileQualityRuntime.pendingDirection = "up";
+        }
+
+        if (
+            galleryAdaptiveMobileQualityRuntime.pendingDirection &&
+            Date.now() >= galleryAdaptiveMobileQualityRuntime.cooldownUntil &&
+            isGalleryAdaptiveQualityChangeSafeNow()
+        ) {
+            var direction = galleryAdaptiveMobileQualityRuntime.pendingDirection;
+            galleryAdaptiveMobileQualityRuntime.pendingDirection = null;
+            galleryAdaptiveMobileQualityRuntime.lowWindows = 0;
+            galleryAdaptiveMobileQualityRuntime.highWindows = 0;
+            applyGalleryAdaptiveQualityDirection(direction, "auto-fps-" + direction);
+        }
+
+        resetGalleryAdaptiveQualitySample(performance.now());
+    }
+
+    function setGalleryMobileQualityMode(mode) {
+        mode = String(mode || "auto").toLowerCase();
+        if (["auto", "high", "balanced", "safe"].indexOf(mode) === -1) return false;
+        galleryDeviceProfile.qualityMode = mode;
+        try { localStorage.setItem("berryboy_mobile_quality_mode", mode); } catch (storageError) {}
+        var nextProfile = mode === "auto"
+            ? chooseGalleryInitialMobileQualityProfile(galleryDeviceProfile, "auto")
+            : mode;
+        applyGalleryMobileQualityProfile(nextProfile, "manual-mode-" + mode, { resetResolution: true });
+        return getGalleryAdaptiveMobileQualityDebug();
+    }
+
+    function getGalleryAdaptiveMobileQualityDebug() {
+        var profile = getGalleryMobileQualityProfileDefinition(galleryAdaptiveMobileQualityRuntime.currentProfileName);
+        return {
+            stage: "12C65E",
+            mobile: isGalleryDeviceProfileMobile(),
+            mode: galleryDeviceProfile.qualityMode,
+            profile: galleryAdaptiveMobileQualityRuntime.currentProfileName,
+            profileDefinition: Object.assign({}, profile, { materialBudgets: Object.assign({}, profile.materialBudgets) }),
+            hardwareScalingLevel: engine && engine.getHardwareScalingLevel ? engine.getHardwareScalingLevel() : null,
+            renderWidth: engine && engine.getRenderWidth ? engine.getRenderWidth() : null,
+            renderHeight: engine && engine.getRenderHeight ? engine.getRenderHeight() : null,
+            averageFps: galleryAdaptiveMobileQualityRuntime.lastAverageFps,
+            slowFrameRatio: galleryAdaptiveMobileQualityRuntime.lastSlowFrameRatio,
+            pendingDirection: galleryAdaptiveMobileQualityRuntime.pendingDirection,
+            currentMainShadowMapSize: mainShadowGenerator && mainShadowGenerator.getShadowMap && mainShadowGenerator.getShadowMap() && mainShadowGenerator.getShadowMap().getSize
+                ? mainShadowGenerator.getShadowMap().getSize().width
+                : null,
+            localSpotShadowMapSize: localSpotShadowMapSize,
+            localMaxActiveSpotShadows: localMaxActiveSpotShadows,
+            materialBudgets: Object.assign({}, commonLightingMaterialBudgets),
+            runtime: JSON.parse(JSON.stringify(galleryAdaptiveMobileQualityRuntime))
+        };
+    }
+
+    registerGalleryBeforeRenderObserver("adaptiveMobileQuality", updateGalleryAdaptiveMobileQuality);
+
+    globalThis.BerryboyArtGalleryMobileQuality = {
+        getDebug: getGalleryAdaptiveMobileQualityDebug,
+        setMode: setGalleryMobileQualityMode,
+        applyProfile: function (profileName) {
+            return applyGalleryMobileQualityProfile(profileName, "api-profile", { resetResolution: true });
+        },
+        start: startGalleryAdaptiveMobileQuality
+    };
 
     function getLocalLightCameraCullingDebug() {
         updateLocalLightsCameraCulling(true);
@@ -7766,22 +8447,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return artwork.metadata.artworkImage || null;
     }
 
-    function isArtworkMobileTextureDevice() {
-        if (typeof window === "undefined") {
-            return false;
-        }
-
-        var userAgent = navigator && navigator.userAgent
-            ? navigator.userAgent
-            : "";
-
-        var mobileByAgent = /Android|iPhone|iPad|iPod|Mobile|IEMobile|Opera Mini/i.test(userAgent);
-        var mobileByWidth = window.innerWidth !== undefined && window.innerWidth <= 768;
-        var mobileByTouch = navigator && navigator.maxTouchPoints && navigator.maxTouchPoints > 1 && window.innerWidth <= 1024;
-
-        return !!(mobileByAgent || mobileByWidth || mobileByTouch);
-    }
-
     function getPublicArtworkUrlFromPath(imagePath, storageBucket) {
         if (!imagePath || !window.gallerySupabase || !window.gallerySupabase.storage) {
             return "";
@@ -7834,12 +8499,28 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return "";
     }
 
+    
     function getArtworkImageUrlFromState(imageState) {
         if (!imageState) {
             return "";
         }
 
-        var isMobile = isArtworkMobileTextureDevice();
+        if (imageState._galleryDisableKtx2 && imageState._galleryKtx2FallbackUrl) {
+            return imageState._galleryKtx2FallbackUrl;
+        }
+
+        var ktx2Variant = getGalleryArtworkKtx2VariantUrl(imageState);
+        if (ktx2Variant) {
+            galleryKtx2Runtime.preferredLoads += 1;
+            galleryKtx2Runtime.lastUrl = String(ktx2Variant);
+            return ktx2Variant;
+        }
+
+        var isMobile = isGalleryDeviceProfileMobile();
+
+        if (imageState._galleryFastStartPreferPreview && imageState.imageUrlPreview) {
+            return imageState.imageUrlPreview;
+        }
 
         if (isMobile && imageState.imageUrlMobile) {
             return imageState.imageUrlMobile;
@@ -7867,7 +8548,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     function getArtworkTextureNoMipmap(imageState) {
         return !!(
             imageState &&
-            isArtworkMobileTextureDevice() &&
+            isGalleryDeviceProfileMobile() &&
             (
                 imageState.imageUrlMobile ||
                 imageState.imagePathMobile
@@ -8420,19 +9101,19 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     function getBestAuthorPhotoUrlFromInfo(infoOrAuthor) {
         var data = infoOrAuthor || {};
 
-        if (isArtworkMobileTextureDevice() && data.authorPhotoUrlMobile) {
+        if (isGalleryDeviceProfileMobile() && data.authorPhotoUrlMobile) {
             return data.authorPhotoUrlMobile;
         }
 
-        if (isArtworkMobileTextureDevice() && data.photoUrlMobile) {
+        if (isGalleryDeviceProfileMobile() && data.photoUrlMobile) {
             return data.photoUrlMobile;
         }
 
-        if (!isArtworkMobileTextureDevice() && data.authorPhotoUrlWeb) {
+        if (!isGalleryDeviceProfileMobile() && data.authorPhotoUrlWeb) {
             return data.authorPhotoUrlWeb;
         }
 
-        if (!isArtworkMobileTextureDevice() && data.photoUrlWeb) {
+        if (!isGalleryDeviceProfileMobile() && data.photoUrlWeb) {
             return data.photoUrlWeb;
         }
 
@@ -8961,6 +9642,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             updateArtworkLight(artwork);
         }
 
+        scheduleGalleryInspectRefreshForTarget(artwork, "artwork-bounds-change");
+
         return {
             width: baseDimensions.width * transformState.scale,
             height: baseDimensions.height * transformState.scale,
@@ -8991,6 +9674,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         updateArtworkTransformUi();
         markAlignmentPanelDirty();
         updateAlignmentPanelIfDirty();
+        scheduleGalleryInspectRefreshForTarget(artwork, "artwork-transform");
 
         if (shouldNotify) {
             notifyGalleryStatus("Zmieniono transformacje obrazu. Zapisz stan galerii, aby zachowac zmiane.");
@@ -9323,7 +10007,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     // - Up/Down is only a small additive physical camera-height offset.
     // - View Angle is a limited pitch arc that keeps front/back distance stable.
     // - zero custom values equal the automatic frame, without moving the camera above ceilings.
-    function buildFocusCameraPosition(target, horizontalDirection, autoDistance, distanceOffset, cameraHeightOffset, viewPitchDegrees) {
+    function buildFocusCameraPosition(target, horizontalDirection, autoDistance, distanceOffset, cameraHeightOffset, viewPitchDegrees, maxDistanceOverride) {
         var safeTarget = target && target.clone ? target.clone() : BABYLON.Vector3.Zero();
         var direction = normalizeFocusHorizontalDirection(horizontalDirection, safeTarget);
 
@@ -9333,10 +10017,13 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         // - Up/Down changes only the physical camera height.
         // - View Angle does NOT move the camera anymore; it is applied later to rotation.
         // This prevents bounding-box target math from fighting the user's pitch setting.
+        var focusMaxDistance = isFinite(Number(maxDistanceOverride))
+            ? Math.max(galleryObjectFocusMaxDistance, Number(maxDistanceOverride))
+            : galleryObjectFocusMaxDistance;
         var finalDistance = BABYLON.Scalar.Clamp(
             Number(autoDistance || 0) + Number(distanceOffset || 0),
             galleryObjectFocusMinDistance,
-            galleryObjectFocusMaxDistance
+            focusMaxDistance
         );
 
         var heightOffset = BABYLON.Scalar.Clamp(Number(cameraHeightOffset || 0), -1.8, 1.8);
@@ -10033,6 +10720,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             refreshSculptureOutlines();
         }
 
+        scheduleGalleryInspectRefreshForTarget(slot, "sculpture-bounds-change");
         return transformState;
     }
 
@@ -10068,6 +10756,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
 
         updateModel3dTransformUi();
+        scheduleGalleryInspectRefreshForTarget(slot, "sculpture-transform");
 
         if (shouldNotify) {
             notifyGalleryStatus("Zmieniono transformacje rzezby/modelu. Zapisz stan galerii, aby zachowac zmiane.");
@@ -10129,6 +10818,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         };
 
         applyArtworkTransformToMesh(artwork);
+        scheduleGalleryInspectRefreshForTarget(artwork, "artwork-aspect-ratio");
 
         return fittedDimensions;
     }
@@ -10311,25 +11001,20 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
     function disposeArtworkImageMaterial(artwork) {
-        if (
-            artwork &&
-            artwork.metadata &&
-            artwork.metadata.imageMaterial
-        ) {
+        if (artwork && artwork.metadata && artwork.metadata.imageMaterial) {
+            var material = artwork.metadata.imageMaterial;
+            var textures = [];
+            [material.diffuseTexture, material.emissiveTexture].forEach(function (texture) {
+                if (texture && textures.indexOf(texture) === -1) textures.push(texture);
+            });
             try {
-                if (artwork.metadata.imageMaterial.diffuseTexture) {
-                    artwork.metadata.imageMaterial.diffuseTexture.dispose();
-                }
-
-                if (artwork.metadata.imageMaterial.emissiveTexture) {
-                    artwork.metadata.imageMaterial.emissiveTexture.dispose();
-                }
-
-                artwork.metadata.imageMaterial.dispose();
+                textures.forEach(function (texture) { texture.dispose(); });
+                material.diffuseTexture = null;
+                material.emissiveTexture = null;
+                material.dispose(false, false);
             } catch (error) {
                 console.warn("Artwork image material dispose warning:", error);
             }
-
             artwork.metadata.imageMaterial = null;
         }
     }
@@ -10339,6 +11024,18 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             return false;
         }
 
+        if (
+            galleryFastStartRuntime.stateApplyActive &&
+            imageState &&
+            !imageState._galleryFastStartForceImmediate
+        ) {
+            rememberArtworkImageStateWithoutDisplay(artwork, imageState);
+            queueGalleryFastStartArtworkLoad(artwork, imageState);
+            return true;
+        }
+
+        var fallbackUrlState = Object.assign({}, imageState || {}, { _galleryDisableKtx2: true });
+        var ktx2FallbackUrl = getArtworkImageUrlFromState(fallbackUrlState);
         var imageUrl = getArtworkImageUrlFromState(imageState);
 
         if (!imageUrl) {
@@ -10355,7 +11052,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             },
             imageState || {},
             {
-                imageUrl: imageUrl
+                imageUrl: imageUrl,
+                _galleryKtx2FallbackUrl: ktx2FallbackUrl || ""
             }
         );
 
@@ -10392,6 +11090,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             imageMaterial.forceDepthWrite = true;
         }
 
+        artwork.metadata.galleryStreaming = artwork.metadata.galleryStreaming || {};
+        artwork.metadata.galleryStreaming.currentLoadTier = normalizedState._galleryStreamingTier || getGalleryStreamingTierForObject(artwork);
+        artwork.metadata.galleryStreaming.loading = true;
         var finishStartupArtworkTextureLoad = registerGalleryStartupArtworkTextureLoad(artwork, imageUrl);
 
         var texture = new BABYLON.Texture(
@@ -10413,9 +11114,30 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                     updateArtworkLight(artwork);
                     updateArtworkImageUi();
                     updateArtworkTransformUi();
+
+                    artwork.metadata.galleryStreaming = artwork.metadata.galleryStreaming || {};
+                    artwork.metadata.galleryStreaming.textureState = normalizedState._galleryFastStartPreferPreview ? "preview" : "full";
+                    artwork.metadata.galleryStreaming.textureUrl = imageUrl;
+                    artwork.metadata.galleryStreaming.textureLoadedAt = Date.now();
+                    artwork.metadata.galleryStreaming.suspended = false;
+                    artwork.metadata.galleryStreaming.lastActiveAt = Date.now();
+                    if (isGalleryKtx2Url(imageUrl)) {
+                        galleryKtx2Runtime.successfulLoads += 1;
+                    }
+
+                    if (normalizedState._galleryFastStartPreferPreview) {
+                        scheduleGalleryFastStartFullArtworkUpgrade({
+                            key: artwork.name || String(artwork.uniqueId || "artwork"),
+                            artwork: artwork,
+                            imageState: normalizedState,
+                            queuedAt: Date.now()
+                        });
+                    }
                 } finally {
                     finishStartupArtworkTextureLoad(false, {
-                        reason: "texture-loaded"
+                        reason: "texture-loaded",
+                        streamingTier: normalizedState._galleryStreamingTier || null,
+                        ktx2: isGalleryKtx2Url(imageUrl)
                     });
                 }
             },
@@ -10424,8 +11146,25 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                     reason: "texture-error",
                     message: message ? String(message) : "",
                     exceptionName: exception && exception.name ? String(exception.name) : null,
-                    exceptionMessage: exception && exception.message ? String(exception.message) : null
+                    exceptionMessage: exception && exception.message ? String(exception.message) : null,
+                    streamingTier: normalizedState._galleryStreamingTier || null,
+                    ktx2: isGalleryKtx2Url(imageUrl)
                 });
+
+                if (isGalleryKtx2Url(imageUrl) && !normalizedState._galleryKtx2FallbackAttempted) {
+                    galleryKtx2Runtime.fallbackLoads += 1;
+                    galleryKtx2Runtime.lastError = exception && exception.message
+                        ? exception.message
+                        : String(message || "KTX2 texture load failed");
+                    var fallbackState = cloneGalleryFastStartState(normalizedState);
+                    fallbackState._galleryDisableKtx2 = true;
+                    fallbackState._galleryKtx2FallbackAttempted = true;
+                    setTimeout(function () {
+                        applyArtworkImageStateSafely(artwork, fallbackState, "12C65E KTX2 fallback");
+                    }, 0);
+                    return;
+                }
+
                 console.warn("Nie udalo sie wczytac obrazu:", message, exception);
                 notifyGalleryStatus("Nie udalo sie wczytac tekstury obrazu.");
             }
@@ -10434,7 +11173,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         texture.wrapU = BABYLON.Texture.CLAMP_ADDRESSMODE;
         texture.wrapV = BABYLON.Texture.CLAMP_ADDRESSMODE;
 
-        if (isGalleryMobileStartupSurvivalEnabled()) {
+        if (isGalleryDeviceProfileMobile()) {
             try {
                 texture.anisotropicFilteringLevel = 2;
             } catch (mobileTextureFilterError) {}
@@ -11387,9 +12126,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     var mobileInitialCameraPosition = camera.position.clone();
     var mobileInitialCameraRotation = camera.rotation.clone();
 
-    var mobileFocusActive = false;
-    var mobilePreviousCameraPosition = null;
-    var mobilePreviousCameraRotation = null;
 
     var mobileFloorBounds = null;
     var mobileFloorRayLength = 12;
@@ -11833,9 +12569,16 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 transition: transform 170ms ease, box-shadow 170ms ease;
             }
 
-            #berryboyIntroStart:hover {
+            #berryboyIntroStart:hover:not(:disabled) {
                 transform: translateY(-1px);
                 box-shadow: 0 20px 46px rgba(0,0,0,0.34);
+            }
+
+            #berryboyIntroStart:disabled {
+                cursor: wait;
+                opacity: .58;
+                transform: none;
+                box-shadow: 0 10px 26px rgba(0,0,0,0.18);
             }
 
             @keyframes berryboyIntroCardIn {
@@ -11915,8 +12658,49 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         });
     }
 
+    function updateViewerIntroInteractionState() {
+        if (!viewerIntroOverlay) return;
+        var startButton = viewerIntroOverlay.querySelector("#berryboyIntroStart");
+        if (!startButton) return;
+        var ready = !!(galleryFastStartRuntime && galleryFastStartRuntime.interactionReady);
+        startButton.disabled = !ready;
+        startButton.setAttribute("aria-busy", ready ? "false" : "true");
+        startButton.textContent = ready
+            ? "Start exploring"
+            : (galleryFastStartRuntime && galleryFastStartRuntime.interactionGateTimedOut ? "Still finishing gallery…" : "Finishing gallery…");
+    }
+
+    function markGalleryViewerActivity(reason) {
+        if (!galleryFastStartRuntime) return;
+        galleryFastStartRuntime.lastViewerActivityAt = Date.now();
+        galleryFastStartRuntime.lastViewerActivityReason = reason || "viewer-activity";
+    }
+
+    function setGalleryInteractionReady(ready, reason) {
+        if (!galleryFastStartRuntime) return;
+        galleryFastStartRuntime.interactionReady = !!ready;
+        galleryFastStartRuntime.interactionReadyAt = ready ? Date.now() : null;
+        galleryFastStartRuntime.interactionGateFinishedAt = ready ? Date.now() : galleryFastStartRuntime.interactionGateFinishedAt;
+        galleryFastStartRuntime.interactionGateActive = !ready;
+        galleryFastStartRuntime.interactionReadyReason = reason || null;
+        if (ready && galleryFastStartRuntime.interactionGateWatchdogTimer) {
+            clearTimeout(galleryFastStartRuntime.interactionGateWatchdogTimer);
+            galleryFastStartRuntime.interactionGateWatchdogTimer = null;
+        }
+        updateViewerIntroInteractionState();
+        if (ready) {
+            startGalleryAdaptiveMobileQuality(reason || "interaction-ready");
+        }
+    }
+
     function hideViewerIntroOverlay() {
+        if (!editMode && galleryFastStartRuntime && !galleryFastStartRuntime.interactionReady) {
+            updateViewerIntroInteractionState();
+            return false;
+        }
+
         viewerIntroOverlayMovementUnlocked = true;
+        markGalleryViewerActivity("viewer-entry");
 
         if (viewerIntroOverlay) {
             viewerIntroOverlay.style.opacity = "0";
@@ -11930,6 +12714,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
 
         resetViewerWASDMovementRuntime(true);
+        scheduleGalleryFastStartFullArtworkDrainWhenIdle("viewer-entry");
+        return true;
     }
 
     function showViewerIntroOverlay() {
@@ -12029,6 +12815,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
             if (startButton) {
                 startButton.addEventListener("click", function () {
+                    if (!galleryFastStartRuntime || !galleryFastStartRuntime.interactionReady) {
+                        updateViewerIntroInteractionState();
+                        return;
+                    }
                     hideViewerIntroOverlay();
                 });
             }
@@ -12038,39 +12828,25 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         viewerIntroOverlay.style.display = "flex";
         viewerIntroOverlay.style.opacity = "1";
         updateViewerIntroLookButtons();
+        updateViewerIntroInteractionState();
     }
 
-    // STAGE 12C62S4 - PRODUCTION ASSET LOADING GUARD
-    // Public viewer must never enter a half-loaded gallery. Walls, floor and ceiling are critical.
+    // STAGE 12C65A - SINGLE STARTUP GATE / BATCHED FINALIZATION
+    // Critical shell and saved state open the intro; one gate then drains previews/models/Props and finalizes global systems once.
     var galleryAssetNames = ["floor", "wall", "props", "ceiling"];
     var galleryCriticalAssetNames = ["floor", "wall", "ceiling"];
     var galleryOptionalAssetNames = ["props"];
-    // STAGE 12C62S6: on mobile we do not block first entry on optional props.
-    // Props are loaded after the viewer has started to avoid a RAM/GPU spike during startup.
-    // STAGE 12C62S6A:
-    // The intro popup is now the final step. Even optional props must finish/fail before it appears,
-    // so Explore does not trigger a heavy import spike on mobile.
-    var assetsToLoad = galleryAssetNames.length;
+    var assetsToLoad = galleryCriticalAssetNames.length;
     var assetsLoaded = 0;
     var galleryWebStateLoadedOnce = false;
     var galleryStartupWatchdogTimer = null;
 
-    // STAGE 12C62S5A - STARTUP TIMEOUT / STORAGE SETTLE / FINAL LIGHT SAFETY
-    // STAGE 12C62S6 - MOBILE STARTUP SURVIVAL MODE
-    // 3 × 30s attempts need a longer watchdog than C62S5, otherwise the watchdog can mark
-    // critical assets failed before the retry loader finishes its final attempt.
-    var galleryStartupWatchdogMs = 390000;
-    var galleryPostStateStorageSettleDelayMs = 1500;
-    var galleryArtworkStartupTextureMaxWaitMs = 15000;
-    var galleryArtworkStartupTextureSettleDelayMs = 500;
-    var galleryFinalLightAssignmentHideDelayMs = 650;
+    // Stage 12C65A keeps the critical shell retry-safe and removes duplicate content gates.
+    // A long watchdog remains only as a real critical-shell failure guard; it never starts duplicate requests.
+    var galleryStartupWatchdogMs = 120000;
     var galleryStartupFinalizeDebug = {
-        stage: "12C62S6A",
-        startupOrder: "state-preload-first_models-in-parallel_final-lights_then-popup",
-        postStateStorageSettleDelayMs: galleryPostStateStorageSettleDelayMs,
-        artworkTextureMaxWaitMs: galleryArtworkStartupTextureMaxWaitMs,
-        artworkTextureSettleDelayMs: galleryArtworkStartupTextureSettleDelayMs,
-        finalLightAssignmentHideDelayMs: galleryFinalLightAssignmentHideDelayMs,
+        stage: "12C65E",
+        startupOrder: "critical-shell_then_state_then_current-zone-critical_then_interaction-ready_then_nearby_then_deferred",
         stateLoadFinishedAt: null,
         artworkTextureWait: null,
         finalLightStartedAt: null,
@@ -12093,13 +12869,1007 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         loaded: 0,
         failed: 0,
         pending: {},
-        waitRuns: 0,
-        waitTimeouts: 0,
         lastStarted: null,
-        lastFinished: null,
-        lastWait: null
+        lastFinished: null
     };
-    var galleryStartupArtworkTextureWaiters = [];
+
+    var galleryFastStartRuntime = {
+        stage: "12C65E",
+        interactionStage: "12C65E",
+        viewerReady: false,
+        viewerReadyAt: null,
+        stateApplyActive: false,
+        stateApplied: false,
+        deferredArtworkLoads: [],
+        deferredFullArtworkLoads: [],
+        deferredModelLoads: [],
+        backgroundDrainActive: false,
+        artworkPreviewDrainComplete: false,
+        modelDrainComplete: false,
+        modelLoadActiveCount: 0,
+        modelLoadConcurrency: galleryDeviceProfile.modelLoadConcurrency,
+        startupBatchHydrationActive: false,
+        startupBatchGlobalRefreshNeeded: false,
+        interactionReady: false,
+        interactionReadyAt: null,
+        interactionGateActive: false,
+        interactionGateStartedAt: null,
+        interactionGateFinishedAt: null,
+        interactionGateLastSnapshot: null,
+        interactionGateTimedOut: false,
+        interactionGateTimeoutMs: galleryDeviceProfile.interactionGateTimeoutMs,
+        interactionGateWatchdogTimer: null,
+        interactionFinalizationComplete: false,
+        interactionFinalizationResult: null,
+        interactionWarmupComplete: false,
+        interactionWarmupResult: null,
+        lastViewerActivityAt: 0,
+        lastViewerActivityReason: null,
+        fullArtworkIdleDelayMs: 1800,
+        directLightTargetRestores: 0,
+        unresolvedSavedLightTargets: 0,
+        fallbackLightRetargets: 0,
+        startedAt: Date.now()
+    };
+
+
+
+    // STAGE 12C65E — GALLERY ZONES / CRITICAL → NEARBY → DEFERRED
+    // Zones are derived from floor segment bounds and quantized when a gallery contains many tiles.
+    // The current zone is critical, directly adjacent zones are nearby, everything else stays deferred.
+    var galleryZoneStreamingRuntime = {
+        stage: "12C65E",
+        enabled: true,
+        started: false,
+        zonesReady: false,
+        zones: {},
+        zoneIds: [],
+        adjacency: {},
+        currentZoneId: null,
+        previousZoneId: null,
+        activeZoneIds: [],
+        criticalDrainComplete: false,
+        nearbyDrainActive: false,
+        streamPumpActive: false,
+        streamPumpScheduled: false,
+        lastZoneRefreshAt: 0,
+        lastZoneChangeAt: 0,
+        lastReason: "initial",
+        frameCounter: 0,
+        checkEveryFrames: 12,
+        zonePadding: 0.65,
+        adjacencyGap: 2.25,
+        gridCellSize: 12,
+        textureUnloadGraceMs: galleryDeviceProfile.mobile ? 14000 : 45000,
+        modelUnloadGraceMs: galleryDeviceProfile.mobile ? 18000 : 60000,
+        maxResidentArtworkTextures: galleryDeviceProfile.mobile
+            ? (galleryDeviceProfile.currentQualityProfile === "safe" ? 8 : (galleryDeviceProfile.currentQualityProfile === "high" ? 18 : 12))
+            : 48,
+        maxResidentModels: galleryDeviceProfile.mobile
+            ? (galleryDeviceProfile.currentQualityProfile === "safe" ? 3 : (galleryDeviceProfile.currentQualityProfile === "high" ? 7 : 5))
+            : 24,
+        criticalArtworkStarted: 0,
+        criticalArtworkFinished: 0,
+        criticalModelStarted: 0,
+        criticalModelFinished: 0,
+        nearbyArtworkStarted: 0,
+        nearbyModelStarted: 0,
+        deferredArtworkLoadsAvoided: 0,
+        deferredModelLoadsAvoided: 0,
+        textureDisposals: 0,
+        modelDisposals: 0,
+        modelLodConfigured: 0,
+        lowLodModelLoads: 0,
+        highLodModelLoads: 0,
+        propLodConfigured: 0,
+        lightZoneCullCount: 0,
+        lastDebug: null,
+        lastBudgetProfile: galleryDeviceProfile.currentQualityProfile || "balanced",
+        lastBudgetReason: "initial",
+        lastBudgetRefreshAt: Date.now()
+    };
+
+    function getGalleryStreamingBudgetForProfile(profileName) {
+        var name = String(profileName || galleryDeviceProfile.currentQualityProfile || "balanced").toLowerCase();
+        if (!galleryDeviceProfile.mobile) {
+            return { artworkTextures: 48, models: 24, textureGraceMs: 45000, modelGraceMs: 60000 };
+        }
+        if (name === "safe") {
+            return { artworkTextures: 8, models: 3, textureGraceMs: 10000, modelGraceMs: 14000 };
+        }
+        if (name === "high") {
+            return { artworkTextures: 18, models: 7, textureGraceMs: 18000, modelGraceMs: 24000 };
+        }
+        return { artworkTextures: 12, models: 5, textureGraceMs: 14000, modelGraceMs: 18000 };
+    }
+
+    function refreshGalleryStreamingBudgetsFromQuality(profileName, reason) {
+        if (typeof galleryZoneStreamingRuntime === "undefined" || !galleryZoneStreamingRuntime) return null;
+        var budget = getGalleryStreamingBudgetForProfile(profileName);
+        galleryZoneStreamingRuntime.maxResidentArtworkTextures = budget.artworkTextures;
+        galleryZoneStreamingRuntime.maxResidentModels = budget.models;
+        galleryZoneStreamingRuntime.textureUnloadGraceMs = budget.textureGraceMs;
+        galleryZoneStreamingRuntime.modelUnloadGraceMs = budget.modelGraceMs;
+        galleryZoneStreamingRuntime.lastBudgetProfile = profileName || galleryDeviceProfile.currentQualityProfile || "balanced";
+        galleryZoneStreamingRuntime.lastBudgetReason = reason || "quality-profile";
+        galleryZoneStreamingRuntime.lastBudgetRefreshAt = Date.now();
+        if (galleryZoneStreamingRuntime.started) {
+            maintainGalleryStreamingMemoryBudget("quality-budget-" + galleryZoneStreamingRuntime.lastBudgetProfile);
+            scheduleGalleryZoneStreamingPump("quality-budget-" + galleryZoneStreamingRuntime.lastBudgetProfile, 80);
+        }
+        return budget;
+    }
+
+    function getGalleryStreamingObjectPosition(object) {
+        if (!object) return null;
+        try {
+            if (object.getAbsolutePosition) return object.getAbsolutePosition().clone();
+            if (object.position && object.position.clone) return object.position.clone();
+            if (object.position) return new BABYLON.Vector3(Number(object.position.x) || 0, Number(object.position.y) || 0, Number(object.position.z) || 0);
+        } catch (error) {}
+        return null;
+    }
+
+    function getGalleryStreamingBoundsForMesh(mesh) {
+        if (!mesh) return null;
+        try {
+            mesh.computeWorldMatrix(true);
+            var info = mesh.getBoundingInfo ? mesh.getBoundingInfo() : null;
+            var box = info && info.boundingBox ? info.boundingBox : null;
+            if (!box) return null;
+            var min = box.minimumWorld;
+            var max = box.maximumWorld;
+            return {
+                minX: Number(min.x), maxX: Number(max.x),
+                minZ: Number(min.z), maxZ: Number(max.z),
+                minY: Number(min.y), maxY: Number(max.y),
+                centerX: (Number(min.x) + Number(max.x)) * 0.5,
+                centerZ: (Number(min.z) + Number(max.z)) * 0.5
+            };
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function mergeGalleryStreamingBounds(target, next) {
+        if (!target) return Object.assign({}, next);
+        target.minX = Math.min(target.minX, next.minX);
+        target.maxX = Math.max(target.maxX, next.maxX);
+        target.minZ = Math.min(target.minZ, next.minZ);
+        target.maxZ = Math.max(target.maxZ, next.maxZ);
+        target.minY = Math.min(target.minY, next.minY);
+        target.maxY = Math.max(target.maxY, next.maxY);
+        target.centerX = (target.minX + target.maxX) * 0.5;
+        target.centerZ = (target.minZ + target.maxZ) * 0.5;
+        return target;
+    }
+
+    
+    function rebuildGalleryStreamingZones(reason) {
+        var zones = {};
+        var cellSize = Math.max(8, Number(galleryZoneStreamingRuntime.gridCellSize) || 12);
+        var floorEntries = (floorMeshes || []).map(function (mesh) {
+            return { mesh: mesh, bounds: getGalleryStreamingBoundsForMesh(mesh) };
+        }).filter(function (entry) { return !!entry.bounds; });
+        var largestSpan = floorEntries.reduce(function (maxSpan, entry) {
+            return Math.max(maxSpan, entry.bounds.maxX - entry.bounds.minX, entry.bounds.maxZ - entry.bounds.minZ);
+        }, 0);
+        var useGrid = floorEntries.length > 24 || largestSpan > cellSize * 1.6;
+
+        floorEntries.forEach(function (entry, index) {
+            var bounds = entry.bounds;
+            if (useGrid) {
+                var minCellX = Math.floor(bounds.minX / cellSize);
+                var maxCellX = Math.floor((bounds.maxX - 0.0001) / cellSize);
+                var minCellZ = Math.floor(bounds.minZ / cellSize);
+                var maxCellZ = Math.floor((bounds.maxZ - 0.0001) / cellSize);
+                for (var cellX = minCellX; cellX <= maxCellX; cellX += 1) {
+                    for (var cellZ = minCellZ; cellZ <= maxCellZ; cellZ += 1) {
+                        var gridKey = "grid:" + cellX + ":" + cellZ;
+                        if (!zones[gridKey]) {
+                            zones[gridKey] = {
+                                id: gridKey,
+                                bounds: {
+                                    minX: cellX * cellSize,
+                                    maxX: (cellX + 1) * cellSize,
+                                    minZ: cellZ * cellSize,
+                                    maxZ: (cellZ + 1) * cellSize,
+                                    minY: bounds.minY,
+                                    maxY: bounds.maxY,
+                                    centerX: (cellX + 0.5) * cellSize,
+                                    centerZ: (cellZ + 0.5) * cellSize
+                                },
+                                floorMeshes: [],
+                                center: null
+                            };
+                        }
+                        zones[gridKey].bounds.minY = Math.min(zones[gridKey].bounds.minY, bounds.minY);
+                        zones[gridKey].bounds.maxY = Math.max(zones[gridKey].bounds.maxY, bounds.maxY);
+                        if (zones[gridKey].floorMeshes.indexOf(entry.mesh) === -1) zones[gridKey].floorMeshes.push(entry.mesh);
+                    }
+                }
+            } else {
+                var key = "floor:" + String(entry.mesh.name || index);
+                zones[key] = { id: key, bounds: Object.assign({}, bounds), floorMeshes: [entry.mesh], center: null };
+            }
+        });
+
+        if (!Object.keys(zones).length) {
+            var cameraPosition = camera && camera.position ? camera.position : BABYLON.Vector3.Zero();
+            var fallbackX = Math.floor(cameraPosition.x / cellSize);
+            var fallbackZ = Math.floor(cameraPosition.z / cellSize);
+            var fallbackId = "grid:" + fallbackX + ":" + fallbackZ;
+            zones[fallbackId] = {
+                id: fallbackId,
+                bounds: {
+                    minX: fallbackX * cellSize,
+                    maxX: (fallbackX + 1) * cellSize,
+                    minZ: fallbackZ * cellSize,
+                    maxZ: (fallbackZ + 1) * cellSize,
+                    minY: -1000,
+                    maxY: 1000,
+                    centerX: (fallbackX + 0.5) * cellSize,
+                    centerZ: (fallbackZ + 0.5) * cellSize
+                },
+                floorMeshes: [],
+                center: null
+            };
+        }
+
+        var ids = Object.keys(zones);
+        ids.forEach(function (id) {
+            var zone = zones[id];
+            zone.center = new BABYLON.Vector3(zone.bounds.centerX, 0, zone.bounds.centerZ);
+        });
+
+        var adjacency = {};
+        ids.forEach(function (id) { adjacency[id] = {}; adjacency[id][id] = true; });
+        for (var i = 0; i < ids.length; i += 1) {
+            for (var j = i + 1; j < ids.length; j += 1) {
+                var a = zones[ids[i]].bounds;
+                var b = zones[ids[j]].bounds;
+                var gapX = Math.max(0, Math.max(a.minX - b.maxX, b.minX - a.maxX));
+                var gapZ = Math.max(0, Math.max(a.minZ - b.maxZ, b.minZ - a.maxZ));
+                var edgeDistance = Math.sqrt(gapX * gapX + gapZ * gapZ);
+                if (edgeDistance <= galleryZoneStreamingRuntime.adjacencyGap) {
+                    adjacency[ids[i]][ids[j]] = true;
+                    adjacency[ids[j]][ids[i]] = true;
+                }
+            }
+        }
+
+        galleryZoneStreamingRuntime.zones = zones;
+        galleryZoneStreamingRuntime.zoneIds = ids;
+        galleryZoneStreamingRuntime.adjacency = adjacency;
+        galleryZoneStreamingRuntime.zonesReady = true;
+        galleryZoneStreamingRuntime.lastReason = reason || "zones-rebuilt";
+        return zones;
+    }
+
+    function getGalleryStreamingZoneIdForPosition(position) {
+        if (!position) return galleryZoneStreamingRuntime.currentZoneId;
+        if (!galleryZoneStreamingRuntime.zonesReady) rebuildGalleryStreamingZones("zone-lookup");
+        var padding = Number(galleryZoneStreamingRuntime.zonePadding) || 0;
+        var closestId = null;
+        var closestDistance = Number.POSITIVE_INFINITY;
+        galleryZoneStreamingRuntime.zoneIds.forEach(function (id) {
+            var zone = galleryZoneStreamingRuntime.zones[id];
+            var b = zone.bounds;
+            var inside = position.x >= b.minX - padding && position.x <= b.maxX + padding &&
+                position.z >= b.minZ - padding && position.z <= b.maxZ + padding;
+            var dx = position.x - b.centerX;
+            var dz = position.z - b.centerZ;
+            var distance = dx * dx + dz * dz;
+            if (inside) distance *= 0.02;
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestId = id;
+            }
+        });
+        return closestId;
+    }
+
+    function getGalleryStreamingZoneIdForObject(object) {
+        if (!object) return null;
+        object.metadata = object.metadata || {};
+        var position = getGalleryStreamingObjectPosition(object);
+        var zoneId = getGalleryStreamingZoneIdForPosition(position);
+        object.metadata.galleryStreamingZoneId = zoneId;
+        return zoneId;
+    }
+
+    function getGalleryStreamingActiveZoneIds(currentZoneId) {
+        if (!currentZoneId) return [];
+        var active = [currentZoneId];
+        var neighbors = galleryZoneStreamingRuntime.adjacency[currentZoneId] || {};
+        Object.keys(neighbors).forEach(function (id) {
+            if (neighbors[id] && active.indexOf(id) === -1) active.push(id);
+        });
+        return active;
+    }
+
+    function getGalleryStreamingTierForZone(zoneId) {
+        if (!zoneId || !galleryZoneStreamingRuntime.currentZoneId) return "deferred";
+        if (zoneId === galleryZoneStreamingRuntime.currentZoneId) return "critical";
+        if (galleryZoneStreamingRuntime.activeZoneIds.indexOf(zoneId) !== -1) return "nearby";
+        return "deferred";
+    }
+
+    function getGalleryStreamingTierForObject(object) {
+        return getGalleryStreamingTierForZone(getGalleryStreamingZoneIdForObject(object));
+    }
+
+    function getGalleryStreamingTierRank(tier) {
+        return tier === "critical" ? 0 : (tier === "nearby" ? 1 : 2);
+    }
+
+    function refreshGalleryStreamingEntryClassification(entry, objectKey) {
+        if (!entry) return "deferred";
+        var object = entry[objectKey];
+        entry.zoneId = getGalleryStreamingZoneIdForObject(object);
+        entry.tier = getGalleryStreamingTierForZone(entry.zoneId);
+        entry.distanceToCamera = getGalleryFastStartDistanceToCamera(object);
+        return entry.tier;
+    }
+
+    function sortGalleryStreamingQueue(queue, objectKey) {
+        queue.forEach(function (entry) { refreshGalleryStreamingEntryClassification(entry, objectKey); });
+        queue.sort(function (a, b) {
+            var tierDelta = getGalleryStreamingTierRank(a.tier) - getGalleryStreamingTierRank(b.tier);
+            if (tierDelta) return tierDelta;
+            return Number(a.distanceToCamera || 0) - Number(b.distanceToCamera || 0);
+        });
+    }
+
+    function countGalleryStreamingQueueTier(queue, objectKey, tier) {
+        var count = 0;
+        queue.forEach(function (entry) {
+            if (refreshGalleryStreamingEntryClassification(entry, objectKey) === tier) count += 1;
+        });
+        return count;
+    }
+
+    function takeGalleryStreamingQueueEntry(queue, objectKey, allowedTiers) {
+        sortGalleryStreamingQueue(queue, objectKey);
+        var index = queue.findIndex(function (entry) {
+            return allowedTiers.indexOf(entry.tier) !== -1;
+        });
+        if (index < 0) return null;
+        return queue.splice(index, 1)[0];
+    }
+
+    function isGalleryStreamingZoneActive(zoneId) {
+        return !!zoneId && galleryZoneStreamingRuntime.activeZoneIds.indexOf(zoneId) !== -1;
+    }
+
+    function refreshGalleryCurrentStreamingZone(reason, force) {
+        if (!galleryZoneStreamingRuntime.enabled || !camera || !camera.position) return false;
+        if (!galleryZoneStreamingRuntime.zonesReady) rebuildGalleryStreamingZones(reason || "current-zone");
+        var now = Date.now();
+        if (!force && now - galleryZoneStreamingRuntime.lastZoneRefreshAt < 300) return false;
+        galleryZoneStreamingRuntime.lastZoneRefreshAt = now;
+        var nextZoneId = getGalleryStreamingZoneIdForPosition(camera.position);
+        var changed = nextZoneId && nextZoneId !== galleryZoneStreamingRuntime.currentZoneId;
+        if (changed || force || !galleryZoneStreamingRuntime.currentZoneId) {
+            galleryZoneStreamingRuntime.previousZoneId = galleryZoneStreamingRuntime.currentZoneId;
+            galleryZoneStreamingRuntime.currentZoneId = nextZoneId;
+            galleryZoneStreamingRuntime.activeZoneIds = getGalleryStreamingActiveZoneIds(nextZoneId);
+            galleryZoneStreamingRuntime.lastZoneChangeAt = now;
+            galleryZoneStreamingRuntime.lastReason = reason || "zone-change";
+            sortGalleryStreamingQueue(galleryFastStartRuntime.deferredArtworkLoads, "artwork");
+            sortGalleryStreamingQueue(galleryFastStartRuntime.deferredModelLoads, "slot");
+            markLocalLightCameraCullingDirty();
+            return true;
+        }
+        return false;
+    }
+
+    function getGalleryCriticalPendingTextureCount() {
+        return Object.keys(galleryStartupArtworkTextureDebug.pending || {}).filter(function (key) {
+            var entry = galleryStartupArtworkTextureDebug.pending[key] || {};
+            return entry.streamingTier === "critical";
+        }).length;
+    }
+
+    function isGalleryStreamingProtectedObject(object) {
+        if (!object) return false;
+        if (galleryInspectRuntime && galleryInspectRuntime.target === object) return true;
+        if (selectedSphere && selectedSphere === object) return true;
+        if (Array.isArray(selectedArtworks) && selectedArtworks.indexOf(object) !== -1) return true;
+        return false;
+    }
+
+    function suspendArtworkTextureForStreaming(artwork, reason) {
+        if (!artwork || !artwork.metadata || !artwork.metadata.artworkImage || isGalleryStreamingProtectedObject(artwork)) return false;
+        if (!artwork.metadata.imageMaterial) return false;
+        disposeArtworkImageMaterial(artwork);
+        if (artwork.metadata.imagePlane) artwork.metadata.imagePlane.setEnabled(false);
+        artwork.metadata.galleryStreaming = artwork.metadata.galleryStreaming || {};
+        artwork.metadata.galleryStreaming.textureState = "unloaded";
+        artwork.metadata.galleryStreaming.suspended = true;
+        artwork.metadata.galleryStreaming.suspendedAt = Date.now();
+        artwork.metadata.galleryStreaming.suspendReason = reason || "deferred-zone";
+        galleryZoneStreamingRuntime.textureDisposals += 1;
+        return true;
+    }
+
+    function queueArtworkForGalleryStreaming(artwork, reason) {
+        if (!artwork || !artwork.metadata || !artwork.metadata.artworkImage) return false;
+        var queued = queueGalleryFastStartArtworkLoad(artwork, artwork.metadata.artworkImage);
+        if (queued) {
+            artwork.metadata.galleryStreaming = artwork.metadata.galleryStreaming || {};
+            artwork.metadata.galleryStreaming.queueReason = reason || "zone-active";
+        }
+        return queued;
+    }
+
+    function disposeModel3dRuntimeMaterialsForStreaming(slot) {
+        var runtime = slot && slot.metadata ? slot.metadata.model3dRuntime : null;
+        if (!runtime) return;
+        var materials = [];
+        var textures = [];
+        (runtime.meshes || []).forEach(function (mesh) {
+            var material = mesh && mesh.material ? mesh.material : null;
+            if (material && materials.indexOf(material) === -1) materials.push(material);
+        });
+        materials.forEach(function (material) {
+            try {
+                if (material.getActiveTextures) {
+                    material.getActiveTextures().forEach(function (texture) {
+                        if (texture && textures.indexOf(texture) === -1) textures.push(texture);
+                    });
+                }
+            } catch (error) {}
+        });
+        disposeModel3dSlotRuntime(slot);
+        textures.forEach(function (texture) { try { texture.dispose(); } catch (error) {} });
+        materials.forEach(function (material) { try { material.dispose(false, false); } catch (error) {} });
+    }
+
+    function suspendModel3dForStreaming(slot, reason) {
+        if (!slot || !slot.metadata || !slot.metadata.model3d || !slot.metadata.model3dRuntime || isGalleryStreamingProtectedObject(slot)) return false;
+        disposeModel3dRuntimeMaterialsForStreaming(slot);
+        disableSculptureCollisionProxy(slot);
+        slot.metadata.galleryStreaming = slot.metadata.galleryStreaming || {};
+        slot.metadata.galleryStreaming.modelState = "unloaded";
+        slot.metadata.galleryStreaming.suspended = true;
+        slot.metadata.galleryStreaming.suspendedAt = Date.now();
+        slot.metadata.galleryStreaming.suspendReason = reason || "deferred-zone";
+        applySculptureSlotVisualState(slot);
+        galleryZoneStreamingRuntime.modelDisposals += 1;
+        return true;
+    }
+
+    function queueModelForGalleryStreaming(slot, reason) {
+        if (!slot || !slot.metadata || !slot.metadata.model3d) return false;
+        var queued = queueGalleryFastStartModelLoad(slot, slot.metadata.model3d);
+        if (queued) {
+            slot.metadata.galleryStreaming = slot.metadata.galleryStreaming || {};
+            slot.metadata.galleryStreaming.queueReason = reason || "zone-active";
+        }
+        return queued;
+    }
+
+    function getGalleryModelLodCullDistance() {
+        if (!galleryDeviceProfile.mobile) return 90;
+        if (galleryDeviceProfile.currentQualityProfile === "safe") return 28;
+        if (galleryDeviceProfile.currentQualityProfile === "high") return 52;
+        return 38;
+    }
+
+    function configureGalleryModelRuntimeLod(slot) {
+        var runtime = slot && slot.metadata ? slot.metadata.model3dRuntime : null;
+        if (!runtime || runtime.lodConfigured) return false;
+        var distance = Math.max(12, Number(slot.metadata.model3d && slot.metadata.model3d.lodCullDistance) || getGalleryModelLodCullDistance());
+        (runtime.meshes || []).forEach(function (mesh) {
+            if (!mesh || !mesh.addLODLevel || mesh.metadata && mesh.metadata.galleryLodConfigured) return;
+            try {
+                mesh.addLODLevel(distance, null);
+                mesh.metadata = mesh.metadata || {};
+                mesh.metadata.galleryLodConfigured = true;
+                mesh.metadata.galleryLodCullDistance = distance;
+                galleryZoneStreamingRuntime.modelLodConfigured += 1;
+            } catch (error) {}
+        });
+        runtime.lodConfigured = true;
+        runtime.lodCullDistance = distance;
+        return true;
+    }
+
+    function configureGalleryPropStreamingLod(mesh) {
+        if (!mesh || !mesh.addLODLevel || mesh.metadata && mesh.metadata.galleryLodConfigured) return false;
+        try {
+            var distance = galleryDeviceProfile.mobile ? (galleryDeviceProfile.currentQualityProfile === "safe" ? 34 : 48) : 110;
+            mesh.addLODLevel(distance, null);
+            mesh.metadata = mesh.metadata || {};
+            mesh.metadata.galleryLodConfigured = true;
+            mesh.metadata.galleryLodCullDistance = distance;
+            mesh.metadata.galleryStreamingZoneId = getGalleryStreamingZoneIdForObject(mesh);
+            galleryZoneStreamingRuntime.propLodConfigured += 1;
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function updateGalleryPropZoneActivation() {
+        (propMeshes || []).forEach(function (mesh) {
+            if (!mesh || mesh.name === "__root__") return;
+            configureGalleryPropStreamingLod(mesh);
+            var zoneId = getGalleryStreamingZoneIdForObject(mesh);
+            var active = !galleryDeviceProfile.mobile || isGalleryStreamingZoneActive(zoneId);
+            if (mesh.setEnabled) mesh.setEnabled(active);
+        });
+    }
+
+    function maintainGalleryStreamingMemoryBudget(reason) {
+        if (!galleryDeviceProfile.mobile || !galleryZoneStreamingRuntime.started) return;
+        var now = Date.now();
+        var residentArtwork = [];
+        (artworks || []).forEach(function (artwork) {
+            if (!artwork || !artwork.metadata || !artwork.metadata.artworkImage) return;
+            var tier = getGalleryStreamingTierForObject(artwork);
+            var stream = artwork.metadata.galleryStreaming = artwork.metadata.galleryStreaming || {};
+            if (tier !== "deferred") {
+                stream.lastActiveAt = now;
+                if (!artwork.metadata.imageMaterial && !stream.loading) queueArtworkForGalleryStreaming(artwork, "active-zone-refresh");
+            } else if (artwork.metadata.imageMaterial) {
+                residentArtwork.push({ artwork: artwork, lastActiveAt: Number(stream.lastActiveAt) || 0, distance: getGalleryFastStartDistanceToCamera(artwork) });
+            }
+        });
+        residentArtwork.sort(function (a, b) { return b.distance - a.distance || a.lastActiveAt - b.lastActiveAt; });
+        var activeArtworkResidentCount = (artworks || []).filter(function (artwork) {
+            return artwork && artwork.metadata && artwork.metadata.imageMaterial && getGalleryStreamingTierForObject(artwork) !== "deferred";
+        }).length;
+        var allowedDeferredArtwork = Math.max(0, galleryZoneStreamingRuntime.maxResidentArtworkTextures - activeArtworkResidentCount);
+        residentArtwork.forEach(function (entry, index) {
+            var expired = now - entry.lastActiveAt >= galleryZoneStreamingRuntime.textureUnloadGraceMs;
+            var overBudget = index >= allowedDeferredArtwork;
+            if (expired || overBudget) suspendArtworkTextureForStreaming(entry.artwork, overBudget ? "texture-budget" : "deferred-zone-grace");
+        });
+
+        var residentModels = [];
+        (artSpheres || []).forEach(function (slot) {
+            if (!slot || !slot.metadata || !slot.metadata.model3d) return;
+            var tier = getGalleryStreamingTierForObject(slot);
+            var stream = slot.metadata.galleryStreaming = slot.metadata.galleryStreaming || {};
+            if (tier !== "deferred") {
+                stream.lastActiveAt = now;
+                var runtime = slot.metadata.model3dRuntime;
+                var needsCriticalUpgrade = tier === "critical" && runtime && runtime.assetVariant === "low";
+                if (needsCriticalUpgrade && !stream.loading && !isGalleryStreamingProtectedObject(slot)) {
+                    suspendModel3dForStreaming(slot, "critical-high-lod-upgrade");
+                    queueModelForGalleryStreaming(slot, "critical-high-lod-upgrade");
+                } else if (!slot.metadata.model3dRuntime && !stream.loading) {
+                    queueModelForGalleryStreaming(slot, "active-zone-refresh");
+                }
+            } else if (slot.metadata.model3dRuntime) {
+                residentModels.push({ slot: slot, lastActiveAt: Number(stream.lastActiveAt) || 0, distance: getGalleryFastStartDistanceToCamera(slot) });
+            }
+        });
+        residentModels.sort(function (a, b) { return b.distance - a.distance || a.lastActiveAt - b.lastActiveAt; });
+        var activeModelResidentCount = (artSpheres || []).filter(function (slot) {
+            return slot && slot.metadata && slot.metadata.model3dRuntime && getGalleryStreamingTierForObject(slot) !== "deferred";
+        }).length;
+        var allowedDeferredModels = Math.max(0, galleryZoneStreamingRuntime.maxResidentModels - activeModelResidentCount);
+        residentModels.forEach(function (entry, index) {
+            var expired = now - entry.lastActiveAt >= galleryZoneStreamingRuntime.modelUnloadGraceMs;
+            var overBudget = index >= allowedDeferredModels;
+            if (expired || overBudget) suspendModel3dForStreaming(entry.slot, overBudget ? "model-budget" : "deferred-zone-grace");
+        });
+        updateGalleryPropZoneActivation();
+        galleryZoneStreamingRuntime.lastReason = reason || "memory-budget";
+    }
+
+    function scheduleGalleryZoneStreamingPump(reason, delayMs) {
+        if (!galleryZoneStreamingRuntime.started || galleryZoneStreamingRuntime.streamPumpScheduled) return;
+        galleryZoneStreamingRuntime.streamPumpScheduled = true;
+        setTimeout(function () {
+            galleryZoneStreamingRuntime.streamPumpScheduled = false;
+            pumpGalleryZoneStreamingQueues(reason || "scheduled-zone-pump");
+        }, Math.max(40, Number(delayMs) || 80));
+    }
+
+    function pumpGalleryZoneStreamingQueues(reason) {
+        if (!galleryZoneStreamingRuntime.started || galleryZoneStreamingRuntime.streamPumpActive) return;
+        refreshGalleryCurrentStreamingZone(reason || "stream-pump", true);
+        galleryZoneStreamingRuntime.streamPumpActive = true;
+        galleryFastStartRuntime.backgroundDrainActive = true;
+
+        var artworkConcurrency = Math.max(1, Math.min(3, Number(galleryDeviceProfile.previewTextureConcurrency) || 2));
+        var modelConcurrency = Math.max(1, Number(galleryFastStartRuntime.modelLoadConcurrency) || 1);
+        var artworkStarted = 0;
+        var pumpFinished = false;
+        var pendingTextures = Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length;
+
+        while (artworkStarted < artworkConcurrency && pendingTextures < artworkConcurrency) {
+            var artworkEntry = takeGalleryStreamingQueueEntry(galleryFastStartRuntime.deferredArtworkLoads, "artwork", ["critical", "nearby"]);
+            if (!artworkEntry) break;
+            var previewState = cloneGalleryFastStartState(artworkEntry.imageState);
+            previewState._galleryFastStartForceImmediate = true;
+            previewState._galleryFastStartPreferPreview = artworkEntry.tier !== "critical";
+            previewState._galleryStreamingTier = artworkEntry.tier;
+            artworkEntry.artwork.metadata.galleryStreaming = artworkEntry.artwork.metadata.galleryStreaming || {};
+            artworkEntry.artwork.metadata.galleryStreaming.loading = true;
+            applyArtworkImageStateSafely(artworkEntry.artwork, previewState, "12C65E zone artwork " + artworkEntry.tier);
+            artworkEntry.artwork.metadata.galleryStreaming.loading = false;
+            if (artworkEntry.tier === "nearby") galleryZoneStreamingRuntime.nearbyArtworkStarted += 1;
+            artworkStarted += 1;
+            pendingTextures = Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length;
+        }
+
+        function finishPump() {
+            if (pumpFinished) return;
+            pumpFinished = true;
+            galleryZoneStreamingRuntime.streamPumpActive = false;
+            galleryFastStartRuntime.backgroundDrainActive = false;
+            maintainGalleryStreamingMemoryBudget(reason || "zone-pump-finished");
+            var activeArtworkCount = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredArtworkLoads, "artwork", "critical") +
+                countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredArtworkLoads, "artwork", "nearby");
+            var activeModelCount = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "critical") +
+                countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "nearby");
+            if (activeArtworkCount || activeModelCount) scheduleGalleryZoneStreamingPump("active-zone-remaining", 180);
+            scheduleGalleryFastStartFullArtworkDrainWhenIdle("12C65E-current-zone-full", 500);
+        }
+
+        function pumpModels() {
+            function startModelEntry(modelEntry) {
+                galleryFastStartRuntime.modelLoadActiveCount += 1;
+                var immediateState = cloneGalleryFastStartState(modelEntry.modelState);
+                immediateState._galleryFastStartForceImmediate = true;
+                immediateState._galleryStreamingTier = modelEntry.tier;
+                modelEntry.slot.metadata.galleryStreaming = modelEntry.slot.metadata.galleryStreaming || {};
+                modelEntry.slot.metadata.galleryStreaming.loading = true;
+                Promise.resolve(applyModel3dStateToSlot(modelEntry.slot, immediateState))
+                    .catch(function (error) { console.warn("12C65E zone model warning:", error); })
+                    .finally(function () {
+                        galleryFastStartRuntime.modelLoadActiveCount = Math.max(0, galleryFastStartRuntime.modelLoadActiveCount - 1);
+                        if (modelEntry.slot && modelEntry.slot.metadata && modelEntry.slot.metadata.galleryStreaming) {
+                            modelEntry.slot.metadata.galleryStreaming.loading = false;
+                        }
+                        pumpModels();
+                    });
+                if (modelEntry.tier === "nearby") galleryZoneStreamingRuntime.nearbyModelStarted += 1;
+            }
+
+            while (galleryFastStartRuntime.modelLoadActiveCount < modelConcurrency) {
+                var modelEntry = takeGalleryStreamingQueueEntry(galleryFastStartRuntime.deferredModelLoads, "slot", ["critical", "nearby"]);
+                if (!modelEntry) break;
+                startModelEntry(modelEntry);
+            }
+            var remainingActive = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "critical") +
+                countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "nearby");
+            if (remainingActive === 0 && galleryFastStartRuntime.modelLoadActiveCount === 0) finishPump();
+        }
+
+        function waitForArtworkTextures() {
+            var pending = Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length;
+            if (pending > 0) {
+                setTimeout(waitForArtworkTextures, 70);
+                return;
+            }
+            pumpModels();
+            var remainingActive = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "critical") +
+                countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "nearby");
+            if (remainingActive === 0 && galleryFastStartRuntime.modelLoadActiveCount === 0) finishPump();
+        }
+        waitForArtworkTextures();
+    }
+
+    function startGalleryZoneStreamingRuntime(reason) {
+        if (galleryZoneStreamingRuntime.started) return;
+        galleryZoneStreamingRuntime.started = true;
+        refreshGalleryStreamingBudgetsFromQuality(galleryDeviceProfile.currentQualityProfile, "streaming-start");
+        releaseGalleryStartupDeferredOptionalAssetImports("12C65E-interaction-ready-nearby-stream");
+        rebuildGalleryStreamingZones(reason || "streaming-start");
+        refreshGalleryCurrentStreamingZone(reason || "streaming-start", true);
+        (artworks || []).forEach(function (artwork) { getGalleryStreamingZoneIdForObject(artwork); });
+        (artSpheres || []).forEach(function (slot) { getGalleryStreamingZoneIdForObject(slot); });
+        (propMeshes || []).forEach(function (mesh) { configureGalleryPropStreamingLod(mesh); });
+        maintainGalleryStreamingMemoryBudget("streaming-start");
+        scheduleGalleryZoneStreamingPump("streaming-start", 40);
+    }
+
+    function updateGalleryZoneStreamingRuntime(force) {
+        if (!galleryZoneStreamingRuntime.started) return;
+        galleryZoneStreamingRuntime.frameCounter += 1;
+        if (!force && galleryZoneStreamingRuntime.frameCounter % galleryZoneStreamingRuntime.checkEveryFrames !== 0) return;
+        var changed = refreshGalleryCurrentStreamingZone("camera-zone-update", !!force);
+        if (changed) {
+            maintainGalleryStreamingMemoryBudget("zone-changed");
+            scheduleGalleryZoneStreamingPump("zone-changed", 20);
+        } else if (Date.now() - galleryZoneStreamingRuntime.lastZoneChangeAt > 1200) {
+            maintainGalleryStreamingMemoryBudget("zone-maintenance");
+        }
+    }
+
+    function getGalleryZoneStreamingDebug() {
+        var artworkCritical = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredArtworkLoads, "artwork", "critical");
+        var artworkNearby = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredArtworkLoads, "artwork", "nearby");
+        var artworkDeferred = galleryFastStartRuntime.deferredArtworkLoads.length - artworkCritical - artworkNearby;
+        var modelCritical = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "critical");
+        var modelNearby = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "nearby");
+        var modelDeferred = galleryFastStartRuntime.deferredModelLoads.length - modelCritical - modelNearby;
+        return JSON.parse(JSON.stringify(Object.assign({}, galleryZoneStreamingRuntime, {
+            zones: galleryZoneStreamingRuntime.zoneIds.map(function (id) {
+                var zone = galleryZoneStreamingRuntime.zones[id];
+                return { id: id, bounds: zone.bounds, floorMeshCount: zone.floorMeshes.length, active: galleryZoneStreamingRuntime.activeZoneIds.indexOf(id) !== -1 };
+            }),
+            queueStats: {
+                artworks: { critical: artworkCritical, nearby: artworkNearby, deferred: artworkDeferred },
+                models: { critical: modelCritical, nearby: modelNearby, deferred: modelDeferred }
+            },
+            ktx2: galleryKtx2Runtime
+        })));
+    }
+
+    globalThis.BerryboyArtGalleryStreaming = {
+        getDebug: getGalleryZoneStreamingDebug,
+        refresh: function () {
+            rebuildGalleryStreamingZones("manual-refresh");
+            refreshGalleryCurrentStreamingZone("manual-refresh", true);
+            maintainGalleryStreamingMemoryBudget("manual-refresh");
+            scheduleGalleryZoneStreamingPump("manual-refresh", 0);
+            return getGalleryZoneStreamingDebug();
+        },
+        setEnabled: function (enabled) {
+            galleryZoneStreamingRuntime.enabled = !!enabled;
+            return getGalleryZoneStreamingDebug();
+        }
+    };
+
+    function cloneGalleryFastStartState(value) {
+        try {
+            return JSON.parse(JSON.stringify(value || {}));
+        } catch (error) {
+            return Object.assign({}, value || {});
+        }
+    }
+
+    
+    function queueGalleryFastStartArtworkLoad(artwork, imageState) {
+        if (!artwork || !imageState) return false;
+        var key = artwork.name || String(artwork.uniqueId || galleryFastStartRuntime.deferredArtworkLoads.length);
+        var existingIndex = galleryFastStartRuntime.deferredArtworkLoads.findIndex(function (entry) { return entry && entry.key === key; });
+        var zoneId = getGalleryStreamingZoneIdForObject(artwork);
+        var entry = {
+            key: key,
+            artwork: artwork,
+            imageState: cloneGalleryFastStartState(imageState),
+            zoneId: zoneId,
+            tier: getGalleryStreamingTierForZone(zoneId),
+            queuedAt: Date.now()
+        };
+        artwork.metadata = artwork.metadata || {};
+        artwork.metadata.galleryStreaming = artwork.metadata.galleryStreaming || {};
+        artwork.metadata.galleryStreaming.zoneId = zoneId;
+        artwork.metadata.galleryStreaming.queued = true;
+        if (existingIndex >= 0) galleryFastStartRuntime.deferredArtworkLoads[existingIndex] = entry;
+        else galleryFastStartRuntime.deferredArtworkLoads.push(entry);
+        return true;
+    }
+
+    
+    function queueGalleryFastStartModelLoad(slot, modelState) {
+        if (!slot || !modelState) return false;
+        var key = slot.name || String(slot.uniqueId || galleryFastStartRuntime.deferredModelLoads.length);
+        var existingIndex = galleryFastStartRuntime.deferredModelLoads.findIndex(function (entry) { return entry && entry.key === key; });
+        var zoneId = getGalleryStreamingZoneIdForObject(slot);
+        var entry = {
+            key: key,
+            slot: slot,
+            modelState: cloneGalleryFastStartState(modelState),
+            zoneId: zoneId,
+            tier: getGalleryStreamingTierForZone(zoneId),
+            queuedAt: Date.now()
+        };
+        slot.metadata = slot.metadata || {};
+        slot.metadata.galleryStreaming = slot.metadata.galleryStreaming || {};
+        slot.metadata.galleryStreaming.zoneId = zoneId;
+        slot.metadata.galleryStreaming.queued = true;
+        if (existingIndex >= 0) galleryFastStartRuntime.deferredModelLoads[existingIndex] = entry;
+        else galleryFastStartRuntime.deferredModelLoads.push(entry);
+        return true;
+    }
+
+    function getGalleryFastStartPreviewTextureConcurrency() {
+        return galleryDeviceProfile.previewTextureConcurrency;
+    }
+
+    function runGalleryFastStartIdleTask(callback, timeoutMs) {
+        if (typeof requestIdleCallback === "function") {
+            requestIdleCallback(function () {
+                callback();
+            }, { timeout: timeoutMs || 700 });
+            return;
+        }
+
+        setTimeout(callback, 24);
+    }
+
+    function getGalleryFastStartDistanceToCamera(object) {
+        try {
+            if (object && camera && object.getAbsolutePosition) {
+                return BABYLON.Vector3.Distance(camera.position, object.getAbsolutePosition());
+            }
+        } catch (error) {}
+
+        return Number.POSITIVE_INFINITY;
+    }
+
+    function scheduleGalleryFastStartFullArtworkUpgrade(entry) {
+        if (!entry || !entry.artwork || !entry.imageState) {
+            return;
+        }
+
+        if (!entry.imageState.imageUrlPreview && !entry.imageState.imageUrlKtx2Preview && !entry.imageState.ktx2PreviewUrl) {
+            return;
+        }
+
+        var key = entry.key || entry.artwork.name || String(entry.artwork.uniqueId || "artwork");
+        var exists = galleryFastStartRuntime.deferredFullArtworkLoads.some(function (queuedEntry) {
+            return queuedEntry && queuedEntry.key === key;
+        });
+
+        if (!exists) {
+            entry.key = key;
+            galleryFastStartRuntime.deferredFullArtworkLoads.push(entry);
+        }
+
+        scheduleGalleryFastStartFullArtworkDrainWhenIdle("preview-textures-ready");
+    }
+
+    
+    
+    function drainGalleryFastStartBackgroundQueue(reason) {
+        if (!galleryFastStartRuntime.viewerReady || galleryFastStartRuntime.backgroundDrainActive) return;
+        rebuildGalleryStreamingZones(reason || "critical-startup-drain");
+        refreshGalleryCurrentStreamingZone(reason || "critical-startup-drain", true);
+        galleryFastStartRuntime.backgroundDrainActive = true;
+        galleryFastStartRuntime.artworkPreviewDrainComplete = false;
+        galleryFastStartRuntime.modelDrainComplete = false;
+        galleryFastStartRuntime.startupBatchHydrationActive = true;
+        galleryZoneStreamingRuntime.criticalDrainComplete = false;
+        var drainFinished = false;
+
+        function finishCriticalDrain() {
+            if (drainFinished) return;
+            drainFinished = true;
+            galleryFastStartRuntime.artworkPreviewDrainComplete = true;
+            galleryFastStartRuntime.modelDrainComplete = true;
+            galleryFastStartRuntime.startupBatchHydrationActive = false;
+            galleryFastStartRuntime.backgroundDrainActive = false;
+            galleryZoneStreamingRuntime.criticalDrainComplete = true;
+            galleryZoneStreamingRuntime.deferredArtworkLoadsAvoided = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredArtworkLoads, "artwork", "deferred");
+            galleryZoneStreamingRuntime.deferredModelLoadsAvoided = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "deferred");
+        }
+
+        function startCriticalModelEntry(modelEntry) {
+            galleryFastStartRuntime.modelLoadActiveCount += 1;
+            galleryZoneStreamingRuntime.criticalModelStarted += 1;
+            var immediateState = cloneGalleryFastStartState(modelEntry.modelState);
+            immediateState._galleryFastStartForceImmediate = true;
+            immediateState._galleryStreamingTier = "critical";
+            Promise.resolve(applyModel3dStateToSlot(modelEntry.slot, immediateState))
+                .catch(function (error) { console.warn("12C65E critical model warning:", error); })
+                .finally(function () {
+                    galleryFastStartRuntime.modelLoadActiveCount = Math.max(0, galleryFastStartRuntime.modelLoadActiveCount - 1);
+                    galleryZoneStreamingRuntime.criticalModelFinished += 1;
+                    pumpCriticalModels();
+                });
+        }
+
+        function pumpCriticalModels() {
+            var concurrency = Math.max(1, Number(galleryFastStartRuntime.modelLoadConcurrency) || 1);
+            while (galleryFastStartRuntime.modelLoadActiveCount < concurrency) {
+                var modelEntry = takeGalleryStreamingQueueEntry(galleryFastStartRuntime.deferredModelLoads, "slot", ["critical"]);
+                if (!modelEntry) break;
+                startCriticalModelEntry(modelEntry);
+            }
+            if (countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "critical") === 0 && galleryFastStartRuntime.modelLoadActiveCount === 0) {
+                finishCriticalDrain();
+            }
+        }
+
+        function waitForCriticalArtworkThenModels() {
+            var criticalPendingTextures = getGalleryCriticalPendingTextureCount();
+            var criticalQueue = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredArtworkLoads, "artwork", "critical");
+            if (criticalQueue > 0 || criticalPendingTextures > 0) {
+                setTimeout(function () {
+                    pumpCriticalArtwork();
+                    waitForCriticalArtworkThenModels();
+                }, 55);
+                return;
+            }
+            galleryFastStartRuntime.artworkPreviewDrainComplete = true;
+            pumpCriticalModels();
+        }
+
+        function pumpCriticalArtwork() {
+            var launchLimit = getGalleryFastStartPreviewTextureConcurrency();
+            var pendingTextures = Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length;
+            while (pendingTextures < launchLimit) {
+                var artworkEntry = takeGalleryStreamingQueueEntry(galleryFastStartRuntime.deferredArtworkLoads, "artwork", ["critical"]);
+                if (!artworkEntry) break;
+                var previewState = cloneGalleryFastStartState(artworkEntry.imageState);
+                previewState._galleryFastStartForceImmediate = true;
+                previewState._galleryFastStartPreferPreview = true;
+                previewState._galleryStreamingTier = "critical";
+                galleryZoneStreamingRuntime.criticalArtworkStarted += 1;
+                applyArtworkImageStateSafely(artworkEntry.artwork, previewState, "12C65E critical artwork preview");
+                pendingTextures = Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length;
+            }
+        }
+
+        runGalleryFastStartIdleTask(function () {
+            pumpCriticalArtwork();
+            waitForCriticalArtworkThenModels();
+        }, 120);
+    }
+
+    function isGalleryViewerBusyForFullArtworkUpgrade() {
+        if (!galleryFastStartRuntime.viewerReady || !galleryFastStartRuntime.interactionReady) return true;
+        if (!editMode && !viewerIntroOverlayMovementUnlocked) return true;
+        if (galleryFastStartRuntime.backgroundDrainActive) return true;
+        if (typeof isGalleryInspectCameraTransitionActive === "function" && isGalleryInspectCameraTransitionActive()) return true;
+        if (isDraggingArtwork || isDraggingSphere) return true;
+        if (desktopViewerMiddleLookActive || mobileLookActive) return true;
+        if (editMoveKeys && (editMoveKeys.w || editMoveKeys.a || editMoveKeys.s || editMoveKeys.d || editMoveKeys.space)) return true;
+        if (viewerMovementVelocity && viewerMovementVelocity.length && viewerMovementVelocity.length() > 0.035) return true;
+        if (viewerMoveKeys && (viewerMoveKeys.w || viewerMoveKeys.a || viewerMoveKeys.s || viewerMoveKeys.d)) return true;
+        if (Date.now() - (galleryFastStartRuntime.lastViewerActivityAt || 0) < galleryFastStartRuntime.fullArtworkIdleDelayMs) return true;
+        return false;
+    }
+
+    function scheduleGalleryFastStartFullArtworkDrainWhenIdle(reason, delayMs) {
+        if (!galleryFastStartRuntime || galleryFastStartRuntime.deferredFullArtworkLoads.length === 0) return;
+        if (!galleryFastStartRuntime.interactionReady) return;
+        if (galleryFastStartRuntime.fullArtworkDrainTimer) return;
+        galleryFastStartRuntime.fullArtworkDrainTimer = setTimeout(function () {
+            galleryFastStartRuntime.fullArtworkDrainTimer = null;
+            drainGalleryFastStartFullArtworkQueue(reason || "idle-full-artwork-upgrade");
+        }, Math.max(250, Number(delayMs) || 700));
+    }
+
+    
+    function drainGalleryFastStartFullArtworkQueue(reason) {
+        if (!galleryFastStartRuntime.viewerReady || !galleryFastStartRuntime.interactionReady) {
+            scheduleGalleryFastStartFullArtworkDrainWhenIdle(reason || "full-artwork-wait-for-viewer", 900);
+            return;
+        }
+        if (galleryFastStartRuntime.backgroundDrainActive || isGalleryViewerBusyForFullArtworkUpgrade()) {
+            scheduleGalleryFastStartFullArtworkDrainWhenIdle(reason || "full-artwork-wait-for-idle", 700);
+            return;
+        }
+        refreshGalleryCurrentStreamingZone(reason || "full-artwork-zone", false);
+        var index = galleryFastStartRuntime.deferredFullArtworkLoads.findIndex(function (queuedEntry) {
+            return queuedEntry && getGalleryStreamingTierForObject(queuedEntry.artwork) === "critical";
+        });
+        if (index < 0) return;
+        var entry = galleryFastStartRuntime.deferredFullArtworkLoads.splice(index, 1)[0];
+        galleryFastStartRuntime.backgroundDrainActive = true;
+        var fullState = cloneGalleryFastStartState(entry.imageState);
+        fullState._galleryFastStartForceImmediate = true;
+        fullState._galleryFastStartPreferPreview = false;
+        fullState._galleryStreamingTier = "critical";
+        runGalleryFastStartIdleTask(function () {
+            if (isGalleryViewerBusyForFullArtworkUpgrade() || getGalleryStreamingTierForObject(entry.artwork) !== "critical") {
+                galleryFastStartRuntime.backgroundDrainActive = false;
+                galleryFastStartRuntime.deferredFullArtworkLoads.push(entry);
+                scheduleGalleryFastStartFullArtworkDrainWhenIdle(reason || "full-artwork-zone-changed", 700);
+                return;
+            }
+            try {
+                applyArtworkImageStateSafely(entry.artwork, fullState, "12C65E current-zone full artwork");
+            } catch (error) {
+                console.warn("12C65E full artwork hydration warning:", error);
+            } finally {
+                galleryFastStartRuntime.backgroundDrainActive = false;
+                markGalleryViewerActivity("full-artwork-upgrade-finished");
+                scheduleGalleryFastStartFullArtworkDrainWhenIdle(reason || "full-artwork-upgrade", 700);
+            }
+        }, 1200);
+    }
 
     var galleryAssetLoadDebug = {
         loaded: {},
@@ -12114,18 +13884,16 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         watchdogFired: false,
         retryEnabled: true,
         retryConfig: {
-            criticalMaxAttempts: 3,
-            optionalMaxAttempts: 3,
-            attemptTimeoutMs: 30000,
-            retryDelaysMs: [0, 700, 1500],
+            criticalMaxAttempts: 2,
+            optionalMaxAttempts: 1,
+            attemptTimeoutMs: 0,
+            retryDelaysMs: [0, 900],
             startupWatchdogMs: galleryStartupWatchdogMs,
-            postStateStorageSettleDelayMs: galleryPostStateStorageSettleDelayMs,
-            artworkTextureMaxWaitMs: galleryArtworkStartupTextureMaxWaitMs,
-            mobileSurvivalEnabled: isGalleryMobileStartupSurvivalEnabled(),
+                    mobileDeviceProfile: cloneGalleryFastStartState(galleryDeviceProfile),
             mobileAssetsToLoad: assetsToLoad,
-            mobileSequentialCriticalAssets: isGalleryMobileStartupSurvivalEnabled(),
-            mobileDeferredOptionalAssets: false,
-            popupAfterProps: true
+            sequentialCriticalAssets: false,
+            startupDeferredOptionalAssets: true,
+            singleStartupGate: true
         },
         startedAt: Date.now(),
         lastReason: "initial"
@@ -12164,27 +13932,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                     elapsedMs: entry.startedAt ? Date.now() - entry.startedAt : null
                 };
             }),
-            waitRuns: galleryStartupArtworkTextureDebug.waitRuns,
-            waitTimeouts: galleryStartupArtworkTextureDebug.waitTimeouts,
             lastStarted: galleryStartupArtworkTextureDebug.lastStarted,
-            lastFinished: galleryStartupArtworkTextureDebug.lastFinished,
-            lastWait: galleryStartupArtworkTextureDebug.lastWait
+            lastFinished: galleryStartupArtworkTextureDebug.lastFinished
         };
-    }
-
-    function notifyGalleryStartupArtworkTextureWaiters() {
-        if (Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length > 0) {
-            return;
-        }
-
-        var waiters = galleryStartupArtworkTextureWaiters.slice();
-        galleryStartupArtworkTextureWaiters.length = 0;
-
-        waiters.forEach(function (resolve) {
-            try {
-                resolve();
-            } catch (error) {}
-        });
     }
 
     function registerGalleryStartupArtworkTextureLoad(artwork, imageUrl) {
@@ -12197,6 +13947,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             id: textureId,
             artworkName: artwork && artwork.name ? artwork.name : null,
             url: String(imageUrl || ""),
+            streamingTier: artwork && artwork.metadata && artwork.metadata.galleryStreaming
+                ? (artwork.metadata.galleryStreaming.currentLoadTier || getGalleryStreamingTierForObject(artwork))
+                : "deferred",
             startedAt: Date.now()
         };
 
@@ -12225,94 +13978,30 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             }
 
             galleryStartupArtworkTextureDebug.lastFinished = finishedEntry;
-            notifyGalleryStartupArtworkTextureWaiters();
+            if (artwork && artwork.metadata && artwork.metadata.galleryStreaming) {
+                artwork.metadata.galleryStreaming.loading = false;
+            }
+            if (!failed && entry.streamingTier === "critical") {
+                galleryZoneStreamingRuntime.criticalArtworkFinished += 1;
+            }
         };
-    }
-
-    function waitForGalleryStartupArtworkTextures(reason) {
-        galleryStartupArtworkTextureDebug.waitRuns += 1;
-        var waitStartedAt = Date.now();
-
-        return new Promise(function (resolve) {
-            var finished = false;
-            var timeoutTimer = null;
-            var settleTimer = null;
-
-            function finish(status) {
-                if (finished) {
-                    return;
-                }
-
-                finished = true;
-
-                if (timeoutTimer) {
-                    clearTimeout(timeoutTimer);
-                    timeoutTimer = null;
-                }
-
-                if (settleTimer) {
-                    clearTimeout(settleTimer);
-                    settleTimer = null;
-                }
-
-                var snapshot = getGalleryStartupArtworkTextureDebugSnapshot();
-                var result = {
-                    reason: reason || "startup-artwork-texture-wait",
-                    status: status || "settled",
-                    elapsedMs: Date.now() - waitStartedAt,
-                    pendingCount: snapshot.pendingCount,
-                    started: snapshot.started,
-                    loaded: snapshot.loaded,
-                    failed: snapshot.failed
-                };
-
-                galleryStartupArtworkTextureDebug.lastWait = result;
-                resolve(result);
-            }
-
-            function settleWhenEmpty() {
-                if (Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length > 0) {
-                    return;
-                }
-
-                settleTimer = setTimeout(function () {
-                    finish("settled");
-                }, galleryArtworkStartupTextureSettleDelayMs);
-            }
-
-            timeoutTimer = setTimeout(function () {
-                galleryStartupArtworkTextureDebug.waitTimeouts += 1;
-                finish("timeout");
-            }, galleryArtworkStartupTextureMaxWaitMs);
-
-            if (Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length === 0) {
-                settleWhenEmpty();
-                return;
-            }
-
-            galleryStartupArtworkTextureWaiters.push(settleWhenEmpty);
-        });
     }
 
     function waitForGalleryStartupPostStateSettle(reason) {
         galleryStartupFinalizeDebug.stateLoadFinishedAt = Date.now();
+        galleryStartupFinalizeDebug.artworkTextureWait = {
+            reason: reason || "12C65E-current-zone-streaming-gate",
+            status: "waiting-for-visible-content",
+            elapsedMs: 0,
+            pendingCount: Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length
+        };
+
         updateGalleryLoaderStatus(
-            "Loading artwork storage...",
-            "Waiting briefly for saved artwork textures and storage URLs before final light assignment."
+            "Preparing gallery...",
+            "Saved state is ready. The current gallery zone is prepared first; nearby and deferred assets stream after entry."
         );
 
-        return waitForGalleryStartupArtworkTextures(reason || "post-state-storage-settle")
-            .then(function (textureWaitResult) {
-                galleryStartupFinalizeDebug.artworkTextureWait = textureWaitResult;
-                updateGalleryLoaderStatus(
-                    "Finalizing gallery...",
-                    "Artwork storage has settled. Preparing final local light targets."
-                );
-
-                return new Promise(function (resolve) {
-                    setTimeout(resolve, galleryPostStateStorageSettleDelayMs);
-                });
-            });
+        return Promise.resolve(galleryStartupFinalizeDebug.artworkTextureWait);
     }
 
     // STAGE 12C62S6A - STARTUP ORDER REBUILD
@@ -12445,8 +14134,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         updateGalleryLoaderStatus(
             "Applying saved gallery state...",
-            "Models are ready. Now artwork storage and saved local lights are restored before final lighting."
+            "Models are ready. Artwork previews and saved local lights are restored first; sculptures and props can finish later."
         );
+
+        galleryFastStartRuntime.stateApplyActive = true;
 
         try {
             if (result.noClient) {
@@ -12491,142 +14182,11 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             notifyGalleryStatus("Nie udalo sie zastosowac zapisanego stanu galerii.");
             return false;
         } finally {
+            galleryFastStartRuntime.stateApplyActive = false;
+            galleryFastStartRuntime.stateApplied = true;
             galleryStartupFinalizeDebug.stateApplyFinishedAt = Date.now();
             galleryStartupFinalizeDebug.stateApplyMs = galleryStartupFinalizeDebug.stateApplyFinishedAt - galleryStartupFinalizeDebug.stateApplyStartedAt;
         }
-    }
-
-    function waitGalleryStartupFrameDelay(delayMs) {
-        delayMs = delayMs === undefined || delayMs === null
-            ? (isGalleryMobileStartupSurvivalEnabled() ? 90 : 0)
-            : Math.max(0, Number(delayMs) || 0);
-
-        return new Promise(function (resolve) {
-            var run = function () {
-                if (delayMs > 0) {
-                    setTimeout(resolve, delayMs);
-                } else {
-                    resolve();
-                }
-            };
-
-            if (typeof requestAnimationFrame === "function") {
-                requestAnimationFrame(run);
-            } else {
-                setTimeout(run, delayMs);
-            }
-        });
-    }
-
-    function runGalleryStartupFinalLightAssignmentDeferred(reason) {
-        if (!isGalleryMobileStartupSurvivalEnabled()) {
-            runGalleryStartupFinalLightAssignment(reason);
-            return Promise.resolve(galleryStartupFinalizeDebug);
-        }
-
-        var startedAt = Date.now();
-        galleryStartupFinalizeDebug.finalLightStartedAt = startedAt;
-        galleryStartupFinalizeDebug.finalLightReason = reason || "startup-final-light-assignment-deferred";
-        galleryStartupFinalizeDebug.finalLightError = null;
-        galleryStartupFinalizeDebug.finalLightMode = "deferred-mobile-steps";
-
-        updateGalleryLoaderStatus(
-            "Finalizing gallery lighting...",
-            "Local light targets are assigned at the very end before the intro popup."
-        );
-
-        function runStep(label, callback) {
-            galleryStartupFinalizeDebug.finalLightStep = label;
-
-            try {
-                callback();
-            } catch (error) {
-                galleryStartupFinalizeDebug.finalLightError = error && error.message ? error.message : String(error || "unknown");
-                console.warn("Startup final light step warning:", label, error);
-            }
-
-            return waitGalleryStartupFrameDelay();
-        }
-
-        return Promise.resolve()
-            .then(function () {
-                return runStep("cancel-load-retarget-timer", function () {
-                    if (typeof localLightLoadTimeRetargetTimer !== "undefined" && localLightLoadTimeRetargetTimer) {
-                        clearTimeout(localLightLoadTimeRetargetTimer);
-                        localLightLoadTimeRetargetTimer = null;
-                        localLightSegmentAwareRetargetDebugStats.loadFullCanceled += 1;
-                    }
-                });
-            })
-            .then(function () {
-                return runStep("common-light-material-support", refreshCommonLightingMaterialSupport);
-            })
-            .then(function () {
-                return runStep("artwork-light-exclusions", refreshArtworkLightExclusions);
-            })
-            .then(function () {
-                return runStep("pedestal-light-included-meshes", refreshPedestalLightIncludedMeshes);
-            })
-            .then(function () {
-                return runStep("local-light-targets", function () {
-                    refreshAllCommonLocalLightTargets(true);
-                });
-            })
-            .then(function () {
-                return runStep("commit-load-time-local-light-retarget", function () {
-                    commitLoadTimeLocalLightRetargetImmediate(reason || "startup-final-light-assignment-deferred");
-                });
-            })
-            .then(function () {
-                return runStep("local-spot-shadows", function () {
-                    refreshAllLocalSpotShadows(true);
-                    requestAllLocalSpotShadowRefresh(true);
-                });
-            })
-            .then(function () {
-                return runStep("local-lights-ui", updateLocalLightsUi);
-            })
-            .finally(function () {
-                galleryStartupFinalizeDebug.finalLightFinishedAt = Date.now();
-                galleryStartupFinalizeDebug.finalLightMs = galleryStartupFinalizeDebug.finalLightFinishedAt - startedAt;
-            });
-    }
-
-    function runGalleryStartupFinalLightAssignment(reason) {
-        var startedAt = Date.now();
-        galleryStartupFinalizeDebug.finalLightStartedAt = startedAt;
-        galleryStartupFinalizeDebug.finalLightReason = reason || "startup-final-light-assignment";
-        galleryStartupFinalizeDebug.finalLightError = null;
-
-        updateGalleryLoaderStatus(
-            "Finalizing gallery lighting...",
-            "Assigning local light targets after assets, saved state and artwork storage have settled."
-        );
-
-        try {
-            if (typeof localLightLoadTimeRetargetTimer !== "undefined" && localLightLoadTimeRetargetTimer) {
-                clearTimeout(localLightLoadTimeRetargetTimer);
-                localLightLoadTimeRetargetTimer = null;
-                localLightSegmentAwareRetargetDebugStats.loadFullCanceled += 1;
-            }
-
-            refreshCommonLightingMaterialSupport();
-            refreshArtworkLightExclusions();
-            refreshPedestalLightIncludedMeshes();
-            refreshAllCommonLocalLightTargets(true);
-            commitLoadTimeLocalLightRetargetImmediate(reason || "startup-final-light-assignment");
-            refreshAllLocalSpotShadows(true);
-            requestAllLocalSpotShadowRefresh(true);
-            updateLocalLightsUi();
-        } catch (error) {
-            galleryStartupFinalizeDebug.finalLightError = error && error.message ? error.message : String(error || "unknown");
-            console.warn("Startup final light assignment warning:", error);
-        } finally {
-            galleryStartupFinalizeDebug.finalLightFinishedAt = Date.now();
-            galleryStartupFinalizeDebug.finalLightMs = galleryStartupFinalizeDebug.finalLightFinishedAt - startedAt;
-        }
-
-        return galleryStartupFinalizeDebug;
     }
 
     function getGalleryAssetMeshCount(assetName) {
@@ -12755,6 +14315,267 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
     }
 
+    function runGalleryFastStartFinalizationNow(reason) {
+        if (galleryFastStartRuntime.interactionFinalizationComplete && galleryFastStartRuntime.interactionFinalizationResult) {
+            return galleryFastStartRuntime.interactionFinalizationResult;
+        }
+
+        galleryStartupFinalizeDebug.finalLightStartedAt = Date.now();
+        galleryStartupFinalizeDebug.finalLightReason = reason || "12C65A-single-batch-finalization";
+
+        try {
+            refreshViewerCollisionMeshes();
+            refreshCommonLightingMaterialSupport();
+            refreshArtworkLightExclusions();
+            refreshPedestalLightIncludedMeshes();
+
+            var unresolvedItems = hydrateSavedLocalLightTargetsForAll(reason || "12C65A-single-batch-finalization");
+            var needsFallback = (localLightItems || []).some(function (item) {
+                return !!(
+                    item &&
+                    item.light &&
+                    item._fastStartNeedsTargetRebuild &&
+                    !item._fastStartHasSavedTargetNames
+                );
+            });
+
+            if (needsFallback) {
+                galleryFastStartRuntime.fallbackLightRetargets += 1;
+                refreshAllCommonLocalLightTargets(true);
+                commitLoadTimeLocalLightRetargetImmediate(reason || "12C65A-single-batch-fallback-retarget");
+
+                (localLightItems || []).forEach(function (item) {
+                    if (!item || !item.light) {
+                        return;
+                    }
+
+                    item._savedTargetMeshNames = (item.light.includedOnlyMeshes || []).map(function (mesh) {
+                        return mesh && mesh.name ? mesh.name : null;
+                    }).filter(function (name, index, array) {
+                        return !!name && array.indexOf(name) === index;
+                    });
+                    item._fastStartHasSavedTargetNames = item._savedTargetMeshNames.length > 0;
+                    item._fastStartNeedsTargetRebuild = false;
+                    item._fastStartUnresolvedTargetNames = [];
+                });
+            }
+
+            refreshAllLocalSpotShadows(true);
+            requestAllLocalSpotShadowRefresh(true);
+            updateLocalLightsUi();
+
+            galleryStartupFinalizeDebug.finalLightMode = needsFallback
+                ? "12C65A-single-batch-fallback-retarget"
+                : "12C65A-single-batch-saved-target-restore";
+            galleryStartupFinalizeDebug.finalLightUnresolvedItems = unresolvedItems;
+            galleryStartupFinalizeDebug.finalLightFinishedAt = Date.now();
+            galleryStartupFinalizeDebug.finalLightMs = galleryStartupFinalizeDebug.finalLightFinishedAt - galleryStartupFinalizeDebug.finalLightStartedAt;
+
+            galleryFastStartRuntime.startupBatchGlobalRefreshNeeded = false;
+            galleryFastStartRuntime.interactionFinalizationResult = {
+                ok: true,
+                needsFallback: needsFallback,
+                unresolvedItems: unresolvedItems
+            };
+            return galleryFastStartRuntime.interactionFinalizationResult;
+        } catch (error) {
+            galleryStartupFinalizeDebug.finalLightFinishedAt = Date.now();
+            galleryStartupFinalizeDebug.finalLightMs = galleryStartupFinalizeDebug.finalLightFinishedAt - galleryStartupFinalizeDebug.finalLightStartedAt;
+            galleryStartupFinalizeDebug.finalLightError = error && error.message ? error.message : String(error || "unknown");
+            console.warn("12C65A light finalization warning:", error);
+
+            galleryFastStartRuntime.interactionFinalizationResult = {
+                ok: false,
+                error: galleryStartupFinalizeDebug.finalLightError
+            };
+            return galleryFastStartRuntime.interactionFinalizationResult;
+        }
+    }
+
+    
+    function getGalleryInteractionReadinessSnapshot() {
+        var pendingTextures = Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length;
+        var pendingCriticalTextures = getGalleryCriticalPendingTextureCount();
+        var pendingVisibleTextures = Object.keys(galleryStartupVisibleTextureDebug.pending || {}).length;
+        var criticalArtworkQueue = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredArtworkLoads, "artwork", "critical");
+        var criticalModelQueue = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "critical");
+        var snapshot = {
+            stateApplied: !!galleryFastStartRuntime.stateApplied,
+            artworkQueue: criticalArtworkQueue,
+            artworkQueueTotal: galleryFastStartRuntime.deferredArtworkLoads.length,
+            artworkPreviewDrainComplete: !!galleryFastStartRuntime.artworkPreviewDrainComplete,
+            modelQueue: criticalModelQueue,
+            modelQueueTotal: galleryFastStartRuntime.deferredModelLoads.length,
+            modelActive: galleryFastStartRuntime.modelLoadActiveCount,
+            modelDrainComplete: !!galleryFastStartRuntime.modelDrainComplete,
+            queueBusy: !!galleryFastStartRuntime.backgroundDrainActive,
+            pendingTextures: pendingCriticalTextures,
+            pendingTexturesTotal: pendingTextures,
+            pendingVisibleTextures: pendingVisibleTextures,
+            propsSettled: true,
+            propsLoaded: !!galleryAssetLoadDebug.loaded.props,
+            propsFailed: !!galleryAssetLoadDebug.failed.props,
+            criticalZoneId: galleryZoneStreamingRuntime.currentZoneId,
+            activeZoneIds: galleryZoneStreamingRuntime.activeZoneIds.slice(),
+            criticalDrainComplete: !!galleryZoneStreamingRuntime.criticalDrainComplete,
+            finalizationComplete: !!galleryFastStartRuntime.interactionFinalizationComplete,
+            warmupComplete: !!galleryFastStartRuntime.interactionWarmupComplete
+        };
+        snapshot.heavyReady = !!(
+            snapshot.stateApplied &&
+            snapshot.artworkQueue === 0 &&
+            snapshot.artworkPreviewDrainComplete &&
+            snapshot.modelQueue === 0 &&
+            snapshot.modelActive === 0 &&
+            snapshot.modelDrainComplete &&
+            snapshot.pendingTextures === 0 &&
+            snapshot.pendingVisibleTextures === 0 &&
+            snapshot.criticalDrainComplete
+        );
+        snapshot.ready = !!(snapshot.heavyReady && snapshot.finalizationComplete && snapshot.warmupComplete);
+        return snapshot;
+    }
+
+    function waitForGalleryStableInteractionFrames() {
+        return new Promise(function (resolve) {
+            if (typeof requestAnimationFrame !== "function") {
+                setTimeout(function () {
+                    resolve({ stable: true, fallback: true, frames: 0, elapsedMs: 180 });
+                }, 180);
+                return;
+            }
+
+            var startedAt = performance.now();
+            var previousAt = startedAt;
+            var totalFrames = 0;
+            var stableFrames = 0;
+            var maxFrameMs = 0;
+            var completed = false;
+
+            function finish(stable, timedOut) {
+                if (completed) return;
+                completed = true;
+                resolve({
+                    stable: !!stable,
+                    timedOut: !!timedOut,
+                    frames: totalFrames,
+                    stableFrames: stableFrames,
+                    maxFrameMs: maxFrameMs,
+                    elapsedMs: performance.now() - startedAt
+                });
+            }
+
+            function sample(now) {
+                var frameMs = Math.max(0, now - previousAt);
+                previousAt = now;
+                totalFrames += 1;
+                maxFrameMs = Math.max(maxFrameMs, frameMs);
+
+                if (frameMs <= 42) stableFrames += 1;
+                else stableFrames = 0;
+
+                if (totalFrames >= 12 && stableFrames >= 8) {
+                    finish(true, false);
+                    return;
+                }
+
+                if (now - startedAt >= 3200) {
+                    finish(false, true);
+                    return;
+                }
+
+                requestAnimationFrame(sample);
+            }
+
+            requestAnimationFrame(sample);
+        });
+    }
+
+    
+    function getGalleryInteractionReadinessBlockers(snapshot) {
+        snapshot = snapshot || getGalleryInteractionReadinessSnapshot();
+        var blockers = [];
+        if (!snapshot.stateApplied) blockers.push("state");
+        if (snapshot.artworkQueue > 0) blockers.push("criticalArtworkQueue:" + snapshot.artworkQueue);
+        if (!snapshot.artworkPreviewDrainComplete) blockers.push("criticalArtworkPreviews");
+        if (snapshot.pendingTextures > 0) blockers.push("criticalArtworkTextures:" + snapshot.pendingTextures);
+        if (snapshot.modelQueue > 0) blockers.push("criticalModelQueue:" + snapshot.modelQueue);
+        if (snapshot.modelActive > 0) blockers.push("criticalModelActive:" + snapshot.modelActive);
+        if (!snapshot.modelDrainComplete) blockers.push("criticalModels");
+        if (snapshot.pendingVisibleTextures > 0) blockers.push("visibleTextures:" + snapshot.pendingVisibleTextures);
+        if (!snapshot.criticalDrainComplete) blockers.push("criticalZoneDrain");
+        return blockers;
+    }
+
+    function beginGalleryInteractionReadinessGate(reason) {
+        if (galleryFastStartRuntime.interactionGateActive || galleryFastStartRuntime.interactionReady) return;
+
+        galleryFastStartRuntime.interactionGateActive = true;
+        galleryFastStartRuntime.interactionGateStartedAt = Date.now();
+        galleryFastStartRuntime.interactionGateTimedOut = false;
+        galleryFastStartRuntime.interactionFinalizationComplete = false;
+        galleryFastStartRuntime.interactionFinalizationResult = null;
+        galleryFastStartRuntime.interactionWarmupComplete = false;
+        setGalleryInteractionReady(false, reason || "12C65E-current-zone-critical-gate");
+
+        // Optional static Props stay deferred until the current-zone critical gate is complete.
+        drainGalleryFastStartBackgroundQueue("12C65E-current-zone-critical");
+
+        if (galleryFastStartRuntime.interactionGateWatchdogTimer) {
+            clearTimeout(galleryFastStartRuntime.interactionGateWatchdogTimer);
+        }
+        galleryFastStartRuntime.interactionGateWatchdogTimer = setTimeout(function () {
+            if (galleryFastStartRuntime.interactionReady) return;
+            galleryFastStartRuntime.interactionGateTimedOut = true;
+            var stalled = getGalleryInteractionReadinessSnapshot();
+            galleryFastStartRuntime.interactionGateLastSnapshot = stalled;
+            console.warn("12C65E startup gate is still waiting.", {
+                blockers: getGalleryInteractionReadinessBlockers(stalled),
+                snapshot: stalled
+            });
+            updateViewerIntroInteractionState();
+        }, Math.max(15000, Number(galleryFastStartRuntime.interactionGateTimeoutMs) || 60000));
+
+        function poll() {
+            if (galleryFastStartRuntime.interactionReady) return;
+            var snapshot = getGalleryInteractionReadinessSnapshot();
+            galleryFastStartRuntime.interactionGateLastSnapshot = snapshot;
+            updateViewerIntroInteractionState();
+
+            if (!galleryFastStartRuntime.backgroundDrainActive && (
+                countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredArtworkLoads, "artwork", "critical") > 0 ||
+                countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "critical") > 0
+            )) {
+                drainGalleryFastStartBackgroundQueue("12C65E-critical-startup-gate-resume");
+            }
+
+            if (!snapshot.heavyReady) {
+                setTimeout(poll, 100);
+                return;
+            }
+
+            if (!galleryFastStartRuntime.interactionFinalizationComplete) {
+                galleryFastStartRuntime.interactionFinalizationResult = runGalleryFastStartFinalizationNow("12C65E-current-zone-batch-finalization");
+                galleryFastStartRuntime.interactionFinalizationComplete = true;
+            }
+
+            waitForGalleryStableInteractionFrames().then(function (result) {
+                galleryFastStartRuntime.interactionWarmupResult = result;
+                galleryFastStartRuntime.interactionWarmupComplete = true;
+                galleryFastStartRuntime.interactionGateLastSnapshot = getGalleryInteractionReadinessSnapshot();
+                if (galleryFastStartRuntime.interactionGateWatchdogTimer) {
+                    clearTimeout(galleryFastStartRuntime.interactionGateWatchdogTimer);
+                    galleryFastStartRuntime.interactionGateWatchdogTimer = null;
+                }
+                setGalleryInteractionReady(true, "12C65E-current-zone-critical-ready");
+                startGalleryZoneStreamingRuntime("12C65E-interaction-ready");
+                scheduleGalleryFastStartFullArtworkDrainWhenIdle("12C65E-current-zone-full-textures", 600);
+            });
+        }
+
+        poll();
+    }
+
     function finishGalleryStartup() {
         refreshGalleryAssetReadinessDebug("finishGalleryStartup-preflight");
 
@@ -12763,31 +14584,31 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             return;
         }
 
-        // Ustawia kierunek patrzenia kamery tak samo dla desktopu i mobile.
         camera.rotation = new BABYLON.Vector3(0, Math.PI / 50, 0);
-
         refreshMobileViewerMode();
         updateViewerModePlaceholderVisibility();
+        if (mobileViewerEnabled) setMobileStartCameraPosition();
 
-        if (mobileViewerEnabled) {
-            setMobileStartCameraPosition();
-        }
+        galleryFastStartRuntime.viewerReady = true;
+        galleryFastStartRuntime.viewerReadyAt = Date.now();
+        galleryFastStartRuntime.interactionReady = false;
+        galleryStartupFinalizeDebug.finalLightMode = "12C65E-current-zone-streaming-gate";
 
-        // STAGE 12C62S6A:
-        // Final local light target assignment is the last heavy startup step.
-        // The intro popup appears only after models, state/storage, artwork textures and lighting settle.
-        runGalleryStartupFinalLightAssignmentDeferred("finishGalleryStartup-final-after-storage")
-            .finally(function () {
-                setTimeout(function () {
-                    loadingScreen.style.display = "none";
+        loadingScreen.style.display = "none";
+        if (!editMode) showViewerIntroOverlay();
+        else viewerIntroOverlayMovementUnlocked = true;
 
-                    if (!editMode) {
-                        showViewerIntroOverlay();
-                    } else {
-                        viewerIntroOverlayMovementUnlocked = true;
-                    }
-                }, galleryFinalLightAssignmentHideDelayMs);
+        if (typeof requestAnimationFrame === "function") {
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    beginGalleryInteractionReadinessGate("12C65E-visual-ready");
+                });
             });
+        } else {
+            setTimeout(function () {
+                beginGalleryInteractionReadinessGate("12C65E-visual-ready-fallback");
+            }, 0);
+        }
     }
 
     function completeGalleryStartupIfReady() {
@@ -12796,7 +14617,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         if (assetsLoaded < assetsToLoad || galleryWebStateLoadedOnce) {
             updateGalleryLoaderStatus(
                 "Loading gallery assets " + assetsLoaded + " / " + assetsToLoad + "...",
-                "Required: walls, floor and ceiling. Optional assets may be retried or skipped later."
+                "Required shell is loading first. Visible content will be prepared before viewer entry."
             );
             return;
         }
@@ -12819,16 +14640,20 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         updateGalleryLoaderStatus(
             "Applying preloaded gallery state...",
-            "Storage was requested first. Models are ready, so state/artwork textures can now settle before final lights."
+            "Storage and structural models are ready. Preparing visible content before entry."
         );
 
-        beginGalleryStartupStatePreload("assets-ready")
+        var preloadPromise = beginGalleryStartupStatePreload("assets-ready");
+
+        preloadPromise
             .then(function (preloadResult) {
                 return applyGalleryStartupStatePreloadResult(preloadResult, "assets-ready");
             })
             .catch(function (error) {
                 console.warn("Nie udalo sie wczytac stanu galerii:", error);
                 notifyGalleryStatus("Nie udalo sie wczytac zapisanego stanu galerii.");
+                galleryFastStartRuntime.stateApplied = true;
+                return false;
             })
             .then(function () {
                 return waitForGalleryStartupPostStateSettle("preloaded-state-applied");
@@ -12863,7 +14688,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         galleryAssetLoadDebug.entries[assetName] = entry;
 
-        assetsLoaded++;
+        if (galleryCriticalAssetNames.indexOf(assetName) !== -1) {
+            assetsLoaded++;
+        }
+
         refreshGalleryAssetReadinessDebug("assetLoaded:" + assetName);
         completeGalleryStartupIfReady();
     }
@@ -12876,7 +14704,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         galleryAssetLoadDebug.watchdogFired = true;
         console.warn("Gallery startup watchdog fired. Missing asset callbacks will be marked failed.", galleryAssetLoadDebug);
 
-        getGalleryPendingAssetNames().forEach(function (assetName) {
+        getGalleryMissingCriticalAssetNames().forEach(function (assetName) {
             assetLoaded(assetName, true, { reason: "startup-watchdog-timeout" });
         });
 
@@ -12887,8 +14715,16 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         getDebug: function () {
             refreshGalleryAssetReadinessDebug("debug-api");
             galleryAssetLoadDebug.artworkTextures = getGalleryStartupArtworkTextureDebugSnapshot();
+            galleryAssetLoadDebug.visibleTextures = JSON.parse(JSON.stringify(galleryStartupVisibleTextureDebug));
             galleryAssetLoadDebug.startupFinalize = Object.assign({}, galleryStartupFinalizeDebug);
-            galleryAssetLoadDebug.mobileSurvival = globalThis.BerryboyArtGalleryMobile ? globalThis.BerryboyArtGalleryMobile.getDebug() : null;
+            galleryAssetLoadDebug.fastStart = JSON.parse(JSON.stringify(Object.assign({}, galleryFastStartRuntime, {
+                deferredArtworkLoads: galleryFastStartRuntime.deferredArtworkLoads.length,
+                deferredFullArtworkLoads: galleryFastStartRuntime.deferredFullArtworkLoads.length,
+                deferredModelLoads: galleryFastStartRuntime.deferredModelLoads.length
+            })));
+            galleryAssetLoadDebug.deviceProfile = globalThis.BerryboyArtGalleryDevice ? globalThis.BerryboyArtGalleryDevice.getDebug() : null;
+            galleryAssetLoadDebug.streaming = getGalleryZoneStreamingDebug();
+            galleryAssetLoadDebug.ktx2 = JSON.parse(JSON.stringify(galleryKtx2Runtime));
             return JSON.parse(JSON.stringify(galleryAssetLoadDebug));
         },
         retry: function () {
@@ -12905,28 +14741,20 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 attemptTimeoutMs: galleryAssetAttemptTimeoutMs,
                 retryDelaysMs: galleryAssetRetryDelaysMs.slice(),
                 startupWatchdogMs: galleryStartupWatchdogMs,
-                postStateStorageSettleDelayMs: galleryPostStateStorageSettleDelayMs,
-                artworkTextureMaxWaitMs: galleryArtworkStartupTextureMaxWaitMs,
-                artworkTextureSettleDelayMs: galleryArtworkStartupTextureSettleDelayMs,
-                finalLightAssignmentHideDelayMs: galleryFinalLightAssignmentHideDelayMs,
-                mobileSurvivalEnabled: isGalleryMobileStartupSurvivalEnabled(),
-                mobileAssetsToLoad: assetsToLoad
+                deviceProfile: cloneGalleryFastStartState(galleryDeviceProfile),
+                assetsToLoad: assetsToLoad
             };
         }
     };
 
 
 
-    // STAGE 12C62S6A - ASSET RETRY LOADER / STARTUP ORDER REBUILD
-    // C62S5 used 12s attempts and 2 attempts for optional props. This was too aggressive
-    // for large GLTF files over raw GitHub/CDN and could create false failures.
-    // All startup assets now get the same safety window: 3 attempts × 30s.
-    var galleryAssetImportRetryPatchInstalled = false;
-    var galleryOriginalSceneLoaderImportMesh = null;
-    var galleryAssetAttemptTimeoutMs = 30000;
-    var galleryCriticalAssetMaxAttempts = 3;
-    var galleryOptionalAssetMaxAttempts = 3;
-    var galleryAssetRetryDelaysMs = [0, 700, 1500];
+    // STAGE 12C65A - LOCAL STARTUP ASSET RETRY
+    // Retry logic is scoped to the four startup GLBs. Babylon.SceneLoader.ImportMesh is never monkey-patched.
+    var galleryAssetAttemptTimeoutMs = 0;
+    var galleryCriticalAssetMaxAttempts = 2;
+    var galleryOptionalAssetMaxAttempts = 1;
+    var galleryAssetRetryDelaysMs = [0, 900];
 
     function getGalleryAssetRetryDelayMs(attemptIndex) {
         var index = Math.max(0, Math.min(galleryAssetRetryDelaysMs.length - 1, attemptIndex - 1));
@@ -12942,47 +14770,26 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
     function getGalleryAssetMaxAttempts(assetName) {
-        return isGalleryAssetCritical(assetName)
-            ? galleryCriticalAssetMaxAttempts
-            : galleryOptionalAssetMaxAttempts;
+        return isGalleryAssetCritical(assetName) ? galleryCriticalAssetMaxAttempts : galleryOptionalAssetMaxAttempts;
     }
 
     function inferGalleryStartupAssetName(rootUrl, sceneFilename) {
         var file = String(sceneFilename || "").toLowerCase();
         var root = String(rootUrl || "").toLowerCase();
-
-        if (file.indexOf("floor_segment") !== -1 || root.indexOf("/models/floor") !== -1) {
-            return "floor";
-        }
-
-        if (file.indexOf("wall_segments") !== -1 || root.indexOf("/models/wall") !== -1) {
-            return "wall";
-        }
-
-        if (file.indexOf("ceiling") !== -1 || root.indexOf("/models/ceiling") !== -1) {
-            return "ceiling";
-        }
-
-        if (file.indexOf("props") !== -1 || root.indexOf("/models/props") !== -1) {
-            return "props";
-        }
-
+        if (file.indexOf("floor_segment") !== -1 || root.indexOf("/models/floor") !== -1) return "floor";
+        if (file.indexOf("wall_segments") !== -1 || root.indexOf("/models/wall") !== -1) return "wall";
+        if (file.indexOf("ceiling") !== -1 || root.indexOf("/models/ceiling") !== -1) return "ceiling";
+        if (file.indexOf("props") !== -1 || root.indexOf("/models/props") !== -1) return "props";
         return null;
     }
 
     function updateGalleryAssetRetryEntry(assetName, patch, reason) {
-        if (!assetName) {
-            return null;
-        }
-
+        if (!assetName) return null;
         var entry = galleryAssetLoadDebug.entries[assetName] || {};
-        Object.keys(patch || {}).forEach(function (key) {
-            entry[key] = patch[key];
-        });
+        Object.keys(patch || {}).forEach(function (key) { entry[key] = patch[key]; });
         entry.name = assetName;
         galleryAssetLoadDebug.entries[assetName] = entry;
         refreshGalleryAssetReadinessDebug(reason || ("retry-entry:" + assetName));
-
         return entry;
     }
 
@@ -13004,251 +14811,127 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
     function disposeStaleImportedMeshes(meshes) {
         (meshes || []).forEach(function (mesh) {
-            if (!mesh || !mesh.dispose) {
-                return;
-            }
-
-            try {
-                mesh.dispose(false, true);
-            } catch (disposeError) {}
+            if (!mesh || !mesh.dispose) return;
+            try { mesh.dispose(false, true); } catch (disposeError) {}
         });
     }
 
     function updateGalleryRetryLoaderStatus(assetName, attempt, maxAttempts, status) {
-        var label = assetName || "asset";
-        var text = "Loading " + label + " " + attempt + " / " + maxAttempts + "...";
-        var hint = status || "Retry-safe startup import. Critical assets are walls, floor and ceiling.";
-        updateGalleryLoaderStatus(text, hint);
+        updateGalleryLoaderStatus(
+            "Loading " + (assetName || "asset") + " " + attempt + " / " + maxAttempts + "...",
+            status || "Retry-safe startup import. Critical assets are walls, floor and ceiling."
+        );
     }
 
-    function installGalleryAssetImportRetryPatch() {
-        if (galleryAssetImportRetryPatchInstalled || !BABYLON || !BABYLON.SceneLoader || !BABYLON.SceneLoader.ImportMesh) {
-            return false;
+    function loadGalleryStartupAssetWithRetry(meshesNames, rootUrl, sceneFilename, sceneArg, onSuccess, onProgress, onError, pluginExtension) {
+        var assetName = inferGalleryStartupAssetName(rootUrl, sceneFilename);
+        if (!isGalleryKnownStartupAssetName(assetName)) {
+            return BABYLON.SceneLoader.ImportMesh(meshesNames, rootUrl, sceneFilename, sceneArg, onSuccess, onProgress, onError, pluginExtension);
         }
 
-        galleryOriginalSceneLoaderImportMesh = BABYLON.SceneLoader.ImportMesh;
-        galleryAssetImportRetryPatchInstalled = true;
+        var maxAttempts = getGalleryAssetMaxAttempts(assetName);
+        var attempt = 0;
+        var done = false;
+        var activeToken = 0;
+        var isDeferredOptionalStartupAsset = shouldGalleryDeferOptionalStartupAsset(assetName);
 
-        BABYLON.SceneLoader.ImportMesh = function (meshesNames, rootUrl, sceneFilename, sceneArg, onSuccess, onProgress, onError, pluginExtension) {
-            var assetName = inferGalleryStartupAssetName(rootUrl, sceneFilename);
+        updateGalleryAssetRetryEntry(assetName, {
+            rootUrl: rootUrl,
+            file: sceneFilename,
+            attempts: 0,
+            maxAttempts: maxAttempts,
+            attemptTimeoutMs: galleryAssetAttemptTimeoutMs,
+            retryEnabled: true,
+            status: isDeferredOptionalStartupAsset ? "startup-deferred" : "queued",
+            critical: isGalleryAssetCritical(assetName),
+            optional: !isGalleryAssetCritical(assetName),
+            startupDeferredOptional: !!isDeferredOptionalStartupAsset
+        }, "retry-queued:" + assetName);
 
-            if (!isGalleryKnownStartupAssetName(assetName)) {
-                return galleryOriginalSceneLoaderImportMesh.apply(BABYLON.SceneLoader, arguments);
-            }
-
-            var maxAttempts = getGalleryAssetMaxAttempts(assetName);
-            var attempt = 0;
-            var done = false;
-            var activeToken = 0;
-            var isMobileSequentialStartupAsset = shouldGalleryMobileSequentialStartupImport(assetName);
-            var isMobileDeferredOptionalStartupAsset = shouldGalleryMobileDeferOptionalStartupAsset(assetName);
+        function runAttempt() {
+            if (done) return null;
+            attempt += 1;
+            var token = ++activeToken;
+            var settled = false;
+            var attemptStartedAt = Date.now();
 
             updateGalleryAssetRetryEntry(assetName, {
-                name: assetName,
-                rootUrl: rootUrl,
-                file: sceneFilename,
-                attempts: 0,
-                maxAttempts: maxAttempts,
-                attemptTimeoutMs: galleryAssetAttemptTimeoutMs,
-                retryEnabled: true,
-                status: isMobileDeferredOptionalStartupAsset ? "mobile-deferred" : "queued",
-                critical: isGalleryAssetCritical(assetName),
-                optional: !isGalleryAssetCritical(assetName),
-                mobileSequential: !!isMobileSequentialStartupAsset,
-                mobileDeferredOptional: !!isMobileDeferredOptionalStartupAsset
-            }, "retry-queued:" + assetName);
+                attempts: attempt,
+                status: "loading",
+                lastAttemptStartedAt: attemptStartedAt,
+                lastAttempt: attempt
+            }, "retry-attempt:" + assetName + ":" + attempt);
+            updateGalleryRetryLoaderStatus(assetName, attempt, maxAttempts, "Attempt " + attempt + " of " + maxAttempts + " for " + sceneFilename);
 
-            function runAttempt() {
-                if (done) {
-                    return null;
+            function succeedAttempt(meshes) {
+                if (settled || done || token !== activeToken) {
+                    disposeStaleImportedMeshes(meshes || []);
+                    return;
                 }
-
-                attempt += 1;
-                var token = ++activeToken;
-                var settled = false;
-                var attemptStartedAt = Date.now();
-
+                settled = true;
+                done = true;
                 updateGalleryAssetRetryEntry(assetName, {
-                    attempts: attempt,
-                    status: "loading",
-                    lastAttemptStartedAt: attemptStartedAt,
-                    lastAttempt: attempt
-                }, "retry-attempt:" + assetName + ":" + attempt);
-
-                updateGalleryRetryLoaderStatus(
-                    assetName,
-                    attempt,
-                    maxAttempts,
-                    "Attempt " + attempt + " of " + maxAttempts + " for " + sceneFilename
-                );
-
-                var timeoutTimer = setTimeout(function () {
-                    failAttempt("timeout", "Timed out after " + galleryAssetAttemptTimeoutMs + " ms", null);
-                }, galleryAssetAttemptTimeoutMs);
-
-                function finishAttempt() {
-                    if (timeoutTimer) {
-                        clearTimeout(timeoutTimer);
-                        timeoutTimer = null;
+                    status: "loaded",
+                    loadedAttempt: attempt,
+                    finishedAt: Date.now(),
+                    lastDurationMs: Date.now() - attemptStartedAt
+                }, "retry-loaded:" + assetName);
+                try {
+                    if (onSuccess) onSuccess.apply(this, arguments);
+                } catch (successCallbackError) {
+                    console.error("Gallery asset success callback failed:", assetName, successCallbackError);
+                    if (onError) {
+                        try { onError(sceneArg, "postprocess-error: " + (successCallbackError.message || successCallbackError), successCallbackError); } catch (ignoreError) {}
                     }
                 }
+            }
 
-                function succeedAttempt(meshes) {
-                    if (settled) {
-                        // STAGE 12C62S6: a timeout can be followed by a late successful import.
-                        // Do not keep stale meshes from an attempt that is no longer active, especially on mobile.
-                        disposeStaleImportedMeshes(meshes || []);
-                        recordGalleryAssetAttemptError(assetName, attempt, "late-success-disposed", "Late success after timeout/settled attempt was disposed", null);
-                        return;
-                    }
-
-                    settled = true;
-                    finishAttempt();
-
-                    if (done || token !== activeToken) {
-                        disposeStaleImportedMeshes(meshes || []);
-                        return;
-                    }
-
-                    done = true;
+            function failAttempt(reason, message, exception) {
+                if (settled || done || token !== activeToken) return;
+                settled = true;
+                recordGalleryAssetAttemptError(assetName, attempt, reason, message, exception);
+                if (attempt < maxAttempts) {
+                    var retryDelay = getGalleryAssetRetryDelayMs(attempt);
                     updateGalleryAssetRetryEntry(assetName, {
-                        status: "loaded",
-                        loadedAttempt: attempt,
-                        finishedAt: Date.now(),
+                        status: "retrying",
+                        nextAttempt: attempt + 1,
+                        retryDelayMs: retryDelay,
                         lastDurationMs: Date.now() - attemptStartedAt
-                    }, "retry-loaded:" + assetName);
-
-                    try {
-                        if (onSuccess) {
-                            onSuccess.apply(this, arguments);
-                        }
-                    } catch (successCallbackError) {
-                        console.error("Gallery asset success callback failed:", assetName, successCallbackError);
-
-                        if (onError) {
-                            try {
-                                onError(sceneArg, "postprocess-error: " + (successCallbackError.message || successCallbackError), successCallbackError);
-                            } catch (onErrorCallbackError) {}
-                        }
-                    } finally {
-                        if (isMobileSequentialStartupAsset) {
-                            finishGalleryMobileSequentialStartupImport(assetName);
-                        }
-                    }
+                    }, "retry-scheduled:" + assetName + ":" + attempt);
+                    setTimeout(runAttempt, retryDelay);
+                    return;
                 }
-
-                function failAttempt(reason, message, exception) {
-                    if (settled) {
-                        return;
-                    }
-
-                    settled = true;
-                    finishAttempt();
-
-                    if (done || token !== activeToken) {
-                        return;
-                    }
-
-                    recordGalleryAssetAttemptError(assetName, attempt, reason, message, exception);
-
-                    if (attempt < maxAttempts) {
-                        var retryDelay = getGalleryAssetRetryDelayMs(attempt);
-
-                        updateGalleryAssetRetryEntry(assetName, {
-                            status: "retrying",
-                            nextAttempt: attempt + 1,
-                            retryDelayMs: retryDelay,
-                            lastDurationMs: Date.now() - attemptStartedAt
-                        }, "retry-scheduled:" + assetName + ":" + attempt);
-
-                        updateGalleryRetryLoaderStatus(
-                            assetName,
-                            attempt,
-                            maxAttempts,
-                            "Attempt failed (" + reason + "). Retrying in " + retryDelay + " ms..."
-                        );
-
-                        setTimeout(runAttempt, retryDelay);
-                        return;
-                    }
-
-                    done = true;
-                    updateGalleryAssetRetryEntry(assetName, {
-                        status: "failed",
-                        failedAttempt: attempt,
-                        finishedAt: Date.now(),
-                        lastDurationMs: Date.now() - attemptStartedAt,
-                        finalFailureReason: reason || "unknown"
-                    }, "retry-final-failed:" + assetName);
-
-                    try {
-                        if (onError) {
-                            onError(sceneArg, message || reason || "Gallery asset import failed", exception || null);
-                        }
-                    } finally {
-                        if (isMobileSequentialStartupAsset) {
-                            finishGalleryMobileSequentialStartupImport(assetName);
-                        }
-                    }
-                }
-
-                try {
-                    return galleryOriginalSceneLoaderImportMesh.call(
-                        BABYLON.SceneLoader,
-                        meshesNames,
-                        rootUrl,
-                        sceneFilename,
-                        sceneArg,
-                        succeedAttempt,
-                        onProgress,
-                        function (failedScene, message, exception) {
-                            failAttempt("import-error", message || "Import error", exception || null);
-                        },
-                        pluginExtension
-                    );
-                } catch (importThrowError) {
-                    failAttempt("throw", importThrowError.message || String(importThrowError), importThrowError);
-                    return null;
-                }
+                done = true;
+                updateGalleryAssetRetryEntry(assetName, {
+                    status: "failed",
+                    failedAttempt: attempt,
+                    finishedAt: Date.now(),
+                    lastDurationMs: Date.now() - attemptStartedAt,
+                    finalFailureReason: reason || "unknown"
+                }, "retry-final-failed:" + assetName);
+                if (onError) onError(sceneArg, message || reason || "Gallery asset import failed", exception || null);
             }
 
-            if (isMobileDeferredOptionalStartupAsset) {
-                updateGalleryAssetRetryEntry(assetName, {
-                    status: "mobile-deferred",
-                    deferredAt: Date.now()
-                }, "mobile-deferred:" + assetName);
-                updateGalleryLoaderStatus(
-                    "Preparing mobile gallery...",
-                    "Props are deferred until after the first viewer frame to reduce mobile memory pressure."
+            try {
+                return BABYLON.SceneLoader.ImportMesh(
+                    meshesNames, rootUrl, sceneFilename, sceneArg, succeedAttempt, onProgress,
+                    function (failedScene, message, exception) {
+                        failAttempt("import-error", message || "Import error", exception || null);
+                    }, pluginExtension
                 );
-                queueGalleryMobileDeferredOptionalAssetImport(assetName, runAttempt);
+            } catch (importThrowError) {
+                failAttempt("throw", importThrowError.message || String(importThrowError), importThrowError);
                 return null;
             }
+        }
 
-            if (isMobileSequentialStartupAsset) {
-                updateGalleryAssetRetryEntry(assetName, {
-                    status: "mobile-queued",
-                    queuedAt: Date.now()
-                }, "mobile-queued:" + assetName);
-                queueGalleryMobileSequentialStartupImport(assetName, runAttempt);
-                return null;
-            }
-
-            return runAttempt();
-        };
-
-        scene.onDisposeObservable.add(function () {
-            if (galleryAssetImportRetryPatchInstalled && galleryOriginalSceneLoaderImportMesh) {
-                try {
-                    BABYLON.SceneLoader.ImportMesh = galleryOriginalSceneLoaderImportMesh;
-                } catch (restoreImportMeshError) {}
-            }
-        });
-
-        return true;
+        if (isDeferredOptionalStartupAsset) {
+            updateGalleryAssetRetryEntry(assetName, { status: "startup-deferred", deferredAt: Date.now() }, "startup-deferred:" + assetName);
+            queueGalleryStartupDeferredOptionalAssetImport(assetName, runAttempt);
+            return null;
+        }
+        return runAttempt();
     }
-
-    installGalleryAssetImportRetryPatch();
 
     // STAGE 12C62S6A: start Supabase state/storage request before startup model imports finish.
     beginGalleryStartupStatePreload("createScene-before-model-imports");
@@ -13366,7 +15049,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             right: var(--gallery-editor-screen-gap);
             bottom: var(--gallery-editor-bottom-gap);
             width: min(420px, calc(100vw - 32px));
-            max-height: calc(100vh - var(--gallery-editor-top-gap) - var(--gallery-editor-bottom-gap));
+            max-height: calc(var(--gallery-visual-viewport-height, 100dvh) - var(--gallery-editor-top-gap) - var(--gallery-editor-bottom-gap));
             z-index: 1000;
             display: none;
             flex-direction: column;
@@ -13413,7 +15096,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
 
         .gallery-editor-scroll {
-            max-height: calc(100vh - var(--gallery-editor-top-gap) - var(--gallery-editor-bottom-gap));
+            max-height: calc(var(--gallery-visual-viewport-height, 100dvh) - var(--gallery-editor-top-gap) - var(--gallery-editor-bottom-gap));
             overflow-y: auto;
             padding: 22px 28px 22px;
             scrollbar-width: thin;
@@ -13710,7 +15393,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
 
         .gallery-lighting-scroll {
-            max-height: calc(100vh - var(--gallery-editor-top-gap) - var(--gallery-editor-bottom-gap));
+            max-height: calc(var(--gallery-visual-viewport-height, 100dvh) - var(--gallery-editor-top-gap) - var(--gallery-editor-bottom-gap));
             overflow: hidden;
             padding: 22px 28px 22px;
             scrollbar-width: thin;
@@ -15047,231 +16730,14 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             background: rgba(255, 255, 255, 0.36);
         }
 
-        /* Stage 8X1 final mobile popup override.
-           This block is intentionally late to win over earlier mobile rules. */
-        @media (max-width: 768px), (pointer: coarse) {
-            .gallery-artwork-info-popup {
-                left: 50% !important;
-                bottom: 156px !important;
-                width: min(340px, calc(100% - 24px)) !important;
-                max-height: 27vh !important;
-                padding: 10px !important;
-                border-radius: 18px !important;
-                overflow: hidden !important;
-            }
-
-            .gallery-artwork-info-popup.is-visible {
-                transform: translateX(-50%) translateY(-4px) !important;
-            }
-
-            .gallery-artwork-info-popup-inner {
-                display: grid !important;
-                grid-template-columns: 76px minmax(0, 1fr) !important;
-                gap: 8px !important;
-                align-items: stretch !important;
-            }
-
-            .gallery-artwork-info-author-card {
-                width: auto !important;
-                max-width: none !important;
-                padding: 7px !important;
-                gap: 6px !important;
-                border-radius: 14px !important;
-            }
-
-            .gallery-artwork-info-details-card {
-                padding: 9px 10px !important;
-                border-radius: 14px !important;
-                justify-content: flex-start !important;
-                min-width: 0 !important;
-            }
-
-            .gallery-artwork-info-photo-frame {
-                width: 100% !important;
-                max-width: 62px !important;
-                height: 62px !important;
-                aspect-ratio: auto !important;
-                margin: 0 auto !important;
-                border-radius: 12px !important;
-            }
-
-            .gallery-artwork-info-author-photo-placeholder {
-                padding: 4px !important;
-                font-size: 9px !important;
-                line-height: 1.12 !important;
-            }
-
-            .gallery-artwork-info-author-name {
-                min-height: 14px !important;
-                font-size: 10px !important;
-                line-height: 1.15 !important;
-                font-weight: 700 !important;
-            }
-
-            .gallery-artwork-info-title {
-                font-size: 14px !important;
-                line-height: 1.14 !important;
-                margin: 0 !important;
-            }
-
-            .gallery-artwork-info-description {
-                margin-top: 5px !important;
-                font-size: 10px !important;
-                line-height: 1.25 !important;
-                max-height: 36px !important;
-                overflow: hidden !important;
-            }
-
-            .gallery-artwork-info-empty {
-                font-size: 10px !important;
-                line-height: 1.25 !important;
-            }
-        }
-
-        @media (max-width: 420px), (pointer: coarse) {
-            .gallery-artwork-info-popup {
-                bottom: 150px !important;
-                width: min(326px, calc(100% - 18px)) !important;
-                max-height: 26vh !important;
-                padding: 9px !important;
-            }
-
-            .gallery-artwork-info-popup-inner {
-                grid-template-columns: 70px minmax(0, 1fr) !important;
-                gap: 7px !important;
-            }
-
-            .gallery-artwork-info-photo-frame {
-                max-width: 56px !important;
-                height: 56px !important;
-            }
-
-            .gallery-artwork-info-title {
-                font-size: 13px !important;
-            }
-
-            .gallery-artwork-info-description {
-                max-height: 32px !important;
-            }
-        }
-
+        /* STAGE 12C65A: legacy public mobile popup overrides removed.
+           Public Inspect mobile styling is owned only by the final 12C64H block below. */
 
         @media (max-width: 768px) {
-            .gallery-artwork-info-popup {
-                left: 50%;
-                bottom: 18px;
-                width: min(360px, calc(100% - 22px));
-                padding: 12px;
-                border-radius: 20px;
-                max-height: 42vh;
-                overflow: hidden;
-            }
-
-            .gallery-artwork-info-popup.is-visible {
-                transform: translateX(-50%) translateY(-4px);
-            }
-
-            .gallery-artwork-info-popup-inner {
-                grid-template-columns: 92px minmax(0, 1fr);
-                gap: 10px;
-                align-items: stretch;
-            }
-
-            .gallery-artwork-info-author-card,
-            .gallery-artwork-info-details-card {
-                border-radius: 16px;
-            }
-
-            .gallery-artwork-info-author-card {
-                padding: 9px;
-                gap: 8px;
-            }
-
-            .gallery-artwork-info-details-card {
-                padding: 11px 12px;
-            }
-
-            .gallery-artwork-info-photo-frame {
-                border-radius: 13px;
-            }
-
-            .gallery-artwork-info-author-photo-placeholder {
-                padding: 7px;
-                font-size: 11px;
-            }
-
-            .gallery-artwork-info-author-name {
-                min-height: 16px;
-                font-size: 12px;
-                line-height: 1.22;
-            }
-
-            .gallery-artwork-info-title {
-                font-size: 16px;
-                line-height: 1.16;
-            }
-
-            .gallery-artwork-info-description {
-                margin-top: 7px;
-                font-size: 12px;
-                line-height: 1.34;
-                max-height: 58px;
-            }
-
-            .gallery-artwork-info-empty {
-                font-size: 12px;
-            }
-        }
-
-        @media (max-width: 420px) {
-            .gallery-artwork-info-popup {
-                bottom: 12px;
-                width: calc(100% - 16px);
-                padding: 10px;
-                border-radius: 18px;
-                max-height: 40vh;
-            }
-
-            .gallery-artwork-info-popup-inner {
-                grid-template-columns: 78px minmax(0, 1fr);
-                gap: 8px;
-            }
-
-            .gallery-artwork-info-author-card {
-                padding: 8px;
-            }
-
-            .gallery-artwork-info-details-card {
-                padding: 10px;
-            }
-
-            .gallery-artwork-info-title {
-                font-size: 15px;
-            }
-
-            .gallery-artwork-info-description {
-                max-height: 48px;
-                font-size: 11px;
-            }
-
-            .gallery-artwork-info-author-name {
-                font-size: 11px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .gallery-artwork-info-popup {
-                width: min(420px, calc(100% - 24px));
-                padding: 14px;
-                border-radius: 22px;
-            }
-
-            .gallery-artwork-info-popup-inner,
             .gallery-artwork-info-editor-grid {
                 grid-template-columns: 1fr;
             }
 
-            .gallery-artwork-info-author-card,
             .gallery-artwork-info-editor-card {
                 width: 100%;
             }
@@ -15281,12 +16747,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 right: 18px;
                 bottom: 58px;
                 width: auto;
-                max-height: calc(100vh - 116px);
+                max-height: calc(var(--gallery-visual-viewport-height, 100dvh) - 116px);
                 border-radius: 24px;
             }
 
             .gallery-editor-scroll {
-                max-height: calc(100vh - 116px);
+                max-height: calc(var(--gallery-visual-viewport-height, 100dvh) - 116px);
                 padding: 20px 20px 20px;
             }
 
@@ -15325,7 +16791,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             }
 
             .gallery-lighting-scroll {
-                max-height: calc(100vh - 116px);
+                max-height: calc(var(--gallery-visual-viewport-height, 100dvh) - 116px);
                 padding: 20px 20px 20px;
             }
 
@@ -15987,6 +17453,561 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             background: rgba(255, 255, 255, 0.105) !important;
             outline: none !important;
         }
+
+        /* STAGE 12C64H — INSPECT UI FINAL LOCK.
+           One public popup capsule, one dominant circular avatar and two navigation controls
+           positioned from the real popup rectangle. The 12C64D safe-frame remains the only
+           camera composition solver. */
+        #galleryArtworkInfoPopup.gallery-artwork-info-popup {
+            --gallery-inspect-avatar-size: 132px;
+            --gallery-inspect-avatar-left: -48px;
+            --gallery-inspect-avatar-top: -22px;
+            left: 50% !important;
+            right: auto !important;
+            top: auto !important;
+            bottom: 30px !important;
+            width: min(600px, calc(100% - 190px)) !important;
+            max-width: 600px !important;
+            max-height: min(34vh, 280px) !important;
+            padding: 0 !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            transform: translateX(-50%) translateY(12px) !important;
+            overflow: visible !important;
+            pointer-events: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease !important;
+        }
+
+        #galleryArtworkInfoPopup.gallery-artwork-info-popup.is-visible {
+            transform: translateX(-50%) translateY(0) !important;
+            pointer-events: auto !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+        #galleryArtworkInfoPopup .gallery-artwork-info-popup-inner {
+            position: relative !important;
+            display: block !important;
+            min-height: 118px !important;
+            padding: 20px 28px 20px 118px !important;
+            border-radius: 23px !important;
+            border: 1px solid rgba(255, 255, 255, 0.18) !important;
+            background: rgba(14, 20, 19, 0.79) !important;
+            box-shadow:
+                0 20px 48px rgba(0, 0, 0, 0.34),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+            backdrop-filter: blur(24px) saturate(1.08) !important;
+            -webkit-backdrop-filter: blur(24px) saturate(1.08) !important;
+            color: #f7f3ea !important;
+            overflow: visible !important;
+        }
+
+        #galleryArtworkInfoPopup .gallery-artwork-info-avatar {
+            position: absolute !important;
+            left: var(--gallery-inspect-avatar-left) !important;
+            top: var(--gallery-inspect-avatar-top) !important;
+            width: var(--gallery-inspect-avatar-size) !important;
+            height: var(--gallery-inspect-avatar-size) !important;
+            border-radius: 50% !important;
+            overflow: hidden !important;
+            border: 2px solid rgba(255, 255, 255, 0.46) !important;
+            background: rgba(54, 64, 62, 0.98) !important;
+            box-shadow:
+                0 15px 34px rgba(0, 0, 0, 0.38),
+                inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
+            z-index: 2 !important;
+        }
+
+        #galleryArtworkInfoPopup .gallery-artwork-info-author-photo {
+            position: absolute !important;
+            inset: 0 !important;
+            display: none !important;
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            border-radius: 50% !important;
+        }
+
+        #galleryArtworkInfoPopup .gallery-artwork-info-author-photo.is-visible {
+            display: block !important;
+        }
+
+        #galleryArtworkInfoPopup .gallery-artwork-info-author-photo-placeholder {
+            position: absolute !important;
+            inset: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 0 !important;
+            border-radius: 50% !important;
+            color: rgba(247, 243, 234, 0.84) !important;
+            font-size: 30px !important;
+            line-height: 1 !important;
+            font-weight: 750 !important;
+            letter-spacing: -0.04em !important;
+            text-align: center !important;
+            background: rgba(255, 255, 255, 0.06) !important;
+        }
+
+        #galleryArtworkInfoPopup .gallery-artwork-info-content {
+            min-width: 0 !important;
+            min-height: 78px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+        }
+
+        #galleryArtworkInfoPopup .gallery-artwork-info-author-name {
+            display: block;
+            margin: 0 0 5px !important;
+            min-height: 0 !important;
+            color: rgba(247, 243, 234, 0.75) !important;
+            font-size: 12.5px !important;
+            line-height: 1.25 !important;
+            font-weight: 720 !important;
+            letter-spacing: 0.035em !important;
+            text-transform: none !important;
+            text-align: left !important;
+            overflow-wrap: anywhere !important;
+        }
+
+        #galleryArtworkInfoPopup .gallery-artwork-info-title {
+            margin: 0 !important;
+            color: #f7f3ea !important;
+            font-size: 20px !important;
+            line-height: 1.18 !important;
+            font-weight: 740 !important;
+            letter-spacing: -0.026em !important;
+            overflow-wrap: anywhere !important;
+        }
+
+        #galleryArtworkInfoPopup .gallery-artwork-info-description {
+            margin: 8px 0 0 !important;
+            max-height: 92px !important;
+            overflow: auto !important;
+            color: rgba(247, 243, 234, 0.72) !important;
+            font-size: 13px !important;
+            line-height: 1.46 !important;
+            white-space: pre-wrap !important;
+            word-break: break-word !important;
+            scrollbar-width: thin !important;
+        }
+
+        #galleryArtworkInfoPopup .gallery-artwork-info-empty {
+            margin: 0 !important;
+            color: rgba(247, 243, 234, 0.68) !important;
+            font-size: 13px !important;
+            line-height: 1.45 !important;
+        }
+
+        #galleryTourOrderOverlay {
+            position: absolute;
+            inset: 0;
+            z-index: 36;
+            overflow: hidden;
+            pointer-events: none;
+            display: none;
+        }
+
+        body.gallery-edit-mode-active #galleryTourOrderOverlay {
+            display: block;
+        }
+
+        body.gallery-edit-inspect-preview #galleryTourOrderOverlay {
+            display: none !important;
+        }
+
+        .gallery-tour-order-badge {
+            position: absolute;
+            min-width: 38px;
+            height: 38px;
+            padding: 0 9px;
+            display: grid;
+            place-items: center;
+            border: 1px solid rgba(255,255,255,0.88);
+            border-radius: 999px;
+            background: rgba(12,18,18,0.88);
+            color: #fff;
+            box-shadow: 0 10px 24px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.18);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            font-size: 13px;
+            font-weight: 800;
+            line-height: 1;
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 120ms ease;
+        }
+
+        .gallery-tour-order-badge.is-visible {
+            opacity: 1;
+        }
+
+        .gallery-tour-order-badge.is-locked::after {
+            content: "";
+            width: 6px;
+            height: 6px;
+            position: absolute;
+            right: 2px;
+            top: 2px;
+            border-radius: 50%;
+            background: #76e6a5;
+            box-shadow: 0 0 0 2px rgba(12,18,18,0.9);
+        }
+
+        .gallery-tour-order-input-row {
+            display: grid;
+            grid-template-columns: minmax(0,1fr) auto;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .gallery-tour-order-number-input {
+            width: 100%;
+            min-height: 42px;
+            padding: 9px 12px;
+            border: 1px solid rgba(52,52,52,0.18);
+            border-radius: var(--gallery-editor-radius-control);
+            background: rgba(255,255,255,0.62);
+            color: #202020;
+            font: inherit;
+            font-size: 15px;
+            font-weight: 760;
+            outline: none;
+        }
+
+        .gallery-tour-order-number-input:focus {
+            border-color: rgba(28,86,63,0.58);
+            box-shadow: 0 0 0 3px rgba(28,86,63,0.11);
+        }
+
+        .gallery-tour-order-status {
+            margin: 10px 0 0;
+            color: rgba(38,38,38,0.66);
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        #galleryInspectNavigation {
+            --gallery-inspect-navigation-size: 68px;
+            --gallery-inspect-navigation-gap: 18px;
+            position: absolute;
+            inset: 0;
+            z-index: 4;
+            pointer-events: none;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 160ms ease, visibility 160ms ease;
+        }
+
+        #galleryInspectNavigation.is-visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .gallery-inspect-navigation-button {
+            position: absolute;
+            top: 50%;
+            width: var(--gallery-inspect-navigation-size);
+            height: var(--gallery-inspect-navigation-size);
+            padding: 0;
+            display: grid;
+            place-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            border-radius: 50%;
+            background: rgba(17, 22, 21, 0.82);
+            color: rgba(255, 255, 255, 0.98);
+            box-shadow:
+                0 14px 30px rgba(0, 0, 0, 0.34),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(17px) saturate(1.08);
+            -webkit-backdrop-filter: blur(17px) saturate(1.08);
+            cursor: pointer;
+            pointer-events: auto;
+            transform: translateY(-50%);
+            transition: opacity 150ms ease, transform 150ms ease, background 150ms ease, border-color 150ms ease;
+        }
+
+        .gallery-inspect-navigation-button:hover,
+        .gallery-inspect-navigation-button:focus-visible {
+            background: rgba(28, 35, 33, 0.94);
+            border-color: rgba(255, 255, 255, 0.44);
+            transform: translateY(-50%) scale(1.055);
+            outline: none;
+        }
+
+        .gallery-inspect-navigation-button.is-hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        /* STAGE 12C65E UI FIX — a temporarily locked navigation button must keep its
+           geometry while the camera moves between exhibits. Hiding it collapsed the
+           mobile navigation row and caused the popup safe-frame to jump. */
+        .gallery-inspect-navigation-button:disabled:not(.is-hidden) {
+            opacity: 0.48;
+            visibility: visible;
+            pointer-events: none;
+            cursor: default;
+        }
+
+        .gallery-inspect-navigation-button.is-previous {
+            left: calc(var(--gallery-inspect-avatar-left) - var(--gallery-inspect-navigation-gap) - var(--gallery-inspect-navigation-size));
+        }
+
+        .gallery-inspect-navigation-button.is-next {
+            right: calc(0px - var(--gallery-inspect-navigation-size) - var(--gallery-inspect-navigation-gap));
+        }
+
+        .gallery-inspect-navigation-icon {
+            width: 23px;
+            height: 23px;
+            display: block;
+            border-top: 4px solid currentColor;
+            border-right: 4px solid currentColor;
+        }
+
+        .gallery-inspect-navigation-button.is-previous .gallery-inspect-navigation-icon {
+            transform: rotate(-135deg) translate(-1px, -1px);
+        }
+
+        .gallery-inspect-navigation-button.is-next .gallery-inspect-navigation-icon {
+            transform: rotate(45deg) translate(-1px, 1px);
+        }
+
+        .gallery-inspect-navigation-label {
+            display: none;
+        }
+
+        body.gallery-edit-inspect-preview #galleryEditorPanel {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+
+        /* STAGE 12C65D — ONE FINAL MOBILE INSPECT COMPONENT.
+           The popup owns avatar, content and navigation. JavaScript only supplies measured
+           safe-frame insets from the real joystick and gallery viewport. */
+        @media (max-width: 768px), (pointer: coarse) {
+            #galleryArtworkInfoPopup.gallery-artwork-info-popup {
+                --gallery-inspect-avatar-size: 76px;
+                --gallery-inspect-avatar-left: 0px;
+                --gallery-inspect-avatar-top: 0px;
+                left: max(var(--gallery-mobile-inspect-left, 14px), env(safe-area-inset-left)) !important;
+                right: max(var(--gallery-mobile-inspect-right, 14px), env(safe-area-inset-right)) !important;
+                bottom: max(var(--gallery-mobile-inspect-bottom, 14px), env(safe-area-inset-bottom)) !important;
+                width: auto !important;
+                max-width: none !important;
+                max-height: var(--gallery-mobile-inspect-max-height, min(46vh, 360px)) !important;
+                transform: translateY(12px) !important;
+            }
+
+            #galleryArtworkInfoPopup.gallery-artwork-info-popup.is-visible {
+                transform: translateY(0) !important;
+            }
+
+            #galleryArtworkInfoPopup .gallery-artwork-info-popup-inner {
+                display: grid !important;
+                grid-template-columns: var(--gallery-inspect-avatar-size) minmax(0, 1fr) !important;
+                grid-template-rows: minmax(var(--gallery-inspect-avatar-size), auto) auto !important;
+                align-items: center !important;
+                column-gap: 13px !important;
+                row-gap: 12px !important;
+                min-height: 0 !important;
+                max-height: inherit !important;
+                padding: 14px !important;
+                border-radius: 20px !important;
+                overflow: hidden !important;
+            }
+
+            #galleryArtworkInfoPopup .gallery-artwork-info-avatar {
+                position: relative !important;
+                left: auto !important;
+                top: auto !important;
+                grid-column: 1 !important;
+                grid-row: 1 !important;
+                align-self: start !important;
+                width: var(--gallery-inspect-avatar-size) !important;
+                height: var(--gallery-inspect-avatar-size) !important;
+                border-width: 1.5px !important;
+                box-shadow:
+                    0 11px 26px rgba(0, 0, 0, 0.34),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+            }
+
+            #galleryArtworkInfoPopup .gallery-artwork-info-author-photo-placeholder {
+                font-size: 23px !important;
+            }
+
+            #galleryArtworkInfoPopup .gallery-artwork-info-content {
+                grid-column: 2 !important;
+                grid-row: 1 !important;
+                min-height: var(--gallery-inspect-avatar-size) !important;
+                max-height: calc(var(--gallery-mobile-inspect-max-height, 360px) - 88px) !important;
+                justify-content: center !important;
+                overflow: hidden !important;
+            }
+
+            #galleryArtworkInfoPopup .gallery-artwork-info-author-name {
+                margin-bottom: 3px !important;
+                font-size: 10.5px !important;
+                line-height: 1.25 !important;
+            }
+
+            #galleryArtworkInfoPopup .gallery-artwork-info-title {
+                font-size: 16px !important;
+                line-height: 1.18 !important;
+            }
+
+            #galleryArtworkInfoPopup .gallery-artwork-info-description {
+                margin-top: 6px !important;
+                max-height: min(88px, calc(var(--gallery-mobile-inspect-max-height, 360px) - 150px)) !important;
+                padding-right: 3px !important;
+                font-size: 12px !important;
+                line-height: 1.42 !important;
+                overscroll-behavior: contain !important;
+                -webkit-overflow-scrolling: touch !important;
+            }
+
+            #galleryArtworkInfoPopup .gallery-artwork-info-empty {
+                font-size: 12px !important;
+            }
+
+            #galleryInspectNavigation {
+                --gallery-inspect-navigation-size: 46px;
+                position: relative !important;
+                inset: auto !important;
+                grid-column: 1 / -1 !important;
+                grid-row: 2 !important;
+                display: grid !important;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+                gap: 9px !important;
+                min-height: 0 !important;
+                opacity: 0;
+                visibility: hidden;
+            }
+
+            #galleryInspectNavigation.is-visible {
+                min-height: var(--gallery-inspect-navigation-size) !important;
+                opacity: 1;
+                visibility: visible;
+            }
+
+            .gallery-inspect-navigation-button {
+                position: relative !important;
+                top: auto !important;
+                left: auto !important;
+                right: auto !important;
+                width: 100% !important;
+                height: var(--gallery-inspect-navigation-size) !important;
+                min-width: 0 !important;
+                padding: 0 14px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                gap: 9px !important;
+                border-radius: 14px !important;
+                background: rgba(255, 255, 255, 0.075) !important;
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+                transform: none !important;
+            }
+
+            .gallery-inspect-navigation-button:hover,
+            .gallery-inspect-navigation-button:focus-visible {
+                transform: none !important;
+            }
+
+            .gallery-inspect-navigation-button.is-hidden {
+                display: flex !important;
+                opacity: 0 !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
+            }
+
+            .gallery-inspect-navigation-button:disabled:not(.is-hidden) {
+                display: flex !important;
+                opacity: 0.48 !important;
+                visibility: visible !important;
+                pointer-events: none !important;
+            }
+
+            .gallery-inspect-navigation-icon {
+                width: 13px !important;
+                height: 13px !important;
+                flex: 0 0 auto !important;
+                border-width: 2.5px 2.5px 0 0 !important;
+            }
+
+            .gallery-inspect-navigation-label {
+                display: block !important;
+                min-width: 0 !important;
+                overflow: hidden !important;
+                color: rgba(247, 243, 234, 0.86) !important;
+                font-size: 11px !important;
+                line-height: 1 !important;
+                font-weight: 730 !important;
+                letter-spacing: 0.015em !important;
+                text-overflow: ellipsis !important;
+                white-space: nowrap !important;
+            }
+
+            #galleryArtworkInfoPopup[data-mobile-safe-frame-mode="side"] {
+                --gallery-inspect-avatar-size: 62px;
+            }
+
+            #galleryArtworkInfoPopup[data-mobile-safe-frame-mode="side"] .gallery-artwork-info-popup-inner {
+                grid-template-columns: var(--gallery-inspect-avatar-size) minmax(0, 1fr) !important;
+                column-gap: 11px !important;
+                row-gap: 9px !important;
+                padding: 11px !important;
+                border-radius: 17px !important;
+            }
+
+            #galleryArtworkInfoPopup[data-mobile-safe-frame-mode="side"] .gallery-artwork-info-content {
+                min-height: var(--gallery-inspect-avatar-size) !important;
+            }
+
+            #galleryArtworkInfoPopup[data-mobile-safe-frame-mode="side"] .gallery-artwork-info-description {
+                max-height: 52px !important;
+            }
+
+            #galleryArtworkInfoPopup[data-mobile-safe-frame-mode="side"] #galleryInspectNavigation {
+                --gallery-inspect-navigation-size: 40px;
+                gap: 7px !important;
+            }
+
+            #galleryArtworkInfoPopup[data-mobile-safe-frame-mode="side"] .gallery-inspect-navigation-button {
+                padding: 0 10px !important;
+                border-radius: 12px !important;
+            }
+        }
+
+        @media (max-width: 380px) and (pointer: coarse) {
+            #galleryArtworkInfoPopup.gallery-artwork-info-popup {
+                --gallery-inspect-avatar-size: 66px;
+            }
+
+            #galleryArtworkInfoPopup .gallery-artwork-info-popup-inner {
+                column-gap: 11px !important;
+                row-gap: 10px !important;
+                padding: 12px !important;
+                border-radius: 18px !important;
+            }
+
+            .gallery-inspect-navigation-label {
+                font-size: 10.5px !important;
+            }
+        }
+
+
 
     `;
 
@@ -18303,11 +20324,21 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         // UI preview must show the exact current slider result immediately.
         // Bypass safe-path animation here; safe path is for normal viewer focus movement,
         // not for interactive slider tuning in the editor panel.
-        focusCameraOnObject(target.object, {
-            immediate: true,
-            skipSafePath: true,
-            fromFocusCameraUi: true
-        });
+        if (galleryInspectRuntime.active && galleryInspectRuntime.target === target.object) {
+            refreshGalleryInspectFrame({
+                immediate: true,
+                skipSafePath: true,
+                fromFocusCameraUi: true
+            });
+        } else {
+            updateArtworkInfoPopupContent(target.object);
+            focusCameraOnObject(target.object, {
+                immediate: true,
+                skipSafePath: true,
+                inspectMode: true,
+                fromFocusCameraUi: true
+            });
+        }
     }
 
     function scheduleFocusCameraLivePreview() {
@@ -18411,6 +20442,147 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         scheduleFocusCameraLivePreview();
         notifyGalleryStatus("Focus camera offset reset. Save state to keep the change.");
     };
+
+
+    // STAGE 12C64J — TOUR ORDER BELONGS TO EXHIBITS, NOT TO FREE WAYPOINTS.
+    var galleryTourOrderSectionData = createEditorSection("TOUR ORDER");
+    galleryTourOrderSectionData.section.classList.add("gallery-artwork-transform-section", "is-hidden");
+
+    var galleryTourOrderFieldLabel = document.createElement("label");
+    galleryTourOrderFieldLabel.className = "gallery-editor-field-label";
+    galleryTourOrderFieldLabel.innerText = "POSITION IN GALLERY TOUR";
+
+    var galleryTourOrderInputRow = document.createElement("div");
+    galleryTourOrderInputRow.className = "gallery-tour-order-input-row";
+
+    var galleryTourOrderInput = document.createElement("input");
+    galleryTourOrderInput.type = "number";
+    galleryTourOrderInput.min = "1";
+    galleryTourOrderInput.step = "1";
+    galleryTourOrderInput.className = "gallery-tour-order-number-input";
+    galleryTourOrderInput.setAttribute("aria-label", "Gallery tour order");
+
+    var galleryTourOrderApplyButton = document.createElement("button");
+    galleryTourOrderApplyButton.type = "button";
+    galleryTourOrderApplyButton.className = "gallery-editor-action-button is-primary";
+    galleryTourOrderApplyButton.innerText = "APPLY";
+
+    galleryTourOrderInputRow.appendChild(galleryTourOrderInput);
+    galleryTourOrderInputRow.appendChild(galleryTourOrderApplyButton);
+
+    var galleryTourOrderActions = document.createElement("div");
+    galleryTourOrderActions.className = "gallery-artwork-image-actions";
+
+    var galleryTourAutoOrderButton = document.createElement("button");
+    galleryTourAutoOrderButton.type = "button";
+    galleryTourAutoOrderButton.className = "gallery-editor-action-button";
+    galleryTourAutoOrderButton.innerText = "AUTO ORDER";
+
+    var galleryTourPathToggleButton = document.createElement("button");
+    galleryTourPathToggleButton.type = "button";
+    galleryTourPathToggleButton.className = "gallery-editor-action-button";
+    galleryTourPathToggleButton.innerText = "SHOW PATH";
+
+    galleryTourOrderActions.appendChild(galleryTourAutoOrderButton);
+    galleryTourOrderActions.appendChild(galleryTourPathToggleButton);
+
+    var galleryTourOrderStatus = document.createElement("p");
+    galleryTourOrderStatus.className = "gallery-tour-order-status";
+    galleryTourOrderStatus.innerText = "Order is stored on the selected artwork or sculpture. Manually assigned positions stay locked while automatic paths rebuild after moving exhibits.";
+
+    galleryTourOrderSectionData.section.appendChild(galleryTourOrderFieldLabel);
+    galleryTourOrderSectionData.section.appendChild(galleryTourOrderInputRow);
+    galleryTourOrderSectionData.section.appendChild(galleryTourOrderActions);
+    galleryTourOrderSectionData.section.appendChild(galleryTourOrderStatus);
+    editorScroll.appendChild(galleryTourOrderSectionData.section);
+
+    function updateGalleryTourOrderUi() {
+        if (!galleryTourOrderSectionData || !galleryTourOrderSectionData.section) {
+            return;
+        }
+
+        var target = getFocusCameraUiTarget();
+        var descriptor = target && target.object
+            ? getGalleryExhibitDescriptorForObject(target.object)
+            : null;
+        var visible = !!(editMode && descriptor && descriptor.object);
+        galleryTourOrderSectionData.section.classList.toggle("is-hidden", !visible);
+        galleryTourOrderInput.disabled = !visible;
+        galleryTourOrderApplyButton.disabled = !visible;
+
+        var sequence = ensureGalleryExhibitTourSequence(false);
+        galleryTourOrderInput.max = String(Math.max(1, sequence.length));
+
+        if (!visible) {
+            galleryTourOrderInput.value = "";
+            galleryTourOrderStatus.innerText = "Select one artwork or sculpture to edit its gallery tour position.";
+            return;
+        }
+
+        var order = getGalleryExhibitTourOrder(descriptor.object);
+        galleryTourOrderInput.value = String(order || 1);
+        var locked = isGalleryExhibitTourOrderLocked(descriptor.object);
+        galleryTourOrderStatus.innerText = locked
+            ? "Manual position " + order + " is locked. Other works shift automatically when this number changes."
+            : "Automatic position " + order + ". Moving the exhibit rebuilds the generated route and automatic order.";
+    }
+
+    function applyGalleryTourOrderInput() {
+        var target = getFocusCameraUiTarget();
+        if (!target || !target.object) {
+            return false;
+        }
+        var requested = Math.max(1, Math.round(Number(galleryTourOrderInput.value) || 1));
+        var applied = setGalleryExhibitTourOrder(target.object, requested, {
+            lock: true,
+            reason: "editor-manual-order"
+        });
+        updateGalleryTourOrderUi();
+        if (applied) {
+            notifyGalleryStatus("Tour order updated. Other exhibits were shifted automatically.");
+        }
+        return applied;
+    }
+
+    galleryTourOrderApplyButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        applyGalleryTourOrderInput();
+    });
+
+    galleryTourOrderInput.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            event.stopPropagation();
+            applyGalleryTourOrderInput();
+        }
+    });
+
+    galleryTourOrderInput.addEventListener("change", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        applyGalleryTourOrderInput();
+    });
+
+    galleryTourAutoOrderButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        clearGalleryExhibitTourOrderLocks();
+        rebuildGalleryExhibitTour({
+            reason: "editor-auto-order",
+            recalculateAutoOrder: true,
+            force: true
+        });
+        updateGalleryTourOrderUi();
+        notifyGalleryStatus("Automatic gallery tour order rebuilt from current exhibit positions.");
+    });
+
+    galleryTourPathToggleButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        setGalleryExhibitTourDebugVisible(!galleryExhibitTourRuntime.debugVisible);
+        galleryTourPathToggleButton.innerText = galleryExhibitTourRuntime.debugVisible ? "HIDE PATH" : "SHOW PATH";
+    });
 
     artworkImageUploadButton.onclick = function (event) {
         event.preventDefault();
@@ -19208,7 +21380,13 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             range: Number(item.light.range) || 0,
             targetOptions: normalizeLocalTargetOptions(item.targetOptions),
             position: serializeVector3(item.markerMesh.position),
-            rotation: serializeVector3(item.markerMesh.rotation)
+            rotation: serializeVector3(item.markerMesh.rotation),
+            targetMeshNames: (item.light.includedOnlyMeshes || []).map(function (mesh) {
+                return mesh && mesh.name ? mesh.name : null;
+            }).filter(function (name, index, array) {
+                return !!name && array.indexOf(name) === index;
+            }),
+            targetSegmentNames: getLocalLightTargetSegmentNamesFromMeshes(item.light.includedOnlyMeshes || [])
         };
 
         if (item.type === "spot") {
@@ -19320,6 +21498,85 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }) || null;
     }
 
+    function getGalleryMeshBySavedTargetName(meshName) {
+        if (!meshName) {
+            return null;
+        }
+
+        var direct = scene.getMeshByName ? scene.getMeshByName(meshName) : null;
+
+        if (direct) {
+            return direct;
+        }
+
+        return (scene.meshes || []).find(function (mesh) {
+            return !!(mesh && (mesh.name === meshName || mesh.id === meshName));
+        }) || null;
+    }
+
+    function restoreLocalLightTargetsFromSavedState(item, savedState, reason) {
+        if (!item || !item.light || !savedState) {
+            return false;
+        }
+
+        var names = Array.isArray(savedState.targetMeshNames) && savedState.targetMeshNames.length
+            ? savedState.targetMeshNames.slice()
+            : (Array.isArray(savedState.targetSegmentNames) ? savedState.targetSegmentNames.slice() : []);
+
+        names = names.filter(function (name, index, array) {
+            return !!name && array.indexOf(name) === index;
+        });
+
+        item._savedTargetMeshNames = names.slice();
+        item._fastStartHasSavedTargetNames = names.length > 0;
+
+        if (!names.length) {
+            item._fastStartNeedsTargetRebuild = true;
+            return false;
+        }
+
+        var meshes = names.map(getGalleryMeshBySavedTargetName).filter(function (mesh, index, array) {
+            return !!mesh && array.indexOf(mesh) === index;
+        });
+        var unresolved = names.filter(function (name) {
+            return !getGalleryMeshBySavedTargetName(name);
+        });
+
+        if (!meshes.length) {
+            item._fastStartNeedsTargetRebuild = true;
+            item._fastStartUnresolvedTargetNames = unresolved;
+            return false;
+        }
+
+        setLocalLightIncludedMeshesIfChanged(item, meshes, reason || "saved-target-restore");
+        item._fastStartUnresolvedTargetNames = unresolved;
+        item._fastStartNeedsTargetRebuild = unresolved.length > 0;
+        galleryFastStartRuntime.directLightTargetRestores += 1;
+        galleryFastStartRuntime.unresolvedSavedLightTargets += unresolved.length;
+        return true;
+    }
+
+    function hydrateSavedLocalLightTargetsForAll(reason) {
+        var unresolvedItems = 0;
+
+        (localLightItems || []).forEach(function (item) {
+            if (!item || !item.light || !Array.isArray(item._savedTargetMeshNames) || !item._savedTargetMeshNames.length) {
+                return;
+            }
+
+            var state = {
+                targetMeshNames: item._savedTargetMeshNames
+            };
+            restoreLocalLightTargetsFromSavedState(item, state, reason || "saved-target-hydration");
+
+            if (item._fastStartNeedsTargetRebuild) {
+                unresolvedItems += 1;
+            }
+        });
+
+        return unresolvedItems;
+    }
+
     function applySavedLocalLightStateToItem(item, savedState) {
         if (!item || !item.light || !item.markerMesh || !savedState) {
             return;
@@ -19405,10 +21662,18 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             disableLocalPointLightShadow(item);
         }
 
-        applyCommonLocalLightTargets(item, "restoreState");
+        var restoredSavedTargets = restoreLocalLightTargetsFromSavedState(item, savedState, "restoreState-saved-targets");
+
+        if (!restoredSavedTargets && !galleryFastStartRuntime.stateApplyActive) {
+            applyCommonLocalLightTargets(item, "restoreState-fallback");
+        }
+
         updateLocalLightHelper(item);
         updateLocalLightVisualState(item);
-        requestLocalSpotShadowRefresh(item, true);
+
+        if (!galleryFastStartRuntime.stateApplyActive) {
+            requestLocalSpotShadowRefresh(item, true);
+        }
     }
 
     function createRestoredManualSpotLight(savedState) {
@@ -19618,9 +21883,13 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             restoreLocalLightGroupsFromState(localLightState);
             clearLocalLightSelection();
             applyVisualReflectionSettings(readVisualSettingsFromScene());
-            refreshAllCommonLocalLightTargets();
-            scheduleLoadTimeLocalLightRetarget("restoreLocalLightState", localLightLoadTimeRetargetDelayMs);
-            refreshAllLocalSpotShadows();
+
+            if (!galleryFastStartRuntime.stateApplyActive) {
+                refreshAllCommonLocalLightTargets();
+                scheduleLoadTimeLocalLightRetarget("restoreLocalLightState", localLightLoadTimeRetargetDelayMs);
+                refreshAllLocalSpotShadows();
+            }
+
             updateLocalLightsUi();
         } finally {
             localLightStateRestoring = false;
@@ -23685,31 +25954,57 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     updateLightingPresetRows();
     setEditorPanelMode("edit");
 
-    appendGalleryUiElement(editHelpPanel);
+    appendGalleryUiElement(editHelpPanel, "controls");
 
     cleanupArtworkInfoPopupDom();
 
     var artworkInfoPopup = document.createElement("div");
     artworkInfoPopup.id = "galleryArtworkInfoPopup";
     artworkInfoPopup.className = "gallery-artwork-info-popup";
+    artworkInfoPopup.setAttribute("aria-hidden", "true");
+    artworkInfoPopup.setAttribute("role", "region");
+    artworkInfoPopup.setAttribute("aria-live", "polite");
+    artworkInfoPopup.setAttribute("aria-label", "Artwork information");
     artworkInfoPopup.innerHTML = ''
         + '<div class="gallery-artwork-info-popup-inner">'
-        + '  <div class="gallery-artwork-info-author-card">'
-        + '    <div class="gallery-artwork-info-photo-frame">'
-        + '      <img class="gallery-artwork-info-author-photo" alt="Author photo" />'
-        + '      <div class="gallery-artwork-info-author-photo-placeholder">Author photo</div>'
-        + '    </div>'
-        + '    <div class="gallery-artwork-info-author-name"></div>'
+        + '  <div class="gallery-artwork-info-avatar">'
+        + '    <img class="gallery-artwork-info-author-photo" alt="Author photo" />'
+        + '    <div class="gallery-artwork-info-author-photo-placeholder" aria-hidden="true"></div>'
         + '  </div>'
-        + '  <div class="gallery-artwork-info-details-card">'
+        + '  <div class="gallery-artwork-info-content">'
+        + '    <div class="gallery-artwork-info-author-name"></div>'
         + '    <div class="gallery-artwork-info-title"></div>'
         + '    <div class="gallery-artwork-info-description"></div>'
         + '    <div class="gallery-artwork-info-empty">No artwork information added yet.</div>'
         + '  </div>'
         + '</div>';
-    appendGalleryUiElement(artworkInfoPopup);
+    var galleryInspectNavigation = document.createElement("div");
+    galleryInspectNavigation.id = "galleryInspectNavigation";
+    galleryInspectNavigation.setAttribute("aria-hidden", "true");
+    galleryInspectNavigation.innerHTML = ''
+        + '<button type="button" class="gallery-inspect-navigation-button is-previous is-hidden" aria-label="Previous artwork">'
+        + '  <span class="gallery-inspect-navigation-icon" aria-hidden="true"></span>'
+        + '  <span class="gallery-inspect-navigation-label">Previous</span>'
+        + '</button>'
+        + '<button type="button" class="gallery-inspect-navigation-button is-next is-hidden" aria-label="Next artwork">'
+        + '  <span class="gallery-inspect-navigation-label">Next</span>'
+        + '  <span class="gallery-inspect-navigation-icon" aria-hidden="true"></span>'
+        + '</button>';
+
+    var artworkInfoPopupInner = artworkInfoPopup.querySelector(".gallery-artwork-info-popup-inner");
+    if (artworkInfoPopupInner) {
+        artworkInfoPopupInner.appendChild(galleryInspectNavigation);
+    }
+    appendGalleryUiElement(artworkInfoPopup, "inspect");
+
+    var galleryInspectNavigationRefs = {
+        previous: galleryInspectNavigation.querySelector(".gallery-inspect-navigation-button.is-previous"),
+        next: galleryInspectNavigation.querySelector(".gallery-inspect-navigation-button.is-next")
+    };
 
     var artworkInfoPopupRefs = {
+        avatar: artworkInfoPopup.querySelector(".gallery-artwork-info-avatar"),
+        inner: artworkInfoPopup.querySelector(".gallery-artwork-info-popup-inner"),
         photo: artworkInfoPopup.querySelector(".gallery-artwork-info-author-photo"),
         photoPlaceholder: artworkInfoPopup.querySelector(".gallery-artwork-info-author-photo-placeholder"),
         authorName: artworkInfoPopup.querySelector(".gallery-artwork-info-author-name"),
@@ -23747,8 +26042,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
             lightingQuickButton.style.display = "none";
 
-            if (editButton.parentElement !== prepareGalleryUiRoot()) {
-                appendGalleryUiElement(editButton);
+            if (editButton.parentElement !== getGalleryUiElementParent("controls")) {
+                appendGalleryUiElement(editButton, "controls");
             }
 
             editButton.className = "gallery-editor-floating-mode-button";
@@ -23895,11 +26190,28 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         wallPaintTextureCacheStats.misses += 1;
 
+        var finishWallPaintTextureLoad = registerGalleryStartupVisibleTextureLoad(
+            "wall-paint",
+            colorName || "wall-color",
+            url
+        );
+
         var texture = new BABYLON.Texture(
             url,
             scene,
             false,
-            wallPaintTextureOrientation.invertY
+            wallPaintTextureOrientation.invertY,
+            BABYLON.Texture.TRILINEAR_SAMPLINGMODE,
+            function () {
+                finishWallPaintTextureLoad(false, { reason: "wall-texture-loaded" });
+            },
+            function (message, exception) {
+                finishWallPaintTextureLoad(true, {
+                    reason: "wall-texture-error",
+                    message: message ? String(message) : "",
+                    exceptionMessage: exception && exception.message ? String(exception.message) : null
+                });
+            }
         );
 
         texture.name = "WallPaintTexture_" + (colorName || "color");
@@ -24063,7 +26375,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     wallColors.forEach(function (colorData) {
 
         var material = new BABYLON.PBRMaterial("WallColor_" + colorData.name, scene);
-        var wallColorTexture = createWallPaintTexture(colorData.url, colorData.name);
+        var wallColorTexture = editorAuthenticated
+            ? createWallPaintTexture(colorData.url, colorData.name)
+            : null;
 
         material.albedoTexture = wallColorTexture;
         material.roughness = 0.85;
@@ -24084,7 +26398,11 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         swatch.title = colorData.label;
         swatch.setAttribute("data-color-name", colorData.name);
 
-        swatch.style.backgroundImage = "url('" + colorData.url + "')";
+        swatch.setAttribute("data-wall-texture-url", colorData.url || "");
+
+        if (editorAuthenticated) {
+            swatch.style.backgroundImage = "url('" + colorData.url + "')";
+        }
 
         swatch.onpointerdown = function (event) {
             event.preventDefault();
@@ -24768,6 +27086,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
     editButton.onclick = function (event) {
+        closeGalleryInspect("edit-mode-toggle");
+
         if (event) {
             event.preventDefault();
             event.stopPropagation();
@@ -24775,12 +27095,14 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         if (galleryEditorLoginEnabled && !editorAuthenticated) {
             editMode = false;
+            if (document.body) document.body.classList.remove("gallery-edit-mode-active");
             setEditorUiVisible(false);
             notifyGalleryStatus("Zaloguj sie jako edytor, aby otworzyc panel edycji.");
             return;
         }
 
         editMode = !editMode;
+        if (document.body) document.body.classList.toggle("gallery-edit-mode-active", editMode);
         configureCameraPointerButtons();
 
         if (editMode) {
@@ -24798,6 +27120,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
             updateEditHelpStatus();
             updateAlignmentPanel();
+            rebuildGalleryExhibitTour({ reason: "enter-edit-mode", recalculateAutoOrder: true, force: true });
+            updateGalleryTourOrderUi();
         } else {
             resetViewerWASDMovementRuntime(true);
             restoreCameraToDefaultViewerWalkHeight("exitEditMode");
@@ -24812,6 +27136,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 camera.detachControl(canvas);
                 setMobileViewerUiVisible(true);
             }
+            if (document.body) document.body.classList.remove("gallery-edit-mode-active");
+            updateGalleryTourOrderUi();
         }
     };
 
@@ -24830,8 +27156,23 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             editButton.style.display = (!galleryEditorLoginEnabled || editorAuthenticated) ? "" : "none";
         }
 
+        if (editorAuthenticated && typeof wallPalette !== "undefined" && wallPalette) {
+            Array.from(wallPalette.querySelectorAll("[data-wall-texture-url]")).forEach(function (swatch) {
+                var textureUrl = swatch.getAttribute("data-wall-texture-url");
+
+                if (textureUrl && !swatch.style.backgroundImage) {
+                    swatch.style.backgroundImage = "url('" + textureUrl + "')";
+                }
+            });
+
+            if (typeof rebuildWallColorSelectorTextures === "function") {
+                runGalleryFastStartIdleTask(rebuildWallColorSelectorTextures, 900);
+            }
+        }
+
         if (galleryEditorLoginEnabled && !editorAuthenticated && editMode) {
             editMode = false;
+            if (document.body) document.body.classList.remove("gallery-edit-mode-active");
             configureCameraPointerButtons();
             resetViewerWASDMovementRuntime(true);
             restoreCameraToDefaultViewerWalkHeight("editorAuthLost");
@@ -24858,6 +27199,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         if (typeof window !== "undefined" && window.innerWidth) {
             values.push(window.innerWidth);
+        }
+
+        if (typeof window !== "undefined" && window.visualViewport && window.visualViewport.width) {
+            values.push(window.visualViewport.width);
         }
 
         if (document.documentElement && document.documentElement.clientWidth) {
@@ -24891,12 +27236,38 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return Math.min.apply(null, values);
     }
 
+    function getMobileViewportShortSide() {
+        var width = window.visualViewport && window.visualViewport.width
+            ? window.visualViewport.width
+            : window.innerWidth;
+        var height = window.visualViewport && window.visualViewport.height
+            ? window.visualViewport.height
+            : window.innerHeight;
+
+        return Math.min(width || 9999, height || 9999);
+    }
+
     function shouldUseMobileViewerMode() {
-        return getMobileResponsiveWidth() <= mobileViewerBreakpoint;
+        return !!(
+            galleryDeviceProfile.useMobileViewerControls &&
+            (
+                getMobileResponsiveWidth() <= mobileViewerBreakpoint ||
+                getMobileViewportShortSide() <= 600
+            )
+        );
     }
 
     function refreshMobileViewerMode() {
         var shouldEnable = shouldUseMobileViewerMode();
+        var mobileHud = document.getElementById("galleryMobileHud");
+
+        if (document.body) {
+            document.body.classList.toggle("gallery-mobile-viewer-enabled", shouldEnable);
+        }
+
+        if (mobileHud) {
+            mobileHud.setAttribute("data-mobile-viewer", shouldEnable ? "enabled" : "disabled");
+        }
 
         if (shouldEnable === mobileViewerEnabled) {
             setMobileViewerUiVisible(isMobileViewerActive());
@@ -24923,7 +27294,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
             mobileLookActive = false;
             mobileLookPointerId = null;
-            mobileFocusActive = false;
 
             setMobileViewerUiVisible(false);
             canvas.style.touchAction = "";
@@ -24946,10 +27316,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         mobileViewerControls.style.display = isVisible ? "block" : "none";
     }
 
-    function updateMobileBackButton() {
-        // Przyciski mobilne Wroc/Reset zostaly usuniete z UI.
-        // Funkcja zostaje jako bezpieczny no-op dla logiki focusu.
-    }
 
     function resetMobileJoystick() {
         mobileJoystickActive = false;
@@ -25050,32 +27416,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         mobileStartCameraApplied = true;
     }
 
-    function getMobileArtworkFocusDistance(artwork) {
-        // Na pionowym ekranie telefon ma waski kadr, dlatego dystans do obrazu
-        // musi byc wiekszy niz na desktopie. Liczymy go z rozmiaru obiektu i FOV kamery.
-        var fallbackDistance = 5.4;
-
-        if (!artwork || !artwork.getBoundingInfo) {
-            return fallbackDistance;
-        }
-
-        artwork.computeWorldMatrix(true);
-
-        var boundingInfo = artwork.getBoundingInfo();
-        var radius = boundingInfo.boundingSphere.radiusWorld || 1.4;
-
-        var renderWidth = scene.getEngine().getRenderWidth();
-        var renderHeight = scene.getEngine().getRenderHeight();
-        var aspect = renderHeight > 0 ? renderWidth / renderHeight : 1;
-
-        var verticalFov = camera.fov || 0.8;
-        var horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
-        var limitingFov = Math.max(0.24, Math.min(verticalFov, horizontalFov));
-
-        var distance = radius / Math.sin(limitingFov / 2) * 1.04;
-
-        return BABYLON.Scalar.Clamp(distance, 4.2, 6.4);
-    }
 
     function updateMobileJoystickFromPointer(event) {
         if (!mobileJoystickBase || !mobileJoystickKnob) {
@@ -25104,11 +27444,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             "translate(calc(-50% + " + dx + "px), calc(-50% + " + dy + "px))";
     }
 
-    function updateMobileJoystickMovement() {
-        // STAGE 12C3:
-        // Ruch joysticka jest obsługiwany w updateViewerWASDMovement().
-        // Y = przód/tył, X = obrót kamery. X nie robi już strafe.
-    }
 
 
     // STAGE 12C1 - VIEWER WASD / MOBILE JOYSTICK GROUNDED WALK
@@ -25486,7 +27821,101 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return true;
     }
 
+// STAGE 12C64R — SMOOTH INSPECT PLAYBACK / INTERACTION READINESS GATE
+    // Playback is fully prevalidated; viewer control unlocks only after heavy startup work and stable warm-up frames.
+
+    // STAGE 12C64Q — INSPECT OWNS CAMERA TRANSITION / CLEAN WASD HANDOFF
+    // One owner at a time:
+    // WALK       -> normal Viewer/Edit movement owns the camera.
+    // TRANSITION -> only the Inspect transition controller owns the camera.
+    // INSPECT    -> camera rests at the exact focus transform until manual input returns to WALK.
+    var galleryInspectCameraRuntime = {
+        state: "WALK",
+        transitionId: 0,
+        reason: "initial",
+        controlsDetached: false,
+        startedAt: 0,
+        completedAt: 0
+    };
+
+    function isGalleryInspectCameraTransitionActive() {
+        return galleryInspectCameraRuntime.state === "TRANSITION";
+    }
+
+    function isGalleryInspectCameraOwnedByInspect() {
+        return galleryInspectCameraRuntime.state === "TRANSITION" || galleryInspectCameraRuntime.state === "INSPECT";
+    }
+
+    function syncGalleryInspectCameraCollisionHandoff() {
+        if (!camera || !camera.position) return;
+        viewerWallLastSafeCameraPosition = camera.position.clone();
+        viewerWallCollisionLastObservedPosition = camera.position.clone();
+    }
+
+    function detachGalleryCameraForInspectTransition() {
+        if (galleryInspectCameraRuntime.controlsDetached || !camera || !canvas) return;
+        try {
+            camera.detachControl(canvas);
+            galleryInspectCameraRuntime.controlsDetached = true;
+        } catch (error) {}
+    }
+
+    function restoreGalleryCameraAfterInspectTransition() {
+        if (!galleryInspectCameraRuntime.controlsDetached) return;
+        galleryInspectCameraRuntime.controlsDetached = false;
+        try {
+            attachGalleryCameraControl();
+        } catch (error) {}
+    }
+
+    function beginGalleryInspectCameraTransition(reason) {
+        markGalleryViewerActivity(reason || "inspect-transition");
+        stopViewerSafeFocusRuntimeAnimation();
+        try { scene.stopAnimation(camera); } catch (error) {}
+        try { endDesktopViewerMiddleLook(null); } catch (error) {}
+        try { endMobileCanvasLook(null); } catch (error) {}
+        resetViewerWASDMovementRuntime(true);
+        if (typeof clearEditMoveKeys === "function") clearEditMoveKeys();
+        detachGalleryCameraForInspectTransition();
+        galleryInspectCameraRuntime.state = "TRANSITION";
+        galleryInspectCameraRuntime.transitionId += 1;
+        galleryInspectCameraRuntime.reason = reason || "inspect-transition";
+        galleryInspectCameraRuntime.startedAt = Date.now();
+        return galleryInspectCameraRuntime.transitionId;
+    }
+
+    function completeGalleryInspectCameraTransition() {
+        galleryInspectCameraRuntime.state = "INSPECT";
+        galleryInspectCameraRuntime.completedAt = Date.now();
+        syncGalleryInspectCameraCollisionHandoff();
+        restoreGalleryCameraAfterInspectTransition();
+    }
+
+    function releaseGalleryInspectCameraToWalk(reason) {
+        stopViewerSafeFocusRuntimeAnimation();
+        galleryInspectCameraRuntime.state = "WALK";
+        galleryInspectCameraRuntime.reason = reason || "walk";
+        syncGalleryInspectCameraCollisionHandoff();
+        restoreGalleryCameraAfterInspectTransition();
+    }
+
+    function hasViewerTransitionCancelInput() {
+        var keyboard = !!(viewerMoveKeys.w || viewerMoveKeys.a || viewerMoveKeys.s || viewerMoveKeys.d);
+        var joystick = !!(
+            isMobileViewerActive() &&
+            mobileJoystickActive &&
+            (Math.abs(mobileJoystickVector.x || 0) >= (viewerMovementMobileJoystickTurnDeadZone || 0.08) ||
+             Math.abs(mobileJoystickVector.y || 0) >= (viewerMovementConfig.joystickDeadZone || 0.08))
+        );
+        return keyboard || joystick;
+    }
+
     function updateViewerWASDMovement() {
+        if (isGalleryInspectCameraTransitionActive()) {
+            if (!hasViewerTransitionCancelInput()) return;
+            closeGalleryInspect("viewer-manual-movement");
+        }
+
         clearViewerWASDVisualOffsets();
 
         var dt = scene.getEngine().getDeltaTime() / 1000;
@@ -25501,6 +27930,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         var inputState = getViewerWASDInputState();
         var hasInput = inputState.hasInput;
+        if (hasInput || mobileJoystickTurnActive || viewerMovementVelocity.length() > 0.035) {
+            markGalleryViewerActivity("viewer-movement");
+        }
+        if ((hasInput || mobileJoystickTurnActive) && galleryInspectRuntime.active) {
+            closeGalleryInspect("viewer-manual-movement");
+        }
         updateGalleryFocusPreviewReturnToWalk(dt, hasInput || mobileJoystickTurnActive);
         var speedBeforeStop = viewerMovementVelocity.length();
 
@@ -25618,6 +28053,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         mobileLookLastY = event.clientY;
 
         if (mobileLookMoved) {
+            if (galleryInspectRuntime.active) {
+                closeGalleryInspect("mobile-manual-look");
+            }
             // STAGE 12C2:
             // Obrót na mobile też trzyma horyzont. Bez zostawiania kadru pod skosem.
             if (!editMode && typeof clearViewerWASDVisualOffsets === "function") {
@@ -25635,6 +28073,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             );
 
             camera.rotation.z = 0;
+            markGalleryViewerActivity("mobile-camera-look");
         }
 
         return true;
@@ -25666,6 +28105,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         );
 
         if (!pickResult || !pickResult.hit || !pickResult.pickedMesh) {
+            closeGalleryInspect("mobile-empty-tap");
             return;
         }
 
@@ -25674,7 +28114,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         var pickedArtworkMesh = getArtworkFromPopupPickMesh(pickResult.pickedMesh);
 
         if (pickedArtworkMesh) {
-            focusCameraOnObject(pickedArtworkMesh);
+            openGalleryInspectTarget(pickedArtworkMesh, { reason: "mobile-artwork-tap" });
             return;
         }
 
@@ -25686,7 +28126,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             artSpheres.includes(pickResult.pickedMesh) ||
             pickedModelSlot
         ) {
-            focusCameraOnObject(pickedModelSlot || pickResult.pickedMesh);
+            openGalleryInspectTarget(pickedModelSlot || pickResult.pickedMesh, { reason: "mobile-sculpture-tap" });
             return;
         }
 
@@ -25715,79 +28155,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return true;
     }
 
-    function animateMobileCameraTo(targetPosition, targetRotation, frames) {
-        var easing = new BABYLON.CubicEase();
-        easing.setEasingMode(BABYLON.EasingFunction.EASINGMODE_EASEINOUT);
 
-        BABYLON.Animation.CreateAndStartAnimation(
-            "mobileCameraMove",
-            camera,
-            "position",
-            60,
-            frames || 60,
-            camera.position.clone(),
-            targetPosition.clone(),
-            BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT,
-            easing
-        );
 
-        BABYLON.Animation.CreateAndStartAnimation(
-            "mobileCameraRotate",
-            camera,
-            "rotation",
-            60,
-            frames || 60,
-            camera.rotation.clone(),
-            targetRotation.clone(),
-            BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT,
-            easing
-        );
-    }
 
-    function enterMobileFocusState() {
-        if (!isMobileViewerActive()) {
-            return;
-        }
-
-        if (!mobileFocusActive) {
-            mobilePreviousCameraPosition = camera.position.clone();
-            mobilePreviousCameraRotation = camera.rotation.clone();
-        }
-
-        mobileFocusActive = true;
-        updateMobileBackButton();
-    }
-
-    function exitMobileFocusView() {
-        if (!mobileFocusActive || !mobilePreviousCameraPosition || !mobilePreviousCameraRotation) {
-            mobileFocusActive = false;
-            updateMobileBackButton();
-            return;
-        }
-
-        animateMobileCameraTo(
-            mobilePreviousCameraPosition,
-            mobilePreviousCameraRotation,
-            55
-        );
-
-        mobileFocusActive = false;
-        updateMobileBackButton();
-    }
-
-    function resetMobileCameraView() {
-        mobileFocusActive = false;
-        mobilePreviousCameraPosition = null;
-        mobilePreviousCameraRotation = null;
-
-        updateMobileBackButton();
-
-        animateMobileCameraTo(
-            mobileInitialCameraPosition,
-            mobileInitialCameraRotation,
-            65
-        );
-    }
 
     function createMobileViewerUi() {
         var oldMobileControls = document.getElementById("mobileViewerControls");
@@ -25809,11 +28179,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             #mobileViewerControls {
                 position: absolute;
                 inset: 0;
-                /* Header strony ma z-index 8000, więc mobile UI galerii musi zostać niżej. */
-                z-index: 7000;
+                z-index: 1;
                 pointer-events: none;
                 display: none;
-                font-family: Arial, sans-serif;
+                font-family: var(--font, Arial, sans-serif);
                 user-select: none;
                 -webkit-user-select: none;
                 touch-action: none;
@@ -25821,8 +28190,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
             #mobileJoystickBase {
                 position: absolute;
-                left: 22px;
-                bottom: 28px;
+                left: calc(env(safe-area-inset-left) + 18px);
+                bottom: calc(var(--gallery-hud-bottom-offset, 0px) + env(safe-area-inset-bottom) + 18px);
                 width: 108px;
                 height: 108px;
                 border-radius: 999px;
@@ -25830,6 +28199,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 background: rgba(0, 0, 0, 0.28);
                 box-shadow: 0 0 26px rgba(0, 0, 0, 0.22);
                 backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
                 pointer-events: auto;
                 touch-action: none;
             }
@@ -25845,6 +28215,20 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 box-shadow: 0 0 20px rgba(255, 255, 255, 0.18);
                 transform: translate(-50%, -50%);
                 pointer-events: none;
+            }
+
+            @media (orientation: landscape) and (max-height: 520px) {
+                #mobileJoystickBase {
+                    left: calc(env(safe-area-inset-left) + 14px);
+                    bottom: calc(var(--gallery-hud-bottom-offset, 0px) + env(safe-area-inset-bottom) + 12px);
+                    width: 94px;
+                    height: 94px;
+                }
+
+                #mobileJoystickKnob {
+                    width: 36px;
+                    height: 36px;
+                }
             }
         `;
 
@@ -25865,7 +28249,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         mobileViewerControls.appendChild(mobileJoystickBase);
 
-        appendGalleryUiElement(mobileViewerControls);
+        appendGalleryUiElement(mobileViewerControls, "controls");
 
         mobileJoystickBase.addEventListener("pointerdown", function (event) {
             if (!isMobileViewerActive()) {
@@ -25910,7 +28294,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             resetMobileJoystick();
         });
 
-        updateMobileBackButton();
         setMobileViewerUiVisible(isMobileViewerActive());
     }
 
@@ -25948,6 +28331,15 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             scheduleRefreshMobileViewerMode();
         });
 
+        registerGalleryDomEvent("mobileViewerViewportChange", window, "gallery-mobile-viewport-change", function () {
+            scheduleRefreshMobileViewerMode();
+        });
+
+        registerGalleryDomEvent("mobileViewerOrientationChange", window, "orientationchange", function () {
+            resetMobileJoystick();
+            scheduleRefreshMobileViewerMode();
+        });
+
         if (scene && scene.getEngine && scene.getEngine().onResizeObservable) {
             registerGalleryEngineResizeObserver("mobileViewerEngineResize", function () {
                 scheduleRefreshMobileViewerMode();
@@ -25974,12 +28366,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     function runGalleryFrameTick() {
         updateViewerWASDMovement();
         updateViewerWallCollisionIfCameraMoved();
+        updateGalleryZoneStreamingRuntime(false);
 
         measureGalleryPerformanceMetric("localLightsMs", function () {
             updateLocalLightsCameraCulling(false);
         });
 
-        updateArtworkInfoPopupThrottled(false);
         updateEditModeMovementFrame();
         maybeUpdateGalleryPerformanceDebugPanel(false);
     }
@@ -26646,6 +29038,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         updateArtworkInfoUi();
         updateArtworkTransformUi();
         updateFocusCameraUi();
+        updateGalleryTourOrderUi();
         updateEditHelpStatus();
         updateAlignmentPanel();
     }
@@ -26680,6 +29073,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         updateArtworkInfoUi();
         updateArtworkTransformUi();
         updateFocusCameraUi();
+        updateGalleryTourOrderUi();
         updateEditHelpStatus();
     }
 
@@ -26827,6 +29221,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             return;
         }
 
+        if (isGalleryInspectCameraTransitionActive()) {
+            var transitionCancelInput = !!(editMoveKeys.w || editMoveKeys.a || editMoveKeys.s || editMoveKeys.d || editMoveKeys.space);
+            if (!transitionCancelInput) return;
+            closeGalleryInspect("edit-manual-movement");
+        }
+
         var moveDirection = BABYLON.Vector3.Zero();
 
         var forward = camera.getDirection(new BABYLON.Vector3(0, 0, 1));
@@ -26873,6 +29273,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
 
         var hasEditMoveInput = moveDirection.lengthSquared() > 0;
+        if (hasEditMoveInput) {
+            markGalleryViewerActivity("edit-movement");
+        }
+        if (hasEditMoveInput && galleryInspectRuntime.active) {
+            closeGalleryInspect("edit-manual-movement");
+        }
         var editDeltaTime = scene.getEngine().getDeltaTime() / 1000;
         updateGalleryFocusPreviewReturnToWalk(editDeltaTime, hasEditMoveInput);
 
@@ -29184,214 +31590,17 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return null;
     }
 
-    // STAGE 12C5 - SAFE FOCUS PATH
-    // Direct camera focus może odbić się od ściany, gdy obraz jest za rogiem.
-    // Ten system próbuje zbudować prostą bezpieczną ścieżkę z dogleg/waypointami.
-    var viewerSafeFocusPathEnabled = true;
+    // SHARED COLLISION-SAFE INSPECT PATH DEBUG
+    // Viewer click and Edit double-click use the same validated route runtime.
+    // Generated connector points are internal and never editable waypoint state.
     var viewerSafeFocusPathDebug = null;
 
-    function cloneViewerFocusPoint(position) {
-        var cloned = position.clone();
-        cloned.y = camera.position.y;
-        return cloned;
-    }
-
-    function isViewerFocusPointBlocked(position, direction) {
-        if (!position) {
-            return true;
-        }
-
-        if (
-            typeof isViewerWallTooCloseAtPosition === "function" &&
-            isViewerWallTooCloseAtPosition(position, direction || null)
-        ) {
-            return true;
-        }
-
-        return false;
-    }
-
-    function isViewerFocusSegmentBlocked(fromPosition, toPosition) {
-        if (!viewerSafeFocusPathEnabled) {
-            return false;
-        }
-
-        if (!fromPosition || !toPosition) {
-            return true;
-        }
-
-        if (
-            typeof isViewerWallHitBetweenPositions === "function" &&
-            isViewerWallHitBetweenPositions(fromPosition, toPosition)
-        ) {
-            return true;
-        }
-
-        return false;
-    }
-
-    function isViewerFocusPathClear(points) {
-        if (!points || points.length < 2) {
-            return false;
-        }
-
-        for (var i = 1; i < points.length; i++) {
-            var fromPosition = points[i - 1];
-            var toPosition = points[i];
-            var direction = toPosition.subtract(fromPosition);
-
-            direction.y = 0;
-
-            if (direction.lengthSquared() > 0.0001) {
-                direction.normalize();
-            }
-
-            if (isViewerFocusPointBlocked(toPosition, direction)) {
-                return false;
-            }
-
-            if (isViewerFocusSegmentBlocked(fromPosition, toPosition)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    function getViewerFocusPathLength(points) {
-        var length = 0;
-
-        for (var i = 1; i < points.length; i++) {
-            length += points[i].subtract(points[i - 1]).length();
-        }
-
-        return length;
-    }
-
-    function findViewerSafeFocusPath(startPosition, targetPosition) {
-        var start = cloneViewerFocusPoint(startPosition);
-        var target = cloneViewerFocusPoint(targetPosition);
-
-        var directPath = [start, target];
-
-        viewerSafeFocusPathDebug = {
-            mode: "direct",
-            candidateCount: 0,
-            selectedLength: getViewerFocusPathLength(directPath),
-            blockedDirect: false
-        };
-
-        if (!viewerSafeFocusPathEnabled || isViewerFocusPathClear(directPath)) {
-            return [target];
-        }
-
-        viewerSafeFocusPathDebug.blockedDirect = true;
-
-        var horizontal = target.subtract(start);
-        horizontal.y = 0;
-
-        var distance = horizontal.length();
-
-        if (distance <= 0.001) {
-            return [target];
-        }
-
-        var forward = horizontal.normalize();
-        var side = new BABYLON.Vector3(-forward.z, 0, forward.x);
-
-        if (side.lengthSquared() > 0.0001) {
-            side.normalize();
-        }
-
-        var forwardA = start.add(forward.scale(Math.min(2.6, distance * 0.32)));
-        var forwardB = target.subtract(forward.scale(Math.min(2.2, distance * 0.28)));
-        var mid = start.add(target).scale(0.5);
-
-        forwardA.y = start.y;
-        forwardB.y = start.y;
-        mid.y = start.y;
-
-        var distances = [1.4, 2.2, 3.2, 4.4, 5.8, 7.2];
-        var candidates = [];
-
-        function addCandidate(points, label) {
-            var normalized = [start];
-
-            points.forEach(function (point) {
-                var cloned = cloneViewerFocusPoint(point);
-                normalized.push(cloned);
-            });
-
-            normalized.push(target);
-
-            candidates.push({
-                label: label,
-                points: normalized,
-                length: getViewerFocusPathLength(normalized)
-            });
-        }
-
-        distances.forEach(function (offset) {
-            [-1, 1].forEach(function (sign) {
-                var sideOffset = side.scale(offset * sign);
-
-                addCandidate(
-                    [
-                        start.add(sideOffset),
-                        target.add(sideOffset)
-                    ],
-                    "parallel_" + sign + "_" + offset
-                );
-
-                addCandidate(
-                    [
-                        mid.add(sideOffset)
-                    ],
-                    "mid_" + sign + "_" + offset
-                );
-
-                addCandidate(
-                    [
-                        forwardA.add(sideOffset),
-                        forwardB.add(sideOffset)
-                    ],
-                    "dogleg_" + sign + "_" + offset
-                );
-
-                addCandidate(
-                    [
-                        start.add(sideOffset),
-                        mid.add(sideOffset.scale(1.35)),
-                        target.add(sideOffset)
-                    ],
-                    "wide_" + sign + "_" + offset
-                );
-            });
-        });
-
-        candidates.sort(function (a, b) {
-            return a.length - b.length;
-        });
-
-        viewerSafeFocusPathDebug.candidateCount = candidates.length;
-
-        for (var i = 0; i < candidates.length; i++) {
-            if (isViewerFocusPathClear(candidates[i].points)) {
-                viewerSafeFocusPathDebug.mode = candidates[i].label;
-                viewerSafeFocusPathDebug.selectedLength = candidates[i].length;
-                viewerSafeFocusPathDebug.waypointCount = candidates[i].points.length - 1;
-
-                return candidates[i].points.slice(1);
-            }
-        }
-
-        viewerSafeFocusPathDebug.mode = "fallback_direct_blocked";
-        viewerSafeFocusPathDebug.selectedLength = getViewerFocusPathLength(directPath);
-        viewerSafeFocusPathDebug.waypointCount = 1;
-
-        return [target];
-    }
-
+    
+    
+    
+    
+    
+    
     function getViewerFocusCatmullPoint(points, t) {
         if (!points || !points.length) {
             return BABYLON.Vector3.Zero();
@@ -29529,182 +31738,219 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return points[points.length - 1].clone();
     }
 
-    function animateViewerFocusPositionPath(pathPoints, targetRotation, startRotation) {
+    function applyViewerFocusVerticalTransition(points, startY, endY) {
+        if (!points || !points.length) return points || [];
+        if (points.length === 1) {
+            points[0].y = endY;
+            return points;
+        }
+        var cumulative = [0];
+        var total = 0;
+        for (var i = 1; i < points.length; i += 1) {
+            var dx = points[i].x - points[i - 1].x;
+            var dz = points[i].z - points[i - 1].z;
+            total += Math.sqrt(dx * dx + dz * dz);
+            cumulative.push(total);
+        }
+        for (var p = 0; p < points.length; p += 1) {
+            var t = total > 0.0001 ? cumulative[p] / total : p / Math.max(1, points.length - 1);
+            points[p].y = BABYLON.Scalar.Lerp(startY, endY, t);
+        }
+        points[0].y = startY;
+        points[points.length - 1].y = endY;
+        return points;
+    }
+
+    function animateViewerFocusPositionPath(pathPoints, targetRotation, startRotation, onComplete, options) {
+        options = options || {};
         if (!pathPoints || !pathPoints.length) {
+            if (typeof onComplete === "function") onComplete();
             return;
         }
 
-        // STAGE 12C7:
-        // Nie używamy już keyframe animation dla pozycji safe path.
-        // Keyframe'y dalej dawały wrażenie blokowego ruchu między punktami.
-        // Teraz kamera jest prowadzona ręcznie co klatkę po arc-length path.
         stopViewerSafeFocusRuntimeAnimation();
         scene.stopAnimation(camera);
 
-        var rawPoints = [camera.position.clone()].concat(pathPoints.map(function (point) {
+        var exactStart = options.startPosition && options.startPosition.clone
+            ? options.startPosition.clone()
+            : camera.position.clone();
+        var exactEnd = pathPoints[pathPoints.length - 1].clone();
+        var rawPoints = [exactStart].concat(pathPoints.map(function (point) {
             return point.clone();
         }));
+        applyViewerFocusVerticalTransition(rawPoints, exactStart.y, exactEnd.y);
 
-        var points = getViewerFocusSmoothedPath(rawPoints);
+        var smoothCandidate = getViewerFocusSmoothedPath(rawPoints);
+        applyViewerFocusVerticalTransition(smoothCandidate, exactStart.y, exactEnd.y);
+        var exclusions = [options.targetObject, options.sourceObject].filter(Boolean);
+        var collisionSnapshot = getGalleryExhibitCollisionSnapshot(exclusions, options.collisionSnapshot);
+        var smoothPathClear = smoothCandidate.length > 1 && isGalleryExhibitPathClear(smoothCandidate, exclusions, collisionSnapshot);
+        var rawPathClear = smoothPathClear || isGalleryExhibitPathClear(rawPoints, exclusions, collisionSnapshot);
+
+        if (!smoothPathClear && !rawPathClear) {
+            galleryExhibitTourRuntime.lastPathFailure = {
+                reason: "prevalidated-route-blocked",
+                from: vectorToState(exactStart),
+                to: vectorToState(exactEnd),
+                at: Date.now()
+            };
+            if (typeof options.onBlocked === "function") {
+                options.onBlocked(galleryExhibitTourRuntime.lastPathFailure);
+            }
+            return;
+        }
+
+        var points = smoothPathClear ? smoothCandidate : rawPoints;
+        points[0] = exactStart.clone();
+        points[points.length - 1] = exactEnd.clone();
+
         var arcTable = buildViewerFocusArcLengthTable(points);
         var totalLength = arcTable.total;
 
         if (totalLength <= 0.0001) {
-            camera.position.copyFrom(points[points.length - 1]);
+            camera.position.copyFrom(exactEnd);
             camera.rotation.copyFrom(targetRotation);
+            camera.rotation.z = 0;
+            if (typeof onComplete === "function") onComplete();
             return;
         }
 
-        var duration = Math.max(
-            1.15,
-            Math.min(
-                3.65,
-                totalLength / 3.55
-            )
-        );
-
+        var duration = Math.max(1.15, Math.min(3.65, totalLength / 3.55));
         var elapsed = 0;
         var startQuaternion = BABYLON.Quaternion.FromEulerVector(startRotation);
         var targetQuaternion = BABYLON.Quaternion.FromEulerVector(targetRotation);
-        var finalPosition = points[points.length - 1].clone();
 
         if (viewerSafeFocusPathDebug) {
-            viewerSafeFocusPathDebug.smoothed = true;
+            viewerSafeFocusPathDebug.smoothed = points === smoothCandidate;
+            viewerSafeFocusPathDebug.smoothingRejected = points !== smoothCandidate;
             viewerSafeFocusPathDebug.runtimeFollow = true;
+            viewerSafeFocusPathDebug.runtimeCollisionGuard = false;
+            viewerSafeFocusPathDebug.routePrevalidated = true;
             viewerSafeFocusPathDebug.rawPointCount = rawPoints.length;
-            viewerSafeFocusPathDebug.smoothPointCount = points.length;
+            viewerSafeFocusPathDebug.smoothPointCount = smoothCandidate.length;
             viewerSafeFocusPathDebug.totalLength = totalLength;
             viewerSafeFocusPathDebug.duration = duration;
-            viewerSafeFocusPathDebug.animationMode = "runtime_arc_length_slerp";
+            viewerSafeFocusPathDebug.cameraOwnership = "TRANSITION";
+            viewerSafeFocusPathDebug.animationMode = "single_owner_prevalidated_arc_length_slerp_exact_end";
         }
 
         viewerSafeFocusRuntimeObserver = scene.onBeforeRenderObservable.add(function () {
             var engine = scene.getEngine();
             var dt = engine ? engine.getDeltaTime() / 1000 : 1 / 60;
-
             dt = Math.max(0.001, Math.min(0.05, dt));
             elapsed += dt;
-
             var t = BABYLON.Scalar.Clamp(elapsed / duration, 0, 1);
             var easedT = viewerSafeFocusEaseInOut(t);
-            var distance = easedT * totalLength;
-
-            var sampledPosition = sampleViewerFocusPathByDistance(
-                points,
-                arcTable,
-                distance
-            );
+            var sampledPosition = sampleViewerFocusPathByDistance(points, arcTable, easedT * totalLength);
 
             camera.position.copyFrom(sampledPosition);
-
-            // Rotacja i pozycja jadą w tym samym runtime.
-            // Quaternion slerp usuwa szarpanie przy przejściach yaw/pitch.
-            var currentQuaternion = BABYLON.Quaternion.Slerp(
-                startQuaternion,
-                targetQuaternion,
-                easedT
-            );
-
-            var currentRotation = currentQuaternion.toEulerAngles();
-            camera.rotation.copyFrom(currentRotation);
+            var currentQuaternion = BABYLON.Quaternion.Slerp(startQuaternion, targetQuaternion, easedT);
+            camera.rotation.copyFrom(currentQuaternion.toEulerAngles());
             camera.rotation.z = 0;
 
             if (t >= 1) {
                 stopViewerSafeFocusRuntimeAnimation();
-                camera.position.copyFrom(finalPosition);
+                camera.position.copyFrom(exactEnd);
                 camera.rotation.copyFrom(targetRotation);
                 camera.rotation.z = 0;
+                if (typeof onComplete === "function") onComplete();
             }
         });
     }
 
     function focusCameraOnObject(targetMesh, options) {
         options = options || {};
-
-        enterMobileFocusState();
-
         var focusFrame = getGalleryObjectFocusFrame(targetMesh);
         var objectPosition = focusFrame.target.clone();
         var viewDirection = focusFrame.viewDirection.clone();
         var autoFocusDistance = focusFrame.distance;
         var useCustomFocus = !!(focusFrame.focusState && focusFrame.focusState.useCustomOffset);
-
-        // STAGE 12C39:
-        // Custom values are offsets added to automatic focus, not absolute camera coordinates.
-        // Checkbox ON with all sliders at zero equals the automatic focus result.
-        var targetCameraPosition = buildFocusCameraPosition(
-            objectPosition,
-            viewDirection,
-            autoFocusDistance,
-            useCustomFocus ? focusFrame.focusState.distanceOffset : 0,
-            useCustomFocus ? focusFrame.focusState.cameraHeightOffset : 0,
-            useCustomFocus ? focusFrame.focusState.viewPitchDegrees : 0
-        );
-
         var focusReturnWalkY = getGalleryDefaultWalkCameraY();
-
         var startPosition = camera.position.clone();
         var startRotation = camera.rotation.clone();
+        var inspectComposition = options.inspectMode ? getGalleryBottomInspectComposition(focusFrame, startRotation) : null;
+        var targetCameraPosition = null;
+        var targetRotation = null;
 
+        if (inspectComposition) {
+            autoFocusDistance = Math.max(autoFocusDistance, inspectComposition.autoDistance);
+            targetCameraPosition = inspectComposition.cameraPosition.clone();
+            targetRotation = inspectComposition.rotation.clone();
+            galleryInspectRuntime.lastComposition = {
+                targetName: focusFrame.object ? focusFrame.object.name || null : null,
+                distance: inspectComposition.distance,
+                autoDistance: inspectComposition.autoDistance,
+                lookTargetDownOffset: inspectComposition.lookTargetDownOffset,
+                popupHeight: inspectComposition.metrics.popupHeight,
+                reservedBottom: inspectComposition.metrics.reservedBottom,
+                availableHeight: inspectComposition.metrics.availableHeight,
+                safeRect: inspectComposition.metrics.safeRect,
+                rotationAware: true,
+                cornerCount: inspectComposition.corners.length,
+                iterations: inspectComposition.iterations,
+                projection: inspectComposition.projection,
+                validation: inspectComposition.validation,
+                recordedAt: Date.now()
+            };
+        } else {
+            targetCameraPosition = buildFocusCameraPosition(
+                objectPosition,
+                viewDirection,
+                autoFocusDistance,
+                useCustomFocus ? focusFrame.focusState.distanceOffset : 0,
+                useCustomFocus ? focusFrame.focusState.cameraHeightOffset : 0,
+                useCustomFocus ? focusFrame.focusState.viewPitchDegrees : 0,
+                null
+            );
+            targetRotation = getGalleryInspectRotationForCandidate(
+                targetCameraPosition,
+                objectPosition,
+                startRotation,
+                focusFrame,
+                useCustomFocus
+            );
+        }
+
+        var pathExclusions = [targetMesh, options.sourceObject].filter(Boolean);
+        var collisionSnapshot = options.skipSafePath
+            ? null
+            : createGalleryExhibitCollisionSnapshot(pathExclusions);
         var focusPath = options.skipSafePath
             ? [targetCameraPosition.clone()]
-            : findViewerSafeFocusPath(
-                startPosition,
-                targetCameraPosition
-            );
+            : findGalleryExhibitSafePath(startPosition, targetCameraPosition, targetMesh, {
+                sourceObject: options.sourceObject || null,
+                reason: options.reason || (options.inspectMode ? "inspect" : "focus"),
+                collisionSnapshot: collisionSnapshot
+            });
 
-        // STAGE 12C42:
-        // Safe-path collision planning is horizontal, but the final focus frame must keep
-        // the custom Up/Down and View Angle height. Earlier code flattened the last point
-        // to the current walk height, so saved focus settings were ignored after walking away.
-        if (focusPath && focusPath.length && targetCameraPosition && isFinite(Number(targetCameraPosition.y))) {
-            focusPath[focusPath.length - 1].y = targetCameraPosition.y;
+        if (!focusPath || !focusPath.length) {
+            if (typeof options.onPathBlocked === "function") {
+                options.onPathBlocked(galleryExhibitTourRuntime.lastPathFailure || { reason: "no-safe-path" });
+            }
+            return false;
         }
 
-        var finalCameraPosition = focusPath && focusPath.length
-            ? focusPath[focusPath.length - 1].clone()
-            : targetCameraPosition.clone();
+        // Custom Focus / safe-frame is authoritative. The route may add intermediate points,
+        // but it cannot rewrite the final camera position or rotation.
+        focusPath[focusPath.length - 1] = targetCameraPosition.clone();
+        var finalCameraPosition = targetCameraPosition.clone();
 
-        var tempCamera = new BABYLON.UniversalCamera(
-            "tempCamera",
-            finalCameraPosition.clone(),
-            scene
-        );
-
-        tempCamera.setTarget(objectPosition);
-        var targetRotation = tempCamera.rotation.clone();
-        tempCamera.dispose();
-
-        function fixRotation(target, current) {
-            while (target - current > Math.PI) {
-                target -= Math.PI * 2;
-            }
-
-            while (target - current < -Math.PI) {
-                target += Math.PI * 2;
-            }
-
-            return target;
+        function recordFinalSafeFrameValidation() {
+            if (!inspectComposition || !galleryInspectRuntime.lastComposition) return;
+            var finalProjection = projectGalleryInspectCorners(
+                inspectComposition.corners,
+                camera.position,
+                camera.rotation,
+                inspectComposition.metrics
+            );
+            galleryInspectRuntime.lastComposition.finalProjection = finalProjection;
+            galleryInspectRuntime.lastComposition.finalValidation = evaluateGalleryInspectSafeFrame(finalProjection, inspectComposition.metrics);
+            galleryInspectRuntime.lastComposition.finalValidatedAt = Date.now();
         }
 
-        targetRotation.x = fixRotation(targetRotation.x, startRotation.x);
-        targetRotation.y = fixRotation(targetRotation.y, startRotation.y);
-        targetRotation.z = fixRotation(targetRotation.z, startRotation.z);
-
-        // STAGE 12C42:
-        // View Angle is a camera pitch override/addition, not a position change.
-        // The object center defines the automatic look direction, then the user pitch is
-        // added on top so the setting cannot be cancelled by setTarget(bounds.center).
-        if (useCustomFocus && focusFrame.focusState) {
-            var customPitchRadians = BABYLON.Tools.ToRadians(
-                BABYLON.Scalar.Clamp(Number(focusFrame.focusState.viewPitchDegrees || 0), -45, 45)
-            );
-
-            targetRotation.x = BABYLON.Scalar.Clamp(
-                targetRotation.x + customPitchRadians,
-                BABYLON.Tools.ToRadians(-82),
-                BABYLON.Tools.ToRadians(82)
-            );
+        function completeFocus() {
+            recordFinalSafeFrameValidation();
+            if (typeof options.onComplete === "function") options.onComplete();
         }
 
         if (options.immediate) {
@@ -29713,33 +31959,39 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             camera.position.copyFrom(finalCameraPosition);
             camera.rotation.copyFrom(targetRotation);
             camera.rotation.z = 0;
-
+            syncGalleryInspectCameraCollisionHandoff();
             markGalleryFocusPreviewRuntime(
                 focusFrame.object,
-                options.fromFocusCameraUi ? "focus-camera-ui" : "object-focus",
+                options.fromFocusCameraUi ? "focus-camera-ui" : (options.inspectMode ? "bottom-inspect-safe-frame" : "object-focus"),
                 focusReturnWalkY
             );
-
-            return;
+            completeFocus();
+            return true;
         }
 
         markGalleryFocusPreviewRuntime(
             focusFrame.object,
-            options.fromFocusCameraUi ? "focus-camera-ui" : "object-focus",
+            options.fromFocusCameraUi ? "focus-camera-ui" : (options.inspectMode ? "bottom-inspect-safe-frame" : "object-focus"),
             focusReturnWalkY
         );
-
-        animateViewerFocusPositionPath(
-            focusPath,
-            targetRotation,
-            startRotation
-        );
+        animateViewerFocusPositionPath(focusPath, targetRotation, startRotation, completeFocus, {
+            startPosition: startPosition,
+            targetObject: targetMesh,
+            sourceObject: options.sourceObject || null,
+            collisionSnapshot: collisionSnapshot,
+            onBlocked: function (failure) {
+                if (typeof options.onPathBlocked === "function") {
+                    options.onPathBlocked(failure || { reason: "runtime-segment-blocked" });
+                }
+            }
+        });
+        return true;
     }
 
     // STAGE 12C62S6D - SUPABASE STATIC MODEL ASSETS
     var gallerySupabaseModelsRootUrl = "https://bazbszvhoxmuekxahokc.supabase.co/storage/v1/object/public/berryboy-art-gallery-assets/Models/";
 
-    BABYLON.SceneLoader.ImportMesh(
+    loadGalleryStartupAssetWithRetry(
         "",
         gallerySupabaseModelsRootUrl,
         "Floor_segment.glb",
@@ -29763,13 +32015,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
             freezeStaticGalleryMeshes(floorMeshes, "floor");
             updateMobileFloorBounds();
+            rebuildGalleryStreamingZones("floor-imported");
+            refreshGalleryCurrentStreamingZone("floor-imported", true);
             applyVisualReflectionSettings(readVisualSettingsFromScene());
             refreshViewerCollisionMeshes();
             refreshArtworkLightExclusions();
             refreshPedestalLightIncludedMeshes();
-            applyVisualReflectionSettings(readVisualSettingsFromScene());
-            refreshAllCommonLocalLightTargets();
-            refreshAllLocalSpotShadows();
 
             assetLoaded("floor");
         },
@@ -29790,7 +32041,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     // GLB trzyma geometrie i zaleznosci w jednym pliku, wiec nie uzywamy juz folderow Floor/Wall/props/Ceiling z GitHub raw.
     var wallModelRootUrl = gallerySupabaseModelsRootUrl;
 
-    BABYLON.SceneLoader.ImportMesh(
+    loadGalleryStartupAssetWithRetry(
         "",
         wallModelRootUrl,
         "Wall_segments.glb",
@@ -29825,8 +32076,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             });
             refreshViewerCollisionMeshes();
             refreshCommonLightingMaterialSupport();
-            refreshAllCommonLocalLightTargets();
-            refreshAllLocalSpotShadows();
 
             assetLoaded("wall");
         },
@@ -29845,7 +32094,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
     // STAGE 12C62S6D - PROPS GLB SUPABASE PATH
     // Props are loaded from the shared Supabase Models root.
-    BABYLON.SceneLoader.ImportMesh(
+    loadGalleryStartupAssetWithRetry(
         "",
         gallerySupabaseModelsRootUrl,
         "Props.glb",
@@ -29868,9 +32117,15 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             });
 
             markGalleryObjectsDirty("propsImported");
-            refreshViewerCollisionMeshes();
-            refreshAllCommonLocalLightTargets();
-            refreshAllLocalSpotShadows();
+            rebuildGalleryStreamingZones("props-imported");
+            propMeshes.forEach(function (mesh) { configureGalleryPropStreamingLod(mesh); });
+            updateGalleryPropZoneActivation();
+            if (galleryFastStartRuntime && !galleryFastStartRuntime.interactionFinalizationComplete) {
+                galleryFastStartRuntime.startupBatchGlobalRefreshNeeded = true;
+            } else {
+                refreshViewerCollisionMeshes();
+                hydrateSavedLocalLightTargetsForAll("props-imported");
+            }
 
             assetLoaded("props");
         },
@@ -29888,7 +32143,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
     // STAGE 12C62S6D - CEILING GLB SUPABASE PATH
     // Ceiling is loaded from the shared Supabase Models root.
-    BABYLON.SceneLoader.ImportMesh(
+    loadGalleryStartupAssetWithRetry(
         "",
         gallerySupabaseModelsRootUrl,
         "Ceiling.glb",
@@ -29913,8 +32168,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
             markGalleryGeometryDirty("ceilingImported");
             freezeStaticGalleryMeshes(ceilingMeshes, "ceiling");
-            refreshAllCommonLocalLightTargets();
-            refreshAllLocalSpotShadows();
 
             assetLoaded("ceiling");
         },
@@ -29936,22 +32189,13 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return slot && slot.metadata ? slot.metadata.model3d || null : null;
     }
 
+    
     function normalizeModel3dState(modelState) {
-        if (!modelState || typeof modelState !== "object") {
-            return null;
-        }
-
+        if (!modelState || typeof modelState !== "object") return null;
         var modelUrl = modelState.modelUrl || modelState.url || modelState.publicUrl || "";
         var modelPath = modelState.modelPath || modelState.path || "";
-
-        if (!modelUrl && modelPath) {
-            modelUrl = getPublicArtworkUrlFromPath(modelPath, modelState.storageBucket || galleryArtworkStorageBucket);
-        }
-
-        if (!modelUrl) {
-            return null;
-        }
-
+        if (!modelUrl && modelPath) modelUrl = getPublicArtworkUrlFromPath(modelPath, modelState.storageBucket || galleryArtworkStorageBucket);
+        if (!modelUrl) return null;
         return {
             modelUrl: modelUrl,
             modelPath: modelPath,
@@ -29963,16 +32207,13 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             assignedAt: modelState.assignedAt || new Date().toISOString(),
             sourceSlotName: modelState.sourceSlotName || "",
             isDuplicate: !!modelState.isDuplicate,
+            lodCullDistance: Number(modelState.lodCullDistance) || null,
+            lodUrl: modelState.lodUrl || modelState.modelUrlLow || modelState.lowUrl || "",
+            ktx2Ready: modelState.ktx2Ready !== false,
             transform: {
-                position: modelState.transform && modelState.transform.position
-                    ? modelState.transform.position
-                    : { x: 0, y: 0, z: 0 },
-                rotation: modelState.transform && modelState.transform.rotation
-                    ? modelState.transform.rotation
-                    : { x: 0, y: 0, z: 0 },
-                scaling: modelState.transform && modelState.transform.scaling
-                    ? modelState.transform.scaling
-                    : { x: 1, y: 1, z: 1 }
+                position: modelState.transform && modelState.transform.position ? modelState.transform.position : { x: 0, y: 0, z: 0 },
+                rotation: modelState.transform && modelState.transform.rotation ? modelState.transform.rotation : { x: 0, y: 0, z: 0 },
+                scaling: modelState.transform && modelState.transform.scaling ? modelState.transform.scaling : { x: 1, y: 1, z: 1 }
             }
         };
     }
@@ -30121,12 +32362,84 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         snapModel3dSlotRuntimeToFloor(slot);
     }
 
+    var galleryModel3dAssetContainerCache = {};
+
+    function getGalleryModel3dCacheKey(modelUrl) {
+        return String(modelUrl || "").trim();
+    }
+
+    async function getGalleryCachedModel3dContainer(modelUrl) {
+        var key = getGalleryModel3dCacheKey(modelUrl);
+
+        if (!key || !BABYLON.SceneLoader.LoadAssetContainerAsync) {
+            return null;
+        }
+
+        if (!galleryModel3dAssetContainerCache[key]) {
+            galleryModel3dAssetContainerCache[key] = BABYLON.SceneLoader.LoadAssetContainerAsync("", key, scene)
+                .catch(function (error) {
+                    delete galleryModel3dAssetContainerCache[key];
+                    throw error;
+                });
+        }
+
+        return galleryModel3dAssetContainerCache[key];
+    }
+
+    function instantiateGalleryCachedModel3d(container, slot) {
+        if (!container || !container.instantiateModelsToScene) {
+            return null;
+        }
+
+        var prefix = (slot && slot.name ? slot.name : "Model3D") + "_";
+        var instance = container.instantiateModelsToScene(function (sourceName) {
+            return prefix + sourceName;
+        }, false);
+        var roots = instance && Array.isArray(instance.rootNodes) ? instance.rootNodes : [];
+        var meshes = [];
+
+        roots.forEach(function (node) {
+            if (node && node.getClassName && /Mesh/.test(node.getClassName()) && meshes.indexOf(node) === -1) {
+                meshes.push(node);
+            }
+
+            if (node && node.getChildMeshes) {
+                node.getChildMeshes(false).forEach(function (mesh) {
+                    if (mesh && meshes.indexOf(mesh) === -1) {
+                        meshes.push(mesh);
+                    }
+                });
+            }
+        });
+
+        return {
+            roots: roots,
+            meshes: meshes,
+            instance: instance
+        };
+    }
+
+    function getGalleryModelStreamingAssetChoice(modelState, streamingTier) {
+        var tier = String(streamingTier || "deferred");
+        var highUrl = modelState && modelState.modelUrl ? String(modelState.modelUrl) : "";
+        var lowUrl = modelState && modelState.lodUrl ? String(modelState.lodUrl) : "";
+        if (tier === "nearby" && lowUrl) {
+            return { url: lowUrl, variant: "low", tier: tier };
+        }
+        return { url: highUrl, variant: "high", tier: tier };
+    }
+
     async function loadModel3dIntoSlot(slot, modelState) {
+        var streamingTier = modelState && modelState._galleryStreamingTier ? modelState._galleryStreamingTier : null;
         modelState = normalizeModel3dState(modelState);
+        if (modelState && streamingTier) modelState._galleryStreamingTier = streamingTier;
 
         if (!slot || !modelState || !modelState.modelUrl) {
             return false;
         }
+
+        var assetChoice = getGalleryModelStreamingAssetChoice(modelState, streamingTier || getGalleryStreamingTierForObject(slot));
+        if (!assetChoice.url) return false;
 
         slot.metadata = slot.metadata || {};
         slot.metadata.model3d = modelState;
@@ -30142,16 +32455,45 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         slot.metadata.model3dRuntime = {
             root: root,
             meshes: [],
-            loadedAt: new Date().toISOString()
+            loadedAt: new Date().toISOString(),
+            assetVariant: assetChoice.variant,
+            assetUrl: assetChoice.url,
+            requestedTier: assetChoice.tier
         };
 
         try {
-            var result = await BABYLON.SceneLoader.ImportMeshAsync(
-                "",
-                "",
-                modelState.modelUrl,
-                scene
-            );
+            var result = null;
+            var cachedInstance = null;
+
+            if (!galleryDeviceProfile.mobile) {
+                try {
+                    var cachedContainer = await getGalleryCachedModel3dContainer(assetChoice.url);
+                    cachedInstance = instantiateGalleryCachedModel3d(cachedContainer, slot);
+                } catch (cacheError) {
+                    console.warn("Model 3D cache fallback warning:", cacheError);
+                }
+            }
+
+            if (cachedInstance && cachedInstance.meshes.length) {
+                (cachedInstance.roots || []).forEach(function (cachedRoot) {
+                    if (cachedRoot) {
+                        cachedRoot.parent = root;
+                    }
+                });
+
+                result = {
+                    meshes: cachedInstance.meshes,
+                    rootNodes: cachedInstance.roots,
+                    fromAssetContainerCache: true
+                };
+            } else {
+                result = await BABYLON.SceneLoader.ImportMeshAsync(
+                    "",
+                    "",
+                    assetChoice.url,
+                    scene
+                );
+            }
 
             var loadedMeshes = (result && result.meshes ? result.meshes : []).filter(function (mesh) {
                 return mesh && mesh.name !== "__root__";
@@ -30167,24 +32509,39 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             });
 
             slot.metadata.model3dRuntime.meshes = loadedMeshes;
+            slot.metadata.galleryStreaming = slot.metadata.galleryStreaming || {};
+            slot.metadata.galleryStreaming.modelState = "loaded";
+            slot.metadata.galleryStreaming.suspended = false;
+            slot.metadata.galleryStreaming.lastActiveAt = Date.now();
+            slot.metadata.galleryStreaming.currentLoadTier = modelState._galleryStreamingTier || getGalleryStreamingTierForObject(slot);
+            slot.metadata.galleryStreaming.modelAssetVariant = assetChoice.variant;
+            slot.metadata.galleryStreaming.modelAssetUrl = assetChoice.url;
+            if (assetChoice.variant === "low") galleryZoneStreamingRuntime.lowLodModelLoads += 1;
+            else galleryZoneStreamingRuntime.highLodModelLoads += 1;
             setModel3dSlotTransformFromState(slot, modelState);
             applySculptureTransformToSlot(slot);
             applySculptureSlotVisualState(slot);
             snapModel3dSlotRuntimeToFloor(slot);
             refreshSculptureCollisionProxy(slot);
             refreshSculptureOutlines();
+            configureGalleryModelRuntimeLod(slot);
 
             galleryModel3dLastDebug = {
                 slot: slot.name,
                 modelUrl: modelState.modelUrl,
+                loadedUrl: assetChoice.url,
+                assetVariant: assetChoice.variant,
                 meshCount: loadedMeshes.length,
                 loadedAt: new Date().toISOString()
             };
 
-            refreshViewerCollisionMeshes();
-            refreshCommonLightingMaterialSupport();
-            refreshAllCommonLocalLightTargets();
-            refreshAllLocalSpotShadows();
+            if (galleryFastStartRuntime && galleryFastStartRuntime.startupBatchHydrationActive) {
+                galleryFastStartRuntime.startupBatchGlobalRefreshNeeded = true;
+            } else {
+                refreshViewerCollisionMeshes();
+                refreshCommonLightingMaterialSupport();
+                hydrateSavedLocalLightTargetsForAll("model3d-loaded");
+            }
             updateViewerModePlaceholderVisibility();
             updateModel3dSlotUi();
 
@@ -30193,6 +32550,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             console.warn("3D model load failed:", {
                 slot: slot.name,
                 modelUrl: modelState.modelUrl,
+                loadedUrl: assetChoice.url,
+                assetVariant: assetChoice.variant,
                 error: error
             });
 
@@ -30200,6 +32559,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             galleryModel3dLastDebug = {
                 slot: slot.name,
                 modelUrl: modelState.modelUrl,
+                loadedUrl: assetChoice.url,
+                assetVariant: assetChoice.variant,
                 error: error && error.message ? error.message : String(error)
             };
             notifyGalleryStatus("Nie udalo sie wczytac modelu 3D. Sprawdz URL/GLB i konsolę.");
@@ -30207,13 +32568,20 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
     }
 
+    
     function applyModel3dStateToSlot(slot, modelState) {
+        var forceImmediate = !!(modelState && modelState._galleryFastStartForceImmediate);
+        var streamingTier = modelState && modelState._galleryStreamingTier ? modelState._galleryStreamingTier : null;
         modelState = normalizeModel3dState(modelState);
-
-        if (!slot || !modelState) {
-            return Promise.resolve(false);
+        if (!slot || !modelState) return Promise.resolve(false);
+        if (streamingTier) modelState._galleryStreamingTier = streamingTier;
+        if (galleryFastStartRuntime.stateApplyActive && !forceImmediate) {
+            slot.metadata = slot.metadata || {};
+            slot.metadata.model3d = modelState;
+            queueGalleryFastStartModelLoad(slot, modelState);
+            applySculptureSlotVisualState(slot);
+            return Promise.resolve(true);
         }
-
         return loadModel3dIntoSlot(slot, modelState);
     }
 
@@ -30597,6 +32965,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         updateModel3dTransformUi();
         updateSculptureInfoUi();
         updateFocusCameraUi();
+        updateGalleryTourOrderUi();
         updateEditHelpStatus();
 
         return true;
@@ -30622,6 +32991,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             updateModel3dTransformUi();
             updateSculptureInfoUi();
             updateFocusCameraUi();
+            updateGalleryTourOrderUi();
         }
     }
 
@@ -31766,59 +34136,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             : window.innerWidth <= 768;
     }
 
-    function getArtworkPopupDistance() {
-        // Stage 8V:
-        // Na mobile kamera zwykle stoi dalej od obrazu i ma inne FOV/sterowanie,
-        // więc popup musi aktywować się z większego dystansu niż na desktopie.
-        if (getArtworkInfoPopupMobileMode()) {
-            // Stage 8Y:
-            // Mobile ma taki sam dystans w Viewer Mode i Edit Mode,
-            // ale mniejszy niż w 8X1, żeby popup pokazywał się nieco później.
-            return 6.65;
-        }
-
-        // Desktop też ma mieć taki sam dystans w Viewer Mode i Edit Mode.
-        return 3.9;
-    }
-
-    function getGalleryObjectPopupDistance(targetObject) {
-        var baseDistance = getArtworkPopupDistance();
-
-        if (!targetObject) {
-            return baseDistance;
-        }
-
-        try {
-            var frame = getGalleryObjectFocusFrame(targetObject);
-            var focusState = frame && frame.focusState ? frame.focusState : null;
-            var customDistanceOffset = focusState && focusState.useCustomOffset
-                ? Math.max(0, Number(focusState.distanceOffset || 0))
-                : 0;
-            var focusDistance = frame && isFinite(Number(frame.distance))
-                ? Number(frame.distance) + customDistanceOffset + 0.9
-                : baseDistance;
-
-            return BABYLON.Scalar.Clamp(
-                Math.max(baseDistance, focusDistance),
-                baseDistance,
-                getArtworkInfoPopupMobileMode() ? 10.5 : 8.5
-            );
-        } catch (popupDistanceError) {
-            return baseDistance;
-        }
-    }
-
-    function getGalleryInfoPopupRayDistance() {
-        return getArtworkInfoPopupMobileMode() ? 11.5 : 9.5;
-    }
-
-    // STAGE 11E - CENTER RAY POPUP TARGET
-    // Popup nie wybiera już najbliższego obrazu w promieniu.
-    // Najpierw musi trafić "niewidzialnym punktem" w środku kamery / ekranu.
-    // Dystans aktywacji zostaje taki sam jak wcześniej.
-    var artworkInfoPopupCenterRayEnabled = true;
-    var artworkInfoPopupCenterRayLengthExtra = 1.5;
-    var artworkInfoPopupLastTargetDebug = null;
 
     function getArtworkFromPopupPickMesh(mesh) {
         if (!mesh) {
@@ -31849,11 +34166,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return null;
     }
 
-    function isArtworkPopupRayCandidate(mesh) {
-        var artwork = getArtworkFromPopupPickMesh(mesh);
-
-        return isArtworkEligibleForInfoPopup(artwork);
-    }
 
     // STAGE 12C51 - POPUP ELIGIBILITY
     // Edit Mode can show popup previews while setting info.
@@ -31886,181 +34198,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return !!(hasImageUrl || imagePlaneVisible);
     }
 
-    function isArtworkEligibleForInfoPopup(artwork) {
-        if (!artwork || (artwork.isDisposed && artwork.isDisposed())) {
-            return false;
-        }
-
-        if (typeof isArtworkDeleted === "function" && isArtworkDeleted(artwork)) {
-            return false;
-        }
-
-        if (editMode) {
-            return true;
-        }
-
-        return artworkHasVisiblePopupDisplay(artwork) && hasArtworkInfo(getArtworkInfoState(artwork));
-    }
-
-    function isSculptureEligibleForInfoPopup(slot) {
-        if (!slot || (slot.isDisposed && slot.isDisposed())) {
-            return false;
-        }
-
-        if (editMode) {
-            return true;
-        }
-
-        return hasLoadedModel3dRuntime(slot) && hasSculptureInfo(getSculptureInfoState(slot));
-    }
-
-    function getCenterRayArtworkForInfoPopup() {
-        if (!camera || !scene || !scene.pickWithRay) {
-            return null;
-        }
-
-        var baseMaxDistance = getArtworkPopupDistance();
-        var rayLength = Math.max(baseMaxDistance + artworkInfoPopupCenterRayLengthExtra, getGalleryInfoPopupRayDistance());
-        var ray;
-
-        try {
-            ray = camera.getForwardRay(rayLength);
-        } catch (error) {
-            console.warn("Artwork popup center ray warning:", error);
-            return null;
-        }
-
-        var pickResult = scene.pickWithRay(
-            ray,
-            isArtworkPopupRayCandidate
-        );
-
-        if (!pickResult || !pickResult.hit || !pickResult.pickedMesh) {
-            artworkInfoPopupLastTargetDebug = {
-                mode: "centerRay",
-                hit: false,
-                maxDistance: baseMaxDistance
-            };
-            return null;
-        }
-
-        var artwork = getArtworkFromPopupPickMesh(pickResult.pickedMesh);
-
-        if (!artwork) {
-            artworkInfoPopupLastTargetDebug = {
-                mode: "centerRay",
-                hit: true,
-                rejected: "notArtwork",
-                pickedMesh: pickResult.pickedMesh ? pickResult.pickedMesh.name : ""
-            };
-            return null;
-        }
-
-        var maxDistance = getGalleryObjectPopupDistance(artwork);
-        var artworkFrame = null;
-        var artworkPosition;
-
-        try {
-            artworkFrame = getGalleryObjectFocusFrame(artwork);
-        } catch (artworkFrameError) {}
-
-        artworkPosition = artworkFrame && artworkFrame.target
-            ? artworkFrame.target
-            : artwork.getAbsolutePosition
-                ? artwork.getAbsolutePosition()
-                : artwork.position;
-
-        var distance = BABYLON.Vector3.Distance(
-            camera.position,
-            artworkPosition
-        );
-
-        if (distance > maxDistance) {
-            artworkInfoPopupLastTargetDebug = {
-                mode: "centerRay",
-                hit: true,
-                rejected: "distance",
-                artwork: artwork.name,
-                distance: distance,
-                maxDistance: maxDistance
-            };
-            return null;
-        }
-
-        artworkInfoPopupLastTargetDebug = {
-            mode: "centerRay",
-            hit: true,
-            artwork: artwork.name,
-            pickedMesh: pickResult.pickedMesh.name,
-            distance: distance,
-            maxDistance: maxDistance
-        };
-
-        return artwork;
-    }
-
-    function getNearestArtworkForInfoPopup() {
-        if (!camera) {
-            return null;
-        }
-
-        if (artworkInfoPopupCenterRayEnabled) {
-            var centerRayArtwork = getCenterRayArtworkForInfoPopup();
-
-            if (centerRayArtwork) {
-                return centerRayArtwork;
-            }
-
-            // STAGE 12C48 POPUP RECOVERY:
-            // If the center ray misses because an imagePlane/pick layer is not active, fall back to
-            // the same distance-based lookup instead of returning null forever.
-        }
-
-        var activeArtworks = typeof getActiveArtworks === "function"
-            ? getActiveArtworks()
-            : artworks;
-
-        var nearestArtwork = null;
-        var nearestDistance = Infinity;
-        var fallbackMaxDistance = getArtworkPopupDistance();
-
-        activeArtworks.forEach(function (artwork) {
-            if (!isArtworkEligibleForInfoPopup(artwork)) {
-                return;
-            }
-
-            var maxDistance = getGalleryObjectPopupDistance(artwork);
-            var artworkFrame = null;
-            var artworkPosition;
-
-            try {
-                artworkFrame = getGalleryObjectFocusFrame(artwork);
-            } catch (artworkFrameError) {}
-
-            artworkPosition = artworkFrame && artworkFrame.target
-                ? artworkFrame.target
-                : artwork.getAbsolutePosition();
-
-            var distance = BABYLON.Vector3.Distance(
-                camera.position,
-                artworkPosition
-            );
-
-            if (distance < maxDistance && distance < nearestDistance) {
-                nearestArtwork = artwork;
-                nearestDistance = distance;
-            }
-        });
-
-        artworkInfoPopupLastTargetDebug = {
-            mode: "nearestFallback",
-            artwork: nearestArtwork ? nearestArtwork.name : null,
-            distance: nearestDistance,
-            maxDistance: fallbackMaxDistance
-        };
-
-        return nearestArtwork;
-    }
 
     function normalizeSculptureInfo(info) {
         info = info || {};
@@ -32132,30 +34269,24 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return meshes.length ? meshes[0] : slot;
     }
 
-    function getNearestSculptureForInfoPopup() {
-        if (!camera) {
-            return null;
+
+    function getGalleryInfoAuthorInitials(authorName) {
+        var parts = String(authorName || "")
+            .trim()
+            .split(/\s+/)
+            .filter(function (part) {
+                return !!part;
+            });
+
+        if (!parts.length) {
+            return "";
         }
 
-        var nearestSlot = null;
-        var nearestDistance = Infinity;
+        if (parts.length === 1) {
+            return parts[0].slice(0, 2).toUpperCase();
+        }
 
-        artSpheres.forEach(function (slot) {
-            if (!isSculptureEligibleForInfoPopup(slot)) {
-                return;
-            }
-
-            var center = getSculptureSlotCenterWorldPosition(slot);
-            var maxDistance = getGalleryObjectPopupDistance(slot);
-            var distance = BABYLON.Vector3.Distance(camera.position, center);
-
-            if (distance < maxDistance && distance < nearestDistance) {
-                nearestSlot = slot;
-                nearestDistance = distance;
-            }
-        });
-
-        return nearestSlot;
+        return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
     }
 
     function updateArtworkInfoPopupContent(artwork) {
@@ -32170,47 +34301,80 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         var hasInfo = isSculpture
             ? hasSculptureInfo(info)
             : hasArtworkInfo(info);
+        var authorName = String(info.authorName || "").trim();
+        var popupAuthorPhotoUrl = getBestAuthorPhotoUrlFromInfo(info);
+        var authorInitials = getGalleryInfoAuthorInitials(authorName);
+
+        artworkInfoPopup.classList.toggle("has-info", hasInfo);
+        artworkInfoPopup.classList.toggle("has-author-photo", !!popupAuthorPhotoUrl);
+        artworkInfoPopup.classList.toggle("is-empty-info", !hasInfo);
+        artworkInfoPopup.setAttribute(
+            "aria-label",
+            isSculpture ? "Sculpture information" : "Artwork information"
+        );
+
+        if (artworkInfoPopupRefs.photoPlaceholder) {
+            artworkInfoPopupRefs.photoPlaceholder.innerText = authorInitials;
+            artworkInfoPopupRefs.photoPlaceholder.style.setProperty("display", "flex", "important");
+        }
 
         if (artworkInfoPopupRefs.photo) {
-            var popupAuthorPhotoUrl = getBestAuthorPhotoUrlFromInfo(info);
+            var photo = artworkInfoPopupRefs.photo;
+            photo.classList.remove("is-visible");
+            photo.alt = authorName ? ("Author photo: " + authorName) : "Author photo";
+            photo.dataset.galleryRequestedUrl = popupAuthorPhotoUrl || "";
 
             if (popupAuthorPhotoUrl) {
-                artworkInfoPopupRefs.photo.src = popupAuthorPhotoUrl;
-                artworkInfoPopupRefs.photo.classList.add("is-visible");
+                photo.onload = function () {
+                    if (photo.dataset.galleryRequestedUrl !== popupAuthorPhotoUrl) {
+                        return;
+                    }
 
-                if (artworkInfoPopupRefs.photoPlaceholder) {
-                    artworkInfoPopupRefs.photoPlaceholder.style.display = "none";
-                }
+                    photo.classList.add("is-visible");
+
+                    if (artworkInfoPopupRefs.photoPlaceholder) {
+                        artworkInfoPopupRefs.photoPlaceholder.style.setProperty("display", "none", "important");
+                    }
+                };
+                photo.onerror = function () {
+                    if (photo.dataset.galleryRequestedUrl !== popupAuthorPhotoUrl) {
+                        return;
+                    }
+
+                    photo.classList.remove("is-visible");
+
+                    if (artworkInfoPopupRefs.photoPlaceholder) {
+                        artworkInfoPopupRefs.photoPlaceholder.style.setProperty("display", "flex", "important");
+                    }
+                };
+                photo.src = popupAuthorPhotoUrl;
             } else {
-                artworkInfoPopupRefs.photo.removeAttribute("src");
-                artworkInfoPopupRefs.photo.classList.remove("is-visible");
-
-                if (artworkInfoPopupRefs.photoPlaceholder) {
-                    artworkInfoPopupRefs.photoPlaceholder.style.display = hasInfo ? "flex" : "none";
-                }
+                photo.onload = null;
+                photo.onerror = null;
+                photo.removeAttribute("src");
             }
         }
 
         if (artworkInfoPopupRefs.authorName) {
-            artworkInfoPopupRefs.authorName.innerText = hasInfo ? (info.authorName || "Unknown author") : "";
+            artworkInfoPopupRefs.authorName.innerText = authorName || (hasInfo ? "Unknown author" : "");
             artworkInfoPopupRefs.authorName.style.display = hasInfo ? "block" : "none";
         }
 
         if (artworkInfoPopupRefs.title) {
             artworkInfoPopupRefs.title.innerText = info.title || (isSculpture ? "Untitled sculpture" : "Untitled artwork");
-            artworkInfoPopupRefs.title.style.display = hasInfo ? "" : "none";
+            artworkInfoPopupRefs.title.style.display = hasInfo ? "block" : "none";
         }
 
         if (artworkInfoPopupRefs.description) {
             artworkInfoPopupRefs.description.innerText = info.description || "";
-            artworkInfoPopupRefs.description.style.display = info.description ? "" : "none";
+            artworkInfoPopupRefs.description.style.display = info.description ? "block" : "none";
         }
 
         if (artworkInfoPopupRefs.empty) {
             artworkInfoPopupRefs.empty.innerText = isSculpture
                 ? "No sculpture information added yet."
                 : "No artwork information added yet.";
-            artworkInfoPopupRefs.empty.style.display = hasInfo ? "none" : "";
+            artworkInfoPopupRefs.empty.style.display = hasInfo ? "none" : "block";
         }
     }
 
@@ -32226,7 +34390,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         artworkInfoPopup.style.visibility = "";
         artworkInfoPopup.style.opacity = "";
+        artworkInfoPopup.setAttribute("aria-hidden", "false");
         artworkInfoPopup.classList.add("is-visible");
+        updateGalleryInspectNavigationPosition();
     }
 
     function hideArtworkInfoPopup() {
@@ -32237,110 +34403,2070 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         artworkInfoPopup.classList.remove("is-visible");
         artworkInfoPopup.style.visibility = "hidden";
         artworkInfoPopup.style.opacity = "0";
+        artworkInfoPopup.setAttribute("aria-hidden", "true");
         currentArtworkInfoPopupMesh = null;
     }
 
 
 
-    var artworkInfoPopupThrottleMs = 150;
-    var artworkInfoPopupIdlePollMs = 450;
-    var artworkInfoPopupLastUpdateMs = 0;
-    var artworkInfoPopupLastCameraPosition = null;
-    var artworkInfoPopupLastCameraRotation = null;
-    var artworkInfoPopupCameraPositionEpsilonSq = 0.0009;
-    var artworkInfoPopupCameraRotationEpsilonSq = 0.000009;
 
-    function isArtworkInfoPopupVisible() {
-        return !!(
-            artworkInfoPopup &&
-            artworkInfoPopup.classList &&
-            artworkInfoPopup.classList.contains("is-visible")
-        );
+    // ============================================================
+    // STAGE 12C64Q — INSPECT OWNS CAMERA TRANSITION / CLEAN WASD HANDOFF
+    // There are no editable/free waypoints. Order is persisted on exhibits.
+    // Generated connector points are read-only and rebuilt after layout changes.
+    // ============================================================
+    var galleryExhibitTourRuntime = {
+        stage: "12C64Q",
+        schema: "exhibitTourOrder.c64j",
+        sequence: [],
+        pathEntries: [],
+        dirty: true,
+        rebuilding: false,
+        rebuildTimer: null,
+        rebuildRevision: 0,
+        debugVisible: false,
+        debugLines: [],
+        badgeOverlay: null,
+        badges: {},
+        lastRosterSignature: "",
+        lastPositionSignature: "",
+        lastOrderSignature: "",
+        lastRebuildReason: "initial",
+        lastRebuildAt: 0,
+        lastPath: null,
+        lastPathFailure: null,
+        monitorTick: 0,
+        suppressMonitorUntil: 0,
+        entrancePosition: new BABYLON.Vector3(-1, -2.2, -32)
+    };
+
+    function getGalleryExhibitStableKey(object, type) {
+        if (!object) return "";
+        object.metadata = object.metadata || {};
+        if (!object.metadata.tourStableId) {
+            object.metadata.tourStableId = String(type || (isSculptureSlotObject(object) ? "sculpture" : "artwork")) + ":" + String(object.name || object.uniqueId || "exhibit");
+        }
+        return String(object.metadata.tourStableId);
     }
 
-    function hasArtworkInfoPopupCameraChanged() {
-        if (!camera || !camera.position || !camera.rotation) {
-            return true;
+    function isGalleryExhibitDisposed(object) {
+        return !object || !!(object.isDisposed && object.isDisposed());
+    }
+
+    function isGalleryExhibitEligible(object, type, allowPlaceholder) {
+        if (isGalleryExhibitDisposed(object)) return false;
+        if (type === "artwork") {
+            if (typeof isArtworkDeleted === "function" && isArtworkDeleted(object)) return false;
+            return !!(allowPlaceholder || artworkHasVisiblePopupDisplay(object));
         }
-
-        if (!artworkInfoPopupLastCameraPosition || !artworkInfoPopupLastCameraRotation) {
-            artworkInfoPopupLastCameraPosition = camera.position.clone();
-            artworkInfoPopupLastCameraRotation = camera.rotation.clone();
-            return true;
+        if (type === "sculpture") {
+            if (deletedModel3dSlotNames && deletedModel3dSlotNames.indexOf(object.name) !== -1) return false;
+            return !!(
+                allowPlaceholder ||
+                hasLoadedModel3dRuntime(object) ||
+                hasSculptureInfo(getSculptureInfoState(object))
+            );
         }
-
-        var positionChanged = camera.position.subtract(artworkInfoPopupLastCameraPosition).lengthSquared() > artworkInfoPopupCameraPositionEpsilonSq;
-        var rotationChanged = camera.rotation.subtract(artworkInfoPopupLastCameraRotation).lengthSquared() > artworkInfoPopupCameraRotationEpsilonSq;
-
-        if (positionChanged || rotationChanged) {
-            artworkInfoPopupLastCameraPosition.copyFrom(camera.position);
-            artworkInfoPopupLastCameraRotation.copyFrom(camera.rotation);
-            return true;
-        }
-
         return false;
     }
 
-    function updateArtworkInfoPopupThrottled(force) {
-        if (isDraggingArtwork || isDraggingSphere) {
-            if (currentArtworkInfoPopupMesh || isArtworkInfoPopupVisible()) {
-                hideArtworkInfoPopup();
+    function collectGalleryExhibitDescriptors(options) {
+        options = options || {};
+        var allowPlaceholder = options.allowPlaceholder !== undefined
+            ? !!options.allowPlaceholder
+            : !!editMode;
+        var result = [];
+
+        getActiveArtworks().forEach(function (artwork) {
+            if (isGalleryExhibitEligible(artwork, "artwork", allowPlaceholder)) {
+                result.push({
+                    type: "artwork",
+                    object: artwork,
+                    key: getGalleryExhibitStableKey(artwork, "artwork")
+                });
             }
-            return;
+        });
+
+        artSpheres.forEach(function (slot) {
+            if (isGalleryExhibitEligible(slot, "sculpture", allowPlaceholder)) {
+                result.push({
+                    type: "sculpture",
+                    object: slot,
+                    key: getGalleryExhibitStableKey(slot, "sculpture")
+                });
+            }
+        });
+
+        return result;
+    }
+
+    function getGalleryExhibitDescriptorForObject(object) {
+        if (!object) return null;
+        var resolved = resolveGalleryInspectTarget(object, { allowPlaceholder: true });
+        if (!resolved || !resolved.object) return null;
+        return {
+            type: resolved.type,
+            object: resolved.object,
+            key: getGalleryExhibitStableKey(resolved.object, resolved.type)
+        };
+    }
+
+    function getGalleryExhibitTourOrder(object) {
+        var value = object && object.metadata ? Number(object.metadata.tourOrder) : 0;
+        return isFinite(value) && value > 0 ? Math.round(value) : 0;
+    }
+
+    function isGalleryExhibitTourOrderLocked(object) {
+        return !!(object && object.metadata && object.metadata.tourOrderLocked);
+    }
+
+    function setGalleryExhibitTourMetadata(object, order, locked) {
+        if (!object) return;
+        object.metadata = object.metadata || {};
+        object.metadata.tourOrderSchema = galleryExhibitTourRuntime.schema;
+        object.metadata.tourOrder = Math.max(1, Math.round(Number(order) || 1));
+        object.metadata.tourOrderLocked = !!locked;
+    }
+
+    function getGalleryExhibitWorldCenter(descriptor) {
+        if (!descriptor || !descriptor.object) return BABYLON.Vector3.Zero();
+        if (descriptor.type === "sculpture") {
+            return getSculptureSlotCenterWorldPosition(descriptor.object);
+        }
+        var bounds = getCachedVisibleBoundsForGalleryObject(descriptor.object, descriptor.type === "sculpture" ? getSculptureFocusMeshes(descriptor.object) : getArtworkFocusMeshes(descriptor.object));
+        if (bounds && bounds.center) return bounds.center.clone();
+        return descriptor.object.getAbsolutePosition ? descriptor.object.getAbsolutePosition().clone() : descriptor.object.position.clone();
+    }
+
+    function getGalleryExhibitWalkPoint(descriptor) {
+        var focusFrame = getGalleryObjectFocusFrame(descriptor.object);
+        var startRotation = camera.rotation.clone();
+        var composition = getGalleryBottomInspectComposition(focusFrame, startRotation);
+        var point = composition && composition.cameraPosition
+            ? composition.cameraPosition.clone()
+            : buildFocusCameraPosition(
+                focusFrame.target,
+                focusFrame.viewDirection,
+                focusFrame.distance,
+                focusFrame.focusState && focusFrame.focusState.useCustomOffset ? focusFrame.focusState.distanceOffset : 0,
+                focusFrame.focusState && focusFrame.focusState.useCustomOffset ? focusFrame.focusState.cameraHeightOffset : 0,
+                focusFrame.focusState && focusFrame.focusState.useCustomOffset ? focusFrame.focusState.viewPitchDegrees : 0,
+                null
+            );
+        return point;
+    }
+
+    function getGalleryExhibitAutoOrderPoint(descriptor) {
+        if (!descriptor) {
+            return galleryExhibitTourRuntime.entrancePosition.clone();
+        }
+        if (descriptor.autoOrderPoint && descriptor.autoOrderPoint.clone) {
+            return descriptor.autoOrderPoint.clone();
+        }
+        var point = null;
+        try {
+            point = getGalleryExhibitWalkPoint(descriptor);
+        } catch (error) {}
+        if (!point || !isFinite(Number(point.x)) || !isFinite(Number(point.z))) {
+            point = getGalleryExhibitWorldCenter(descriptor);
+        }
+        descriptor.autoOrderPoint = point.clone();
+        return point;
+    }
+
+    function getGalleryExhibitAutoOrderCost(fromDescriptor, candidateDescriptor) {
+        var fromPoint = getGalleryExhibitAutoOrderPoint(fromDescriptor);
+        var toPoint = getGalleryExhibitAutoOrderPoint(candidateDescriptor);
+        var distance = BABYLON.Vector3.Distance(fromPoint, toPoint);
+        var blocked = isGalleryExhibitSegmentBlocked(fromPoint, toPoint, [
+            fromDescriptor ? fromDescriptor.object : null,
+            candidateDescriptor.object
+        ].filter(Boolean));
+        return distance + (blocked ? Math.max(18, distance * 2.5) : 0);
+    }
+
+    function buildGalleryExhibitAutomaticSequence(descriptors) {
+        descriptors = (descriptors || []).slice();
+        if (descriptors.length <= 1) return descriptors;
+
+        // Cache one collision-safe approach point per exhibit. Using artwork centers would start
+        // inside wall geometry and incorrectly mark almost every automatic-order edge as blocked.
+        descriptors.forEach(function (descriptor) {
+            descriptor.autoOrderPoint = getGalleryExhibitAutoOrderPoint(descriptor);
+        });
+
+        var lockedByIndex = {};
+        var unlocked = [];
+        descriptors.forEach(function (descriptor) {
+            var order = getGalleryExhibitTourOrder(descriptor.object);
+            if (isGalleryExhibitTourOrderLocked(descriptor.object) && order > 0 && order <= descriptors.length && !lockedByIndex[order - 1]) {
+                lockedByIndex[order - 1] = descriptor;
+            } else {
+                unlocked.push(descriptor);
+            }
+        });
+
+        var output = new Array(descriptors.length);
+        Object.keys(lockedByIndex).forEach(function (key) {
+            output[Number(key)] = lockedByIndex[key];
+        });
+
+        var previous = null;
+        for (var index = 0; index < output.length; index += 1) {
+            if (output[index]) {
+                previous = output[index];
+                continue;
+            }
+            if (!unlocked.length) break;
+            var bestIndex = 0;
+            var bestCost = Infinity;
+            for (var i = 0; i < unlocked.length; i += 1) {
+                var cost = getGalleryExhibitAutoOrderCost(previous, unlocked[i]);
+                if (cost < bestCost) {
+                    bestCost = cost;
+                    bestIndex = i;
+                }
+            }
+            output[index] = unlocked.splice(bestIndex, 1)[0];
+            previous = output[index];
         }
 
-        var now = getGalleryPerformanceNow();
-        var cameraChanged = hasArtworkInfoPopupCameraChanged();
-        var popupVisible = isArtworkInfoPopupVisible();
-        var needsIdlePoll = !popupVisible && now - artworkInfoPopupLastUpdateMs >= artworkInfoPopupIdlePollMs;
+        return output.filter(Boolean);
+    }
 
-        // STAGE 12C51 POPUP RECOVERY:
-        // C43/C44 made popup updates camera-change driven. That is good for performance,
-        // but mode switches / hidden popup states can leave the popup asleep forever.
-        // When hidden, poll gently even if camera has not moved.
-        if (!force && !cameraChanged && !needsIdlePoll) {
-            return;
+    function applyGalleryExhibitSequenceOrders(sequence) {
+        (sequence || []).forEach(function (descriptor, index) {
+            var locked = isGalleryExhibitTourOrderLocked(descriptor.object);
+            setGalleryExhibitTourMetadata(descriptor.object, index + 1, locked);
+            descriptor.order = index + 1;
+        });
+        galleryExhibitTourRuntime.sequence = (sequence || []).slice();
+        return galleryExhibitTourRuntime.sequence;
+    }
+
+    function ensureGalleryExhibitTourSequence(recalculateAutoOrder) {
+        var descriptors = collectGalleryExhibitDescriptors({ allowPlaceholder: true });
+        if (!descriptors.length) {
+            galleryExhibitTourRuntime.sequence = [];
+            return [];
         }
 
-        if (!force && !needsIdlePoll && now - artworkInfoPopupLastUpdateMs < artworkInfoPopupThrottleMs) {
-            return;
+        var validOrders = {};
+        var allValidAndUnique = true;
+        descriptors.forEach(function (descriptor) {
+            var order = getGalleryExhibitTourOrder(descriptor.object);
+            if (order < 1 || order > descriptors.length || validOrders[order]) {
+                allValidAndUnique = false;
+            } else {
+                validOrders[order] = true;
+            }
+        });
+
+        var sequence;
+        if (recalculateAutoOrder || !allValidAndUnique) {
+            sequence = buildGalleryExhibitAutomaticSequence(descriptors);
+        } else {
+            sequence = descriptors.slice().sort(function (a, b) {
+                return getGalleryExhibitTourOrder(a.object) - getGalleryExhibitTourOrder(b.object);
+            });
         }
+        return applyGalleryExhibitSequenceOrders(sequence);
+    }
 
-        artworkInfoPopupLastUpdateMs = now;
+    function setGalleryExhibitTourOrder(object, requestedOrder, options) {
+        options = options || {};
+        var sequence = ensureGalleryExhibitTourSequence(false).slice();
+        var index = sequence.findIndex(function (descriptor) { return descriptor.object === object; });
+        if (index < 0) return false;
+        var descriptor = sequence.splice(index, 1)[0];
+        var targetIndex = BABYLON.Scalar.Clamp(Math.round(Number(requestedOrder) || 1) - 1, 0, sequence.length);
+        sequence.splice(targetIndex, 0, descriptor);
+        if (options.lock !== false) {
+            object.metadata = object.metadata || {};
+            object.metadata.tourOrderLocked = true;
+        }
+        applyGalleryExhibitSequenceOrders(sequence);
+        galleryExhibitTourRuntime.suppressMonitorUntil = Date.now() + 800;
+        rebuildGalleryExhibitTour({ reason: options.reason || "manual-order", recalculateAutoOrder: false, force: true });
+        return true;
+    }
 
-        measureGalleryPerformanceMetric("popupMs", function () {
-            updateArtworkInfoPopup();
+    function clearGalleryExhibitTourOrderLocks() {
+        collectGalleryExhibitDescriptors({ allowPlaceholder: true }).forEach(function (descriptor) {
+            descriptor.object.metadata = descriptor.object.metadata || {};
+            descriptor.object.metadata.tourOrderLocked = false;
         });
     }
 
+    
+    
+    function isGalleryExhibitMeshPartOfTarget(mesh, targetObject) {
+        if (!mesh || !targetObject) return false;
+        if (Array.isArray(targetObject)) {
+            return targetObject.some(function (candidate) { return isGalleryExhibitMeshPartOfTarget(mesh, candidate); });
+        }
+        if (mesh === targetObject) return true;
+        var current = mesh.parent;
+        while (current) {
+            if (current === targetObject) return true;
+            current = current.parent;
+        }
+        if (targetObject.metadata) {
+            if (targetObject.metadata.imagePlane === mesh || targetObject.metadata.sculptureCollisionProxy === mesh) return true;
+            var runtime = targetObject.metadata.model3dRuntime;
+            if (runtime && Array.isArray(runtime.meshes) && runtime.meshes.indexOf(mesh) !== -1) return true;
+        }
+        return false;
+    }
 
-    function updateArtworkInfoPopup() {
-        if (artworkInfoPopup) {
-            artworkInfoPopup.classList.toggle(
-                "is-mobile-popup",
-                getArtworkInfoPopupMobileMode()
+    function getGalleryExhibitObstacleMeshes(targetObject) {
+        var result = [];
+        var seen = {};
+        function add(mesh, type) {
+            if (!mesh || (mesh.isDisposed && mesh.isDisposed()) || isGalleryExhibitMeshPartOfTarget(mesh, targetObject)) return;
+            var proxy = type === "sculpture-proxy";
+            if (type !== "wall" && !proxy && ((mesh.isEnabled && !mesh.isEnabled()) || mesh.isVisible === false || Number(mesh.visibility) === 0)) return;
+            var id = mesh.uniqueId !== undefined ? String(mesh.uniqueId) : String(mesh.name || result.length);
+            if (seen[id]) return;
+            seen[id] = true;
+            result.push({ mesh: mesh, type: type });
+        }
+        wallMeshes.forEach(function (mesh) { add(mesh, "wall"); });
+        propMeshes.forEach(function (mesh) { add(mesh, "prop"); });
+        artSpheres.forEach(function (slot) {
+            if (!slot || isGalleryExhibitMeshPartOfTarget(slot, targetObject)) return;
+            if (slot.metadata && slot.metadata.sculptureCollisionProxy) add(slot.metadata.sculptureCollisionProxy, "sculpture-proxy");
+            if (slot.metadata && slot.metadata.model3dRuntime && Array.isArray(slot.metadata.model3dRuntime.meshes)) {
+                slot.metadata.model3dRuntime.meshes.forEach(function (mesh) { add(mesh, "sculpture"); });
+            }
+            if (slot.getChildMeshes) slot.getChildMeshes(false).forEach(function (mesh) { add(mesh, "pedestal"); });
+        });
+        return result;
+    }
+
+    function galleryExhibitSegmentIntersectsExpandedAabb2D(fromPosition, toPosition, minimum, maximum, padding) {
+        var x0=Number(fromPosition.x), z0=Number(fromPosition.z), x1=Number(toPosition.x), z1=Number(toPosition.z);
+        var minX=Number(minimum.x)-padding, maxX=Number(maximum.x)+padding, minZ=Number(minimum.z)-padding, maxZ=Number(maximum.z)+padding;
+        var dx=x1-x0, dz=z1-z0, t0=0, t1=1;
+        function clip(p,q) {
+            if (Math.abs(p)<0.000001) return q>=0;
+            var r=q/p;
+            if (p<0) { if (r>t1) return false; if (r>t0) t0=r; }
+            else { if (r<t0) return false; if (r<t1) t1=r; }
+            return true;
+        }
+        return clip(-dx,x0-minX)&&clip(dx,maxX-x0)&&clip(-dz,z0-minZ)&&clip(dz,maxZ-z0)&&t1>=t0;
+    }
+
+
+    // STAGE 12C64M — INSPECT COLLISION BROAD PHASE / EXACT RUNTIME GUARD
+    // A snapshot belongs only to one focus transition. It is not a global path/cache system.
+    // Bounds are captured once, then every exact ray test receives only nearby candidates.
+    function createGalleryExhibitCollisionSnapshot(targetObject) {
+        var snapshot = {
+            walls: [],
+            geometry: [],
+            proxies: [],
+            aabb: [],
+            nonWalls: [],
+            all: [],
+            createdAt: Date.now()
+        };
+        var seen = {};
+
+        function add(mesh, type) {
+            if (!mesh || (mesh.isDisposed && mesh.isDisposed()) || isGalleryExhibitMeshPartOfTarget(mesh, targetObject)) return;
+            if (type !== "wall" && type !== "sculpture-proxy") {
+                if ((mesh.isEnabled && !mesh.isEnabled()) || mesh.isVisible === false || Number(mesh.visibility) === 0) return;
+            }
+            var id = mesh.uniqueId !== undefined ? String(mesh.uniqueId) : String(mesh.name || snapshot.all.length);
+            if (seen[id]) return;
+            seen[id] = true;
+
+            var minimum = null;
+            var maximum = null;
+            try {
+                mesh.computeWorldMatrix(true);
+                var box = mesh.getBoundingInfo && mesh.getBoundingInfo().boundingBox;
+                if (box && box.minimumWorld && box.maximumWorld) {
+                    minimum = box.minimumWorld.clone();
+                    maximum = box.maximumWorld.clone();
+                }
+            } catch (error) {}
+
+            var entry = {
+                mesh: mesh,
+                type: type,
+                minimum: minimum,
+                maximum: maximum
+            };
+            snapshot.all.push(entry);
+            if (type === "wall") {
+                snapshot.walls.push(entry);
+            } else {
+                snapshot.nonWalls.push(entry);
+                if (type === "sculpture-proxy") snapshot.proxies.push(entry);
+                if (type === "sculpture-proxy" || mesh.isPickable === false) snapshot.aabb.push(entry);
+                else snapshot.geometry.push(entry);
+            }
+        }
+
+        getViewerWallCollisionMeshes().forEach(function (mesh) {
+            add(mesh, "wall");
+        });
+        getGalleryExhibitObstacleMeshes(targetObject).forEach(function (entry) {
+            if (!entry || entry.type === "wall") return;
+            add(entry.mesh, entry.type);
+        });
+
+        return snapshot;
+    }
+
+    function getGalleryExhibitCollisionSnapshot(targetObject, collisionSnapshot) {
+        return collisionSnapshot || createGalleryExhibitCollisionSnapshot(targetObject);
+    }
+
+    function getGalleryExhibitBroadPhaseCandidates(entries, fromPosition, toPosition, padding, verticalMin, verticalMax) {
+        return (entries || []).filter(function (entry) {
+            if (!entry || !entry.mesh) return false;
+            if (!entry.minimum || !entry.maximum) return true;
+            if (entry.maximum.y < verticalMin || entry.minimum.y > verticalMax) return false;
+            return galleryExhibitSegmentIntersectsExpandedAabb2D(
+                fromPosition,
+                toPosition,
+                entry.minimum,
+                entry.maximum,
+                padding
             );
+        });
+    }
+
+    function galleryExhibitRayHitsCollisionCandidates(origin, direction, rayLength, extraDistance, candidates) {
+        if (!candidates || !candidates.length) return false;
+        var maximumDistance = rayLength + extraDistance;
+        var ray = new BABYLON.Ray(origin, direction, maximumDistance);
+
+        // Direct per-mesh intersections avoid scene-wide predicate scans while preserving exact triangle tests.
+        if (typeof ray.intersectsMesh === "function") {
+            for (var i = 0; i < candidates.length; i += 1) {
+                var entry = candidates[i];
+                var mesh = entry && entry.mesh;
+                if (!mesh) continue;
+                try {
+                    var hit = ray.intersectsMesh(mesh, false);
+                    if (hit && hit.hit) {
+                        var hitDistance = isFinite(Number(hit.distance))
+                            ? Number(hit.distance)
+                            : (hit.pickedPoint ? BABYLON.Vector3.Distance(origin, hit.pickedPoint) : Infinity);
+                        if (hitDistance <= maximumDistance) return true;
+                    }
+                } catch (error) {}
+            }
+            return false;
         }
 
-        var artwork = getNearestArtworkForInfoPopup();
-        var sculpture = getNearestSculptureForInfoPopup();
-        var target = null;
+        // Compatibility fallback for older Babylon builds; still narrowed to broad-phase candidates.
+        var candidateSet = new Set(candidates.map(function (entry) { return entry.mesh; }));
+        var fallbackHit = scene.pickWithRay(ray, function (mesh) {
+            return candidateSet.has(mesh);
+        });
+        return !!(
+            fallbackHit &&
+            fallbackHit.hit &&
+            fallbackHit.pickedMesh &&
+            fallbackHit.distance <= maximumDistance
+        );
+    }
 
-        if (artwork && sculpture) {
-            var artworkDistance = BABYLON.Vector3.Distance(camera.position, artwork.getAbsolutePosition());
-            var sculptureDistance = BABYLON.Vector3.Distance(camera.position, getSculptureSlotCenterWorldPosition(sculpture));
-            target = sculptureDistance < artworkDistance ? sculpture : artwork;
-        } else {
-            target = artwork || sculpture;
+    function isGalleryExhibitWallSegmentBlocked(fromPosition, toPosition, collisionSnapshot) {
+        var snapshot = getGalleryExhibitCollisionSnapshot(null, collisionSnapshot);
+        var walls = snapshot.walls;
+        if (!walls.length || !fromPosition || !toPosition) return false;
+        var movement = toPosition.subtract(fromPosition); movement.y = 0;
+        var length = movement.length(); if (length <= 0.0001) return false;
+        var direction = movement.normalize();
+        var perpendicular = getViewerHorizontalPerpendicular(direction); if (perpendicular.lengthSquared() > 0.0001) perpendicular.normalize();
+        var radius = Math.max(viewerCollisionRadius + 0.16, 0.5);
+        var verticalMin = Math.min(Number(fromPosition.y), Number(toPosition.y)) - 0.16;
+        var verticalMax = Math.max(Number(fromPosition.y), Number(toPosition.y)) + 0.16;
+        var candidates = getGalleryExhibitBroadPhaseCandidates(
+            walls,
+            fromPosition,
+            toPosition,
+            radius + 0.14,
+            verticalMin,
+            verticalMax
+        );
+        if (!candidates.length) return false;
+        var offsets = [BABYLON.Vector3.Zero(), perpendicular.scale(radius), perpendicular.scale(-radius), perpendicular.scale(radius * 0.5), perpendicular.scale(-radius * 0.5)];
+        for (var i = 0; i < offsets.length; i += 1) {
+            var origin = fromPosition.add(offsets[i]);
+            var target = toPosition.add(offsets[i]);
+            var rayDirection = target.subtract(origin); var rayLength = rayDirection.length();
+            if (rayLength <= 0.0001) continue; rayDirection.normalize();
+            if (galleryExhibitRayHitsCollisionCandidates(origin, rayDirection, rayLength, 0.12, candidates)) return true;
+        }
+        return false;
+    }
+
+    function isGalleryExhibitMeshGeometrySegmentBlocked(fromPosition, toPosition, collisionSnapshot) {
+        var snapshot = getGalleryExhibitCollisionSnapshot(null, collisionSnapshot);
+        var movement = toPosition.subtract(fromPosition); movement.y = 0;
+        var length = movement.length(); if (length <= 0.0001) return false;
+        var direction = movement.normalize();
+        var perpendicular = getViewerHorizontalPerpendicular(direction); if (perpendicular.lengthSquared() > 0.0001) perpendicular.normalize();
+        var radius = Math.max(viewerCollisionRadius + 0.16, 0.5);
+        var hs = [0, radius, -radius, radius * 0.5, -radius * 0.5];
+        var vs = [0, -viewerCollisionHeight * 0.62, viewerCollisionHeight * 0.42];
+        var verticalMin = Math.min(Number(fromPosition.y), Number(toPosition.y)) + Math.min.apply(null, vs) - 0.1;
+        var verticalMax = Math.max(Number(fromPosition.y), Number(toPosition.y)) + Math.max.apply(null, vs) + 0.1;
+        var candidates = getGalleryExhibitBroadPhaseCandidates(
+            snapshot.geometry,
+            fromPosition,
+            toPosition,
+            radius + 0.1,
+            verticalMin,
+            verticalMax
+        ).filter(function (entry) {
+            var mesh = entry.mesh;
+            return !!(
+                mesh &&
+                mesh.isPickable !== false &&
+                (!mesh.isEnabled || mesh.isEnabled()) &&
+                mesh.isVisible !== false &&
+                Number(mesh.visibility) !== 0
+            );
+        });
+        if (!candidates.length) return false;
+
+        for (var v = 0; v < vs.length; v += 1) {
+            for (var h = 0; h < hs.length; h += 1) {
+                var origin = fromPosition.clone(); origin.y += vs[v]; origin.addInPlace(perpendicular.scale(hs[h]));
+                var target = toPosition.clone(); target.y += vs[v]; target.addInPlace(perpendicular.scale(hs[h]));
+                var rayDirection = target.subtract(origin); var rayLength = rayDirection.length();
+                if (rayLength <= 0.0001) continue; rayDirection.normalize();
+                if (galleryExhibitRayHitsCollisionCandidates(origin, rayDirection, rayLength, 0.08, candidates)) return true;
+            }
+        }
+        return false;
+    }
+
+    function isGalleryExhibitSegmentBlocked(fromPosition, toPosition, targetObject, collisionSnapshot) {
+        if (!fromPosition || !toPosition) return true;
+        if (BABYLON.Vector3.Distance(fromPosition, toPosition) <= 0.03) return false;
+        var snapshot = getGalleryExhibitCollisionSnapshot(targetObject, collisionSnapshot);
+        if (isGalleryExhibitWallSegmentBlocked(fromPosition, toPosition, snapshot)) return true;
+        if (isGalleryExhibitMeshGeometrySegmentBlocked(fromPosition, toPosition, snapshot)) return true;
+        var walkY = getGalleryDefaultWalkCameraY();
+        var verticalMin = walkY - viewerCollisionHeight - 0.2;
+        var verticalMax = walkY + viewerCollisionHeight + 0.2;
+        var padding = Math.max(viewerCollisionRadius + 0.2, 0.54);
+        var proxyCandidates = getGalleryExhibitBroadPhaseCandidates(
+            snapshot.aabb,
+            fromPosition,
+            toPosition,
+            padding,
+            verticalMin,
+            verticalMax
+        );
+        return proxyCandidates.length > 0;
+    }
+
+    function isGalleryExhibitPathClear(points, targetObject, collisionSnapshot) {
+        if (!points || points.length < 2) return false;
+        var snapshot = getGalleryExhibitCollisionSnapshot(targetObject, collisionSnapshot);
+        for (var i = 1; i < points.length; i += 1) {
+            if (isGalleryExhibitSegmentBlocked(points[i - 1], points[i], targetObject, snapshot)) return false;
+        }
+        return true;
+    }
+
+    function getGalleryExhibitPathLength(points) {
+        var length=0; for(var i=1;i<(points||[]).length;i+=1)length+=BABYLON.Vector3.Distance(points[i-1],points[i]); return length;
+    }
+
+    function findGalleryExhibitDoglegPath(start, end, targetObject, collisionSnapshot) {
+        var snapshot = getGalleryExhibitCollisionSnapshot(targetObject, collisionSnapshot);
+        var direct = [start, end]; if (isGalleryExhibitPathClear(direct, targetObject, snapshot)) return [end.clone()];
+        var horizontal = end.subtract(start); horizontal.y = 0; var distance = horizontal.length(); if (distance <= 0.001) return null;
+        var forward = horizontal.normalize(); var side = new BABYLON.Vector3(-forward.z, 0, forward.x); if (side.lengthSquared() > 0.0001) side.normalize();
+        var mid = start.add(end).scale(0.5); var candidates = []; var offsets = [1.2, 1.8, 2.6, 3.6, 4.8, 6.2, 8.0, 10.0];
+        function add(points, label) { var complete = [start].concat(points.map(function (p) { return p.clone(); })).concat([end]); candidates.push({ label: label, points: complete, length: getGalleryExhibitPathLength(complete) }); }
+        offsets.forEach(function (offset) { [-1, 1].forEach(function (sign) { var shift = side.scale(offset * sign); add([start.add(shift), end.add(shift)], "parallel"); add([mid.add(shift)], "mid"); add([start.add(forward.scale(Math.min(2.4, distance * 0.28))).add(shift), end.subtract(forward.scale(Math.min(2.4, distance * 0.28))).add(shift)], "dogleg"); }); });
+        candidates.sort(function (a, b) { return a.length - b.length; });
+        for (var i = 0; i < candidates.length; i += 1) {
+            if (isGalleryExhibitPathClear(candidates[i].points, targetObject, snapshot)) return candidates[i].points.slice(1);
+        }
+        return null;
+    }
+
+    function findGalleryExhibitGridPath(start, end, targetObject, collisionSnapshot) {
+        var margins = [8, 14, 22, 32];
+        var snapshot = getGalleryExhibitCollisionSnapshot(targetObject, collisionSnapshot);
+
+        function searchWithMargin(margin) {
+            var minX = Math.min(start.x, end.x) - margin;
+            var maxX = Math.max(start.x, end.x) + margin;
+            var minZ = Math.min(start.z, end.z) - margin;
+            var maxZ = Math.max(start.z, end.z) + margin;
+            var span = Math.max(maxX - minX, maxZ - minZ);
+            var cell = Math.max(0.72, span / 64);
+            var cols = Math.min(72, Math.max(3, Math.ceil((maxX - minX) / cell) + 1));
+            var rows = Math.min(72, Math.max(3, Math.ceil((maxZ - minZ) / cell) + 1));
+            cell = Math.max(
+                cell,
+                (maxX - minX) / Math.max(1, cols - 1),
+                (maxZ - minZ) / Math.max(1, rows - 1)
+            );
+
+            function nodePoint(ix, iz) {
+                return new BABYLON.Vector3(minX + ix * cell, start.y, minZ + iz * cell);
+            }
+
+            function nearest(point) {
+                return {
+                    x: BABYLON.Scalar.Clamp(Math.round((point.x - minX) / cell), 0, cols - 1),
+                    z: BABYLON.Scalar.Clamp(Math.round((point.z - minZ) / cell), 0, rows - 1)
+                };
+            }
+
+            function key(x, z) {
+                return x + "," + z;
+            }
+
+            var startNode = nearest(start);
+            var endNode = nearest(end);
+            var open = [{ x: startNode.x, z: startNode.z, g: 0, f: 0 }];
+            var best = {};
+            var parent = {};
+            var closed = {};
+            best[key(startNode.x, startNode.z)] = 0;
+
+            var directions = [
+                [1, 0], [-1, 0], [0, 1], [0, -1],
+                [1, 1], [1, -1], [-1, 1], [-1, -1]
+            ];
+            var iterations = 0;
+            var maxIterations = cols * rows * 2;
+
+            while (open.length && iterations < maxIterations) {
+                iterations += 1;
+                open.sort(function (a, b) { return a.f - b.f; });
+                var current = open.shift();
+                var currentKey = key(current.x, current.z);
+                if (closed[currentKey]) continue;
+                closed[currentKey] = true;
+
+                if (current.x === endNode.x && current.z === endNode.z) {
+                    var nodes = [];
+                    var cursor = currentKey;
+                    while (cursor) {
+                        var parts = cursor.split(',');
+                        nodes.push(nodePoint(Number(parts[0]), Number(parts[1])));
+                        cursor = parent[cursor] || null;
+                    }
+                    nodes.reverse();
+                    nodes[0] = start.clone();
+                    nodes[nodes.length - 1] = end.clone();
+
+                    var simplified = [nodes[0]];
+                    for (var n = 1; n < nodes.length - 1; n += 1) {
+                        if (!isGalleryExhibitSegmentBlocked(
+                            simplified[simplified.length - 1],
+                            nodes[n + 1],
+                            targetObject,
+                            snapshot
+                        )) {
+                            continue;
+                        }
+                        simplified.push(nodes[n]);
+                    }
+                    simplified.push(nodes[nodes.length - 1]);
+
+                    if (isGalleryExhibitPathClear(simplified, targetObject, snapshot)) {
+                        return simplified.slice(1);
+                    }
+                    return null;
+                }
+
+                var currentPoint = nodePoint(current.x, current.z);
+                for (var d = 0; d < directions.length; d += 1) {
+                    var nx = current.x + directions[d][0];
+                    var nz = current.z + directions[d][1];
+                    if (nx < 0 || nz < 0 || nx >= cols || nz >= rows) continue;
+                    var nodeKey = key(nx, nz);
+                    if (closed[nodeKey]) continue;
+                    var nextPoint = nodePoint(nx, nz);
+                    if (isGalleryExhibitSegmentBlocked(currentPoint, nextPoint, targetObject, snapshot)) continue;
+                    var step = BABYLON.Vector3.Distance(currentPoint, nextPoint);
+                    var nextCost = current.g + step;
+                    if (best[nodeKey] !== undefined && nextCost >= best[nodeKey]) continue;
+                    best[nodeKey] = nextCost;
+                    parent[nodeKey] = currentKey;
+                    var heuristic = Math.hypot(endNode.x - nx, endNode.z - nz) * cell;
+                    open.push({ x: nx, z: nz, g: nextCost, f: nextCost + heuristic });
+                }
+            }
+
+            return null;
         }
 
-        if (!target) {
-            hideArtworkInfoPopup();
+        for (var i = 0; i < margins.length; i += 1) {
+            var route = searchWithMargin(margins[i]);
+            if (route && route.length) {
+                if (viewerSafeFocusPathDebug) {
+                    viewerSafeFocusPathDebug.gridMargin = margins[i];
+                }
+                return route;
+            }
+        }
+
+        return null;
+    }
+
+
+    function findGalleryExhibitSafePath(startPosition, endPosition, targetObject, options) {
+        options = options || {};
+        var start = startPosition.clone(), end = endPosition.clone();
+        var exclusions = [targetObject, options.sourceObject].filter(Boolean);
+        var snapshot = getGalleryExhibitCollisionSnapshot(exclusions, options.collisionSnapshot);
+        var directClear = isGalleryExhibitPathClear([start, end], exclusions, snapshot);
+        var path = findGalleryExhibitDoglegPath(start, end, exclusions, snapshot);
+        var usedGrid = false;
+        if (!path && options.allowGrid !== false) {
+            path = findGalleryExhibitGridPath(start, end, exclusions, snapshot);
+            usedGrid = !!path;
+        }
+        viewerSafeFocusPathDebug = {
+            mode: directClear ? "direct" : (usedGrid ? "grid" : (path ? "dogleg" : "blocked")),
+            pointCount: path ? path.length : 0,
+            targetName: targetObject && targetObject.name ? targetObject.name : null,
+            sourceName: options.sourceObject && options.sourceObject.name ? options.sourceObject.name : null,
+            recordedAt: Date.now()
+        };
+        if (!path || !path.length) {
+            galleryExhibitTourRuntime.lastPathFailure = { reason: "no-safe-path", from: vectorToState(start), to: vectorToState(end), at: Date.now() };
+            return null;
+        }
+        var complete = [start].concat(path);
+        if (!isGalleryExhibitPathClear(complete, exclusions, snapshot)) {
+            galleryExhibitTourRuntime.lastPathFailure = { reason: "final-path-validation-failed", at: Date.now() };
+            return null;
+        }
+        galleryExhibitTourRuntime.lastPathFailure = null;
+        galleryExhibitTourRuntime.lastPath = { points: path.map(vectorToState), length: getGalleryExhibitPathLength(complete), at: Date.now(), reason: options.reason || "inspect" };
+        return path;
+    }
+
+    function disposeGalleryExhibitTourDebugLines() {
+        galleryExhibitTourRuntime.debugLines.forEach(function(mesh){try{mesh.dispose();}catch(error){}}); galleryExhibitTourRuntime.debugLines=[];
+    }
+
+    function refreshGalleryExhibitTourDebugLines() {
+        disposeGalleryExhibitTourDebugLines(); if(!galleryExhibitTourRuntime.debugVisible||!editMode)return;
+        galleryExhibitTourRuntime.pathEntries.forEach(function(entry,index){
+            var points=entry.points; if(!points||points.length<2)return;
+            var line=BABYLON.MeshBuilder.CreateLines("GalleryExhibitAutoPath_"+index,{points:points,updatable:false},scene);
+            line.color=entry.valid?new BABYLON.Color3(0.20,0.88,0.52):new BABYLON.Color3(1.0,0.24,0.22); line.isPickable=false; line.renderingGroupId=3; line.metadata={galleryExhibitGeneratedPath:true,fromKey:entry.from.key,toKey:entry.to.key,valid:entry.valid}; galleryExhibitTourRuntime.debugLines.push(line);
+        });
+    }
+
+    function setGalleryExhibitTourDebugVisible(visible) {
+        galleryExhibitTourRuntime.debugVisible=!!visible;
+        rebuildGalleryExhibitTour({ reason: "debug-visibility", recalculateAutoOrder: false, force: true });
+        refreshGalleryExhibitTourDebugLines();
+        return galleryExhibitTourRuntime.debugVisible;
+    }
+
+    function rebuildGalleryExhibitTour(options) {
+        options=options||{}; if(galleryExhibitTourRuntime.rebuilding)return galleryExhibitTourRuntime.sequence;
+        galleryExhibitTourRuntime.rebuilding=true;
+        try{
+            var sequence=ensureGalleryExhibitTourSequence(!!options.recalculateAutoOrder); var entries=[];
+            for(var i=0;i<sequence.length;i+=1){
+                if(sequence.length<2)break; var from=sequence[i],to=sequence[(i+1)%sequence.length]; var start=getGalleryExhibitWalkPoint(from),end=getGalleryExhibitWalkPoint(to); var connector=findGalleryExhibitSafePath(start,end,to.object,{sourceObject:from.object,reason:"tour-segment",allowGrid:galleryExhibitTourRuntime.debugVisible});
+                entries.push({from:from,to:to,points:[start].concat(connector||[end]),valid:!!connector});
+            }
+            galleryExhibitTourRuntime.pathEntries=entries; galleryExhibitTourRuntime.dirty=false; galleryExhibitTourRuntime.rebuildRevision+=1; galleryExhibitTourRuntime.lastRebuildReason=options.reason||"rebuild"; galleryExhibitTourRuntime.lastRebuildAt=Date.now();
+            refreshGalleryExhibitTourOrderBadges(); refreshGalleryExhibitTourDebugLines(); updateGalleryTourOrderUi();
+            galleryExhibitTourRuntime.lastRosterSignature=computeGalleryExhibitRosterSignature(); galleryExhibitTourRuntime.lastPositionSignature=computeGalleryExhibitPositionSignature(); galleryExhibitTourRuntime.lastOrderSignature=computeGalleryExhibitOrderSignature();
+            return sequence;
+        } finally { galleryExhibitTourRuntime.rebuilding=false; }
+    }
+
+    function scheduleGalleryExhibitTourRebuild(reason,options) {
+        options=options||{}; galleryExhibitTourRuntime.dirty=true; if(galleryExhibitTourRuntime.rebuildTimer)clearTimeout(galleryExhibitTourRuntime.rebuildTimer);
+        galleryExhibitTourRuntime.rebuildTimer=setTimeout(function(){galleryExhibitTourRuntime.rebuildTimer=null;rebuildGalleryExhibitTour({reason:reason||"scheduled",recalculateAutoOrder:!!options.recalculateAutoOrder,force:true});},Math.max(40,Number(options.delayMs)||180));
+    }
+
+    function computeGalleryExhibitRosterSignature(){return collectGalleryExhibitDescriptors({allowPlaceholder:true}).map(function(d){return d.key;}).sort().join('|');}
+    function computeGalleryExhibitPositionSignature(){return collectGalleryExhibitDescriptors({allowPlaceholder:true}).map(function(d){var p=getGalleryExhibitWorldCenter(d);return d.key+":"+[p.x,p.y,p.z].map(function(v){return Math.round(Number(v)*10)/10;}).join(',');}).sort().join('|');}
+    function computeGalleryExhibitOrderSignature(){return collectGalleryExhibitDescriptors({allowPlaceholder:true}).map(function(d){return d.key+":"+getGalleryExhibitTourOrder(d.object)+":"+(isGalleryExhibitTourOrderLocked(d.object)?1:0);}).sort().join('|');}
+
+    function ensureGalleryTourOrderOverlay() {
+        if(galleryExhibitTourRuntime.badgeOverlay&&galleryExhibitTourRuntime.badgeOverlay.isConnected)return galleryExhibitTourRuntime.badgeOverlay;
+        var overlay=document.createElement('div');overlay.id='galleryTourOrderOverlay';appendGalleryUiElement(overlay, "controls");galleryExhibitTourRuntime.badgeOverlay=overlay;return overlay;
+    }
+
+    function refreshGalleryExhibitTourOrderBadges() {
+        var overlay=ensureGalleryTourOrderOverlay(); var sequence=ensureGalleryExhibitTourSequence(false); var active={};
+        sequence.forEach(function(descriptor,index){var key=descriptor.key;active[key]=true;var badge=galleryExhibitTourRuntime.badges[key];if(!badge){badge=document.createElement('div');badge.className='gallery-tour-order-badge';badge.dataset.galleryExhibitKey=key;overlay.appendChild(badge);galleryExhibitTourRuntime.badges[key]=badge;}badge.textContent=String(index+1).padStart(2,'0');badge.classList.toggle('is-locked',isGalleryExhibitTourOrderLocked(descriptor.object));badge._galleryDescriptor=descriptor;});
+        Object.keys(galleryExhibitTourRuntime.badges).forEach(function(key){if(!active[key]){var badge=galleryExhibitTourRuntime.badges[key];if(badge&&badge.remove)badge.remove();delete galleryExhibitTourRuntime.badges[key];}});
+    }
+
+    function getGalleryExhibitBadgeAnchor(descriptor) {
+        var object=descriptor.object;var meshes=descriptor.type==='sculpture'?getSculptureFocusMeshes(object):getArtworkFocusMeshes(object);var bounds=getCachedVisibleBoundsForGalleryObject(object,meshes);
+        if(bounds&&bounds.max&&bounds.center)return new BABYLON.Vector3(bounds.center.x,bounds.max.y+0.45,bounds.center.z);
+        var p=getGalleryExhibitWorldCenter(descriptor);p.y+=0.8;return p;
+    }
+
+    function updateGalleryExhibitTourOrderBadges() {
+        var overlay=galleryExhibitTourRuntime.badgeOverlay;if(!overlay)return;var show=!!editMode&&!galleryInspectRuntime.active;overlay.style.display=show?'block':'none';if(!show)return;
+        var engine=scene.getEngine();var viewport=camera.viewport.toGlobal(engine.getRenderWidth(),engine.getRenderHeight());
+        Object.keys(galleryExhibitTourRuntime.badges).forEach(function(key){var badge=galleryExhibitTourRuntime.badges[key];var descriptor=badge._galleryDescriptor;if(!descriptor||isGalleryExhibitDisposed(descriptor.object)){badge.classList.remove('is-visible');return;}var anchor=getGalleryExhibitBadgeAnchor(descriptor);var projected=BABYLON.Vector3.Project(anchor,BABYLON.Matrix.Identity(),scene.getTransformMatrix(),viewport);var visible=projected.z>=0&&projected.z<=1&&projected.x>=-60&&projected.x<=engine.getRenderWidth()+60&&projected.y>=-60&&projected.y<=engine.getRenderHeight()+60;badge.style.left=projected.x+'px';badge.style.top=projected.y+'px';badge.classList.toggle('is-visible',visible);});
+    }
+
+    function monitorGalleryExhibitTourLayout() {
+        galleryExhibitTourRuntime.monitorTick = (galleryExhibitTourRuntime.monitorTick + 1) % 12;
+        if (
+            galleryExhibitTourRuntime.monitorTick !== 0 ||
+            Date.now() < galleryExhibitTourRuntime.suppressMonitorUntil ||
+            isDraggingArtwork ||
+            isDraggingSphere
+        ) {
+            return;
+        }
+        var roster = computeGalleryExhibitRosterSignature();
+        var positions = computeGalleryExhibitPositionSignature();
+        var orders = computeGalleryExhibitOrderSignature();
+        if (
+            roster !== galleryExhibitTourRuntime.lastRosterSignature ||
+            positions !== galleryExhibitTourRuntime.lastPositionSignature
+        ) {
+            scheduleGalleryExhibitTourRebuild("layout-change", {
+                recalculateAutoOrder: true,
+                delayMs: 160
+            });
+        } else if (orders !== galleryExhibitTourRuntime.lastOrderSignature) {
+            scheduleGalleryExhibitTourRebuild("order-change", {
+                recalculateAutoOrder: false,
+                delayMs: 80
+            });
+        }
+    }
+
+    scene.onBeforeRenderObservable.add(function(){updateGalleryExhibitTourOrderBadges();monitorGalleryExhibitTourLayout();});
+
+    // STAGE 12C64Q — INSPECT OWNS CAMERA TRANSITION / CLEAN WASD HANDOFF
+    // Viewer and Edit share one camera ownership state machine, one safe-frame runtime and one pathfinder.
+    // Navigation order belongs to artworks/sculptures (metadata.tourOrder); generated path points are read-only.
+    var galleryInspectRuntime = {
+        stage: "12C64Q",
+        active: false,
+        opening: false,
+        editPreview: false,
+        allowPlaceholder: false,
+        placeholder: false,
+        target: null,
+        type: null,
+        requestId: 0,
+        openedAt: null,
+        closedAt: null,
+        lastReason: "initial",
+        lastComposition: null,
+        refreshFrame: null,
+        previousTarget: null,
+        nextTarget: null,
+        navigationSequence: [],
+        navigationIndex: -1,
+        navigationWall: null,
+        navigationUpdatedAt: null
+    };
+
+    function resolveGalleryInspectTarget(pickedMesh, options) {
+        options = options || {};
+        var allowPlaceholder = !!options.allowPlaceholder;
+        var artwork = getArtworkFromPopupPickMesh(pickedMesh);
+
+        if (artwork && (allowPlaceholder || artworkHasVisiblePopupDisplay(artwork))) {
+            return {
+                type: "artwork",
+                object: artwork,
+                placeholder: !artworkHasVisiblePopupDisplay(artwork)
+            };
+        }
+
+        var sculptureSlot = getModel3dSlotFromPickedMesh(pickedMesh) || (isSculptureSlotObject(pickedMesh) ? pickedMesh : null);
+
+        if (sculptureSlot && (allowPlaceholder || hasLoadedModel3dRuntime(sculptureSlot))) {
+            return {
+                type: "sculpture",
+                object: sculptureSlot,
+                placeholder: !hasLoadedModel3dRuntime(sculptureSlot)
+            };
+        }
+
+        return null;
+    }
+
+    
+    
+    
+    
+    function getGalleryInspectExhibitSequence(referenceArtwork, options) {
+        options = options || {};
+        var allowPlaceholder = !!options.allowPlaceholder;
+        var sequence = ensureGalleryExhibitTourSequence(false).filter(function (descriptor) {
+            return isGalleryExhibitEligible(descriptor.object, descriptor.type, allowPlaceholder);
+        }).map(function (descriptor) { return descriptor.object; });
+        if (!referenceArtwork || sequence.indexOf(referenceArtwork) === -1) return [];
+        return sequence;
+    }
+
+    function getGalleryInspectExhibitNavigationLabel(target, fallback) {
+        if (!target) return fallback || "exhibit";
+        var info = isSculptureSlotObject(target) ? getSculptureInfoState(target) : getArtworkInfoState(target);
+        return (info && info.title) || target.name || fallback || "exhibit";
+    }
+
+    function prefetchGalleryInspectAuthorPhoto(target) {
+        if (!target) return;
+        try {
+            var info = isSculptureSlotObject(target) ? getSculptureInfoState(target) : getArtworkInfoState(target);
+            var url = getBestAuthorPhotoUrlFromInfo(info);
+            if (url) { var image = new Image(); image.decoding = "async"; image.src = url; }
+        } catch (error) {}
+    }
+
+    function getGalleryInspectRectUnion(rects) {
+        var valid = (rects || []).filter(function (rect) {
+            return !!(
+                rect &&
+                isFinite(Number(rect.left)) &&
+                isFinite(Number(rect.right)) &&
+                isFinite(Number(rect.top)) &&
+                isFinite(Number(rect.bottom)) &&
+                Number(rect.width) > 0 &&
+                Number(rect.height) > 0
+            );
+        });
+
+        if (!valid.length) {
+            return null;
+        }
+
+        var left = Math.min.apply(null, valid.map(function (rect) { return Number(rect.left); }));
+        var right = Math.max.apply(null, valid.map(function (rect) { return Number(rect.right); }));
+        var top = Math.min.apply(null, valid.map(function (rect) { return Number(rect.top); }));
+        var bottom = Math.max.apply(null, valid.map(function (rect) { return Number(rect.bottom); }));
+
+        return {
+            left: left,
+            right: right,
+            top: top,
+            bottom: bottom,
+            width: Math.max(0, right - left),
+            height: Math.max(0, bottom - top)
+        };
+    }
+
+    function getGalleryInspectUiRects() {
+        var popupRect = null;
+        var innerRect = null;
+        var avatarRect = null;
+        var previousRect = null;
+        var nextRect = null;
+
+        try {
+            popupRect = artworkInfoPopup && artworkInfoPopup.getBoundingClientRect
+                ? artworkInfoPopup.getBoundingClientRect()
+                : null;
+            innerRect = artworkInfoPopupRefs && artworkInfoPopupRefs.inner && artworkInfoPopupRefs.inner.getBoundingClientRect
+                ? artworkInfoPopupRefs.inner.getBoundingClientRect()
+                : null;
+            avatarRect = artworkInfoPopupRefs && artworkInfoPopupRefs.avatar && artworkInfoPopupRefs.avatar.getBoundingClientRect
+                ? artworkInfoPopupRefs.avatar.getBoundingClientRect()
+                : null;
+            previousRect = galleryInspectNavigationRefs.previous && !galleryInspectNavigationRefs.previous.classList.contains("is-hidden")
+                ? galleryInspectNavigationRefs.previous.getBoundingClientRect()
+                : null;
+            nextRect = galleryInspectNavigationRefs.next && !galleryInspectNavigationRefs.next.classList.contains("is-hidden")
+                ? galleryInspectNavigationRefs.next.getBoundingClientRect()
+                : null;
+        } catch (error) {}
+
+        return {
+            popup: popupRect,
+            inner: innerRect,
+            avatar: avatarRect,
+            previous: previousRect,
+            next: nextRect,
+            popupVisual: getGalleryInspectRectUnion([popupRect, innerRect, avatarRect]),
+            fullVisual: getGalleryInspectRectUnion([popupRect, innerRect, avatarRect, previousRect, nextRect])
+        };
+    }
+
+    var galleryMobileInspectSafeFrameRuntime = {
+        signature: "",
+        mode: "desktop",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        maxHeight: 0,
+        joystickVisible: false,
+        lastReason: "initial"
+    };
+
+    function isGalleryInspectLayoutElementVisible(element) {
+        if (!element || !element.getBoundingClientRect) {
+            return false;
+        }
+
+        var rect = element.getBoundingClientRect();
+        if (!rect || rect.width <= 1 || rect.height <= 1) {
+            return false;
+        }
+
+        try {
+            var style = window.getComputedStyle(element);
+            return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity || 1) > 0.01;
+        } catch (error) {
+            return true;
+        }
+    }
+
+    function updateGalleryMobileInspectSafeFrame(reason) {
+        if (!artworkInfoPopup) {
+            return galleryMobileInspectSafeFrameRuntime;
+        }
+
+        var mobile = getArtworkInfoPopupMobileMode();
+        if (!mobile) {
+            artworkInfoPopup.removeAttribute("data-mobile-safe-frame-mode");
+            [
+                "--gallery-mobile-inspect-left",
+                "--gallery-mobile-inspect-right",
+                "--gallery-mobile-inspect-bottom",
+                "--gallery-mobile-inspect-max-height"
+            ].forEach(function (name) {
+                artworkInfoPopup.style.removeProperty(name);
+            });
+            galleryMobileInspectSafeFrameRuntime.mode = "desktop";
+            galleryMobileInspectSafeFrameRuntime.signature = "desktop";
+            galleryMobileInspectSafeFrameRuntime.lastReason = reason || "desktop";
+            return galleryMobileInspectSafeFrameRuntime;
+        }
+
+        var root = getGalleryUiRoot();
+        var rootRect = null;
+        var joystick = document.getElementById("mobileJoystickBase");
+        var joystickRect = null;
+
+        try {
+            rootRect = root && root.getBoundingClientRect ? root.getBoundingClientRect() : null;
+            joystickRect = isGalleryInspectLayoutElementVisible(joystick)
+                ? joystick.getBoundingClientRect()
+                : null;
+        } catch (error) {}
+
+        if (!rootRect || rootRect.width <= 1 || rootRect.height <= 1) {
+            return galleryMobileInspectSafeFrameRuntime;
+        }
+
+        var edge = rootRect.width <= 380 ? 10 : 14;
+        var gap = rootRect.width <= 380 ? 10 : 14;
+        var left = edge;
+        var right = edge;
+        var bottom = edge;
+        var mode = "bottom";
+        var joystickVisible = !!(
+            joystickRect &&
+            joystickRect.right > rootRect.left &&
+            joystickRect.left < rootRect.right &&
+            joystickRect.bottom > rootRect.top &&
+            joystickRect.top < rootRect.bottom
+        );
+
+        if (joystickVisible) {
+            var joystickRight = Math.max(0, joystickRect.right - rootRect.left);
+            var joystickTopReserve = Math.max(0, rootRect.bottom - joystickRect.top);
+            var landscape = rootRect.width > rootRect.height;
+            var sideLeft = joystickRight + gap;
+            var sideAvailable = rootRect.width - sideLeft - edge;
+
+            if (landscape && rootRect.height <= 600 && sideAvailable >= 300) {
+                mode = "side";
+                left = sideLeft;
+                bottom = edge;
+            } else {
+                mode = "above-joystick";
+                bottom = joystickTopReserve + gap;
+            }
+        }
+
+        var topGap = rootRect.height <= 430 ? 8 : 14;
+        var maxHeight = Math.max(148, rootRect.height - bottom - topGap);
+        var signature = [
+            mode,
+            Math.round(left),
+            Math.round(right),
+            Math.round(bottom),
+            Math.round(maxHeight),
+            joystickVisible ? 1 : 0
+        ].join(":");
+
+        galleryMobileInspectSafeFrameRuntime.mode = mode;
+        galleryMobileInspectSafeFrameRuntime.bottom = bottom;
+        galleryMobileInspectSafeFrameRuntime.left = left;
+        galleryMobileInspectSafeFrameRuntime.right = right;
+        galleryMobileInspectSafeFrameRuntime.maxHeight = maxHeight;
+        galleryMobileInspectSafeFrameRuntime.joystickVisible = joystickVisible;
+        galleryMobileInspectSafeFrameRuntime.lastReason = reason || "refresh";
+
+        if (signature === galleryMobileInspectSafeFrameRuntime.signature) {
+            return galleryMobileInspectSafeFrameRuntime;
+        }
+
+        galleryMobileInspectSafeFrameRuntime.signature = signature;
+        artworkInfoPopup.setAttribute("data-mobile-safe-frame-mode", mode);
+        artworkInfoPopup.style.setProperty("--gallery-mobile-inspect-left", left.toFixed(1) + "px");
+        artworkInfoPopup.style.setProperty("--gallery-mobile-inspect-right", right.toFixed(1) + "px");
+        artworkInfoPopup.style.setProperty("--gallery-mobile-inspect-bottom", bottom.toFixed(1) + "px");
+        artworkInfoPopup.style.setProperty("--gallery-mobile-inspect-max-height", maxHeight.toFixed(1) + "px");
+
+        return galleryMobileInspectSafeFrameRuntime;
+    }
+
+    function updateGalleryInspectNavigationPosition() {
+        if (!galleryInspectNavigation || !artworkInfoPopup) {
             return;
         }
 
-        showArtworkInfoPopup(target);
+        // Stage 12C65D: arrows are physically inside the popup component.
+        // Their desktop and mobile placement is CSS-owned; JS only measures the mobile safe-frame.
+        updateGalleryMobileInspectSafeFrame("navigation-position");
     }
+
+    function setGalleryInspectNavigationButtonState(button, target, direction) {
+        if (!button) return;
+        var missingTarget = !target;
+        var temporarilyLocked = !!target && galleryInspectRuntime.opening;
+
+        // Keep the button visible while navigation is temporarily locked. On mobile the
+        // buttons form the second grid row of the popup; hiding them during the camera
+        // transition collapsed that row and forced the safe-frame to recompose twice.
+        button.disabled = missingTarget || temporarilyLocked;
+        button.classList.toggle("is-hidden", missingTarget);
+        button.classList.toggle("is-transition-locked", temporarilyLocked);
+        button.setAttribute("aria-hidden", missingTarget ? "true" : "false");
+        button.setAttribute("aria-busy", temporarilyLocked ? "true" : "false");
+
+        if (target) {
+            button.setAttribute("aria-label", (direction === "previous" ? "Previous exhibit: " : "Next exhibit: ") + getGalleryInspectExhibitNavigationLabel(target, "exhibit"));
+        } else {
+            button.removeAttribute("aria-label");
+        }
+    }
+
+    function updateGalleryInspectExhibitNavigation(target, type, shouldShow) {
+        var sequence = [];
+        var index = -1;
+        var previous = null;
+        var next = null;
+        if (target) {
+            sequence = getGalleryInspectExhibitSequence(target, { allowPlaceholder: !!galleryInspectRuntime.allowPlaceholder });
+            index = sequence.indexOf(target);
+            if (index >= 0 && sequence.length > 1) {
+                previous = sequence[(index - 1 + sequence.length) % sequence.length];
+                next = sequence[(index + 1) % sequence.length];
+            }
+        }
+        galleryInspectRuntime.navigationSequence = sequence;
+        galleryInspectRuntime.navigationIndex = index;
+        galleryInspectRuntime.previousTarget = previous;
+        galleryInspectRuntime.nextTarget = next;
+        galleryInspectRuntime.navigationWall = null;
+        galleryInspectRuntime.navigationUpdatedAt = Date.now();
+        setGalleryInspectNavigationButtonState(galleryInspectNavigationRefs.previous, previous, "previous");
+        setGalleryInspectNavigationButtonState(galleryInspectNavigationRefs.next, next, "next");
+        var visible = !!(shouldShow && galleryInspectRuntime.active && sequence.length > 1 && previous && next);
+        if (galleryInspectNavigation) {
+            galleryInspectNavigation.classList.toggle("is-visible", visible);
+            galleryInspectNavigation.setAttribute("aria-hidden", visible ? "false" : "true");
+        }
+        if (visible) {
+            updateGalleryInspectNavigationPosition();
+            prefetchGalleryInspectAuthorPhoto(previous);
+            prefetchGalleryInspectAuthorPhoto(next);
+        }
+        return { sequence: sequence, index: index, previous: previous, next: next, visible: visible };
+    }
+
+    function hideGalleryInspectNavigation() {
+        galleryInspectRuntime.previousTarget = null;
+        galleryInspectRuntime.nextTarget = null;
+        galleryInspectRuntime.navigationSequence = [];
+        galleryInspectRuntime.navigationIndex = -1;
+        galleryInspectRuntime.navigationWall = null;
+
+        if (galleryInspectNavigation) {
+            galleryInspectNavigation.classList.remove("is-visible");
+            galleryInspectNavigation.setAttribute("aria-hidden", "true");
+        }
+
+        setGalleryInspectNavigationButtonState(galleryInspectNavigationRefs.previous, null, "previous");
+        setGalleryInspectNavigationButtonState(galleryInspectNavigationRefs.next, null, "next");
+    }
+
+    function navigateGalleryInspectExhibit(direction) {
+        if (!galleryInspectRuntime.active || galleryInspectRuntime.opening) return false;
+        var target = direction === "previous" ? galleryInspectRuntime.previousTarget : galleryInspectRuntime.nextTarget;
+        if (!target) return false;
+        var source = galleryInspectRuntime.target;
+        return openGalleryInspectTarget(target, {
+            reason: direction === "previous" ? "inspect-navigation-previous" : "inspect-navigation-next",
+            editPreview: galleryInspectRuntime.editPreview,
+            allowPlaceholder: galleryInspectRuntime.allowPlaceholder,
+            preservePopup: true,
+            sourceObject: source
+        });
+    }
+
+    function getGalleryBottomInspectPopupMetrics() {
+        updateGalleryMobileInspectSafeFrame("composition-metrics");
+        var engine = scene && scene.getEngine ? scene.getEngine() : null;
+        var canvasRect = null;
+
+        try {
+            canvasRect = canvas && canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : null;
+        } catch (error) {}
+
+        // Popup dimensions are CSS pixels, so camera composition must use the canvas CSS box too.
+        // Mixing engine render pixels with CSS pixels breaks the frame on DPR / hardware scaling.
+        var renderWidth = canvasRect && canvasRect.width > 1
+            ? canvasRect.width
+            : (engine ? Math.max(1, engine.getRenderWidth()) : Math.max(1, window.innerWidth || 1));
+        var renderHeight = canvasRect && canvasRect.height > 1
+            ? canvasRect.height
+            : (engine ? Math.max(1, engine.getRenderHeight()) : Math.max(1, window.innerHeight || 1));
+        var uiRects = getGalleryInspectUiRects();
+        var rect = uiRects.popup;
+        var popupVisualRect = uiRects.popupVisual || rect;
+        var fullVisualRect = uiRects.fullVisual || popupVisualRect;
+        var mobile = getArtworkInfoPopupMobileMode();
+        var fallbackHeight = mobile ? Math.min(renderHeight * 0.26, 230) : Math.min(renderHeight * 0.25, 280);
+        var popupHeight = popupVisualRect && popupVisualRect.height > 10 ? popupVisualRect.height : fallbackHeight;
+        var bottomGap = mobile ? 18 : 30;
+        var objectGap = mobile ? 24 : 32;
+        var topMargin = mobile ? 28 : 46;
+        var sideMargin = mobile ? 22 : 48;
+        var reservedBottom = Math.min(renderHeight * 0.56, popupHeight + bottomGap + objectGap);
+        var fallbackSafeBottom = renderHeight - reservedBottom;
+        var popupTopInCanvas = null;
+
+        if (popupVisualRect && canvasRect && isFinite(Number(popupVisualRect.top)) && isFinite(Number(canvasRect.top))) {
+            var hiddenPopupTranslateY = artworkInfoPopup && artworkInfoPopup.classList && artworkInfoPopup.classList.contains("is-visible")
+                ? 0
+                : 12;
+            popupTopInCanvas = Number(popupVisualRect.top) - Number(canvasRect.top) - hiddenPopupTranslateY;
+        }
+
+        var measuredSafeBottom = isFinite(Number(popupTopInCanvas))
+            ? Number(popupTopInCanvas) - objectGap
+            : fallbackSafeBottom;
+        var mobileSafeFrameMode = artworkInfoPopup && artworkInfoPopup.getAttribute
+            ? String(artworkInfoPopup.getAttribute("data-mobile-safe-frame-mode") || "")
+            : "";
+        var sideDockedMobilePopup = mobile && mobileSafeFrameMode === "side";
+        var safeTop = BABYLON.Scalar.Clamp(topMargin, 0, Math.max(0, renderHeight - 120));
+        var safeBottom = sideDockedMobilePopup
+            ? BABYLON.Scalar.Clamp(renderHeight - bottomGap, safeTop + 120, renderHeight)
+            : BABYLON.Scalar.Clamp(
+                measuredSafeBottom,
+                safeTop + Math.max(120, renderHeight * 0.26),
+                renderHeight - bottomGap
+            );
+        var safeLeft = BABYLON.Scalar.Clamp(sideMargin, 0, Math.max(0, renderWidth * 0.24));
+        var measuredSafeRight = sideDockedMobilePopup && popupVisualRect && canvasRect
+            ? Number(popupVisualRect.left) - Number(canvasRect.left) - objectGap
+            : renderWidth - sideMargin;
+        var safeRight = BABYLON.Scalar.Clamp(measuredSafeRight, safeLeft + 120, renderWidth);
+        var availableHeight = Math.max(120, safeBottom - safeTop);
+        var availableWidth = Math.max(120, safeRight - safeLeft);
+
+        return {
+            mobile: mobile,
+            mobileSafeFrameMode: mobileSafeFrameMode,
+            sideDockedMobilePopup: sideDockedMobilePopup,
+            renderWidth: renderWidth,
+            renderHeight: renderHeight,
+            popupHeight: popupHeight,
+            popupTopInCanvas: popupTopInCanvas,
+            popupVisualRect: popupVisualRect,
+            fullVisualRect: fullVisualRect,
+            bottomGap: bottomGap,
+            objectGap: objectGap,
+            topMargin: topMargin,
+            sideMargin: sideMargin,
+            reservedBottom: reservedBottom,
+            availableHeight: availableHeight,
+            availableWidth: availableWidth,
+            availableRatio: BABYLON.Scalar.Clamp(availableHeight / renderHeight, 0.26, 1),
+            safeRect: {
+                left: safeLeft,
+                right: safeRight,
+                top: safeTop,
+                bottom: safeBottom,
+                width: availableWidth,
+                height: availableHeight,
+                centerX: (safeLeft + safeRight) * 0.5,
+                centerY: (safeTop + safeBottom) * 0.5
+            }
+        };
+    }
+
+    function getGalleryInspectFocusMeshes(focusFrame) {
+        if (!focusFrame || !focusFrame.object) {
+            return [];
+        }
+
+        if (focusFrame.type === "artwork") {
+            return getArtworkFocusMeshes(focusFrame.object);
+        }
+
+        if (focusFrame.type === "sculpture") {
+            return getSculptureFocusMeshes(focusFrame.object);
+        }
+
+        return [focusFrame.object];
+    }
+
+    function getGalleryInspectWorldCorners(focusFrame) {
+        var corners = [];
+
+        getGalleryInspectFocusMeshes(focusFrame).forEach(function (mesh) {
+            if (!mesh || (mesh.isDisposed && mesh.isDisposed()) || !mesh.getBoundingInfo || !mesh.computeWorldMatrix) {
+                return;
+            }
+
+            try {
+                mesh.computeWorldMatrix(true);
+                var bbox = mesh.getBoundingInfo().boundingBox;
+                var vectorsWorld = bbox && Array.isArray(bbox.vectorsWorld)
+                    ? bbox.vectorsWorld
+                    : [];
+
+                vectorsWorld.forEach(function (corner) {
+                    if (corner && isFinite(Number(corner.x)) && isFinite(Number(corner.y)) && isFinite(Number(corner.z))) {
+                        corners.push(corner.clone());
+                    }
+                });
+            } catch (error) {}
+        });
+
+        if (!corners.length && focusFrame && focusFrame.bounds && focusFrame.bounds.min && focusFrame.bounds.max) {
+            var min = focusFrame.bounds.min;
+            var max = focusFrame.bounds.max;
+
+            [min.x, max.x].forEach(function (x) {
+                [min.y, max.y].forEach(function (y) {
+                    [min.z, max.z].forEach(function (z) {
+                        corners.push(new BABYLON.Vector3(x, y, z));
+                    });
+                });
+            });
+        }
+
+        return corners;
+    }
+
+    function getGalleryInspectRotationForCandidate(cameraPosition, lookTarget, startRotation, focusFrame, useCustomFocus) {
+        var tempCamera = new BABYLON.UniversalCamera(
+            "galleryInspectSafeFrameTempCamera",
+            cameraPosition.clone(),
+            scene
+        );
+
+        tempCamera.setTarget(lookTarget);
+        var rotation = tempCamera.rotation.clone();
+        tempCamera.dispose();
+
+        function fixRotation(target, current) {
+            while (target - current > Math.PI) {
+                target -= Math.PI * 2;
+            }
+
+            while (target - current < -Math.PI) {
+                target += Math.PI * 2;
+            }
+
+            return target;
+        }
+
+        rotation.x = fixRotation(rotation.x, startRotation.x);
+        rotation.y = fixRotation(rotation.y, startRotation.y);
+        rotation.z = fixRotation(rotation.z, startRotation.z);
+
+        if (useCustomFocus && focusFrame && focusFrame.focusState) {
+            var customPitchRadians = BABYLON.Tools.ToRadians(
+                BABYLON.Scalar.Clamp(Number(focusFrame.focusState.viewPitchDegrees || 0), -45, 45)
+            );
+
+            rotation.x = BABYLON.Scalar.Clamp(
+                rotation.x + customPitchRadians,
+                BABYLON.Tools.ToRadians(-82),
+                BABYLON.Tools.ToRadians(82)
+            );
+        }
+
+        rotation.z = 0;
+        return rotation;
+    }
+
+    function getGalleryInspectCameraBasis(rotation) {
+        var matrix = BABYLON.Matrix.Identity();
+        BABYLON.Quaternion.FromEulerVector(rotation).toRotationMatrix(matrix);
+
+        return {
+            right: BABYLON.Vector3.TransformNormal(BABYLON.Axis.X, matrix).normalize(),
+            up: BABYLON.Vector3.TransformNormal(BABYLON.Axis.Y, matrix).normalize(),
+            forward: BABYLON.Vector3.TransformNormal(BABYLON.Axis.Z, matrix).normalize()
+        };
+    }
+
+    function projectGalleryInspectCorners(corners, cameraPosition, cameraRotation, metrics) {
+        var basis = getGalleryInspectCameraBasis(cameraRotation);
+        var verticalFov = camera && camera.fov ? camera.fov : 0.8;
+        var aspect = metrics.renderHeight > 0 ? metrics.renderWidth / metrics.renderHeight : 1;
+        var tanVertical = Math.max(0.001, Math.tan(verticalFov * 0.5));
+        var tanHorizontal = Math.max(0.001, tanVertical * aspect);
+        var minX = Infinity;
+        var maxX = -Infinity;
+        var minY = Infinity;
+        var maxY = -Infinity;
+        var minDepth = Infinity;
+        var behindCamera = false;
+
+        (corners || []).forEach(function (corner) {
+            var relative = corner.subtract(cameraPosition);
+            var depth = BABYLON.Vector3.Dot(relative, basis.forward);
+
+            if (!isFinite(Number(depth)) || depth <= 0.001) {
+                behindCamera = true;
+                return;
+            }
+
+            var cameraX = BABYLON.Vector3.Dot(relative, basis.right);
+            var cameraY = BABYLON.Vector3.Dot(relative, basis.up);
+            var ndcX = cameraX / (depth * tanHorizontal);
+            var ndcY = cameraY / (depth * tanVertical);
+            var screenX = (ndcX + 1) * 0.5 * metrics.renderWidth;
+            var screenY = (1 - ndcY) * 0.5 * metrics.renderHeight;
+
+            minX = Math.min(minX, screenX);
+            maxX = Math.max(maxX, screenX);
+            minY = Math.min(minY, screenY);
+            maxY = Math.max(maxY, screenY);
+            minDepth = Math.min(minDepth, depth);
+        });
+
+        if (!isFinite(minX) || !isFinite(maxX) || !isFinite(minY) || !isFinite(maxY)) {
+            return {
+                valid: false,
+                behindCamera: true,
+                minX: null,
+                maxX: null,
+                minY: null,
+                maxY: null,
+                width: null,
+                height: null,
+                centerX: null,
+                centerY: null,
+                minDepth: null
+            };
+        }
+
+        return {
+            valid: !behindCamera,
+            behindCamera: behindCamera,
+            minX: minX,
+            maxX: maxX,
+            minY: minY,
+            maxY: maxY,
+            width: Math.max(0, maxX - minX),
+            height: Math.max(0, maxY - minY),
+            centerX: (minX + maxX) * 0.5,
+            centerY: (minY + maxY) * 0.5,
+            minDepth: minDepth
+        };
+    }
+
+    function evaluateGalleryInspectSafeFrame(projection, metrics) {
+        var safeRect = metrics.safeRect;
+
+        if (!projection || !projection.valid) {
+            return {
+                fits: false,
+                requiredScale: 2,
+                projection: projection
+            };
+        }
+
+        var safeHalfWidth = Math.max(1, safeRect.width * 0.5);
+        var safeHalfHeight = Math.max(1, safeRect.height * 0.5);
+        var requiredHalfWidth = Math.max(
+            Math.abs(safeRect.centerX - projection.minX),
+            Math.abs(projection.maxX - safeRect.centerX)
+        );
+        var requiredHalfHeight = Math.max(
+            Math.abs(safeRect.centerY - projection.minY),
+            Math.abs(projection.maxY - safeRect.centerY)
+        );
+        var requiredScale = Math.max(
+            requiredHalfWidth / safeHalfWidth,
+            requiredHalfHeight / safeHalfHeight,
+            projection.behindCamera ? 2 : 1
+        );
+        var epsilon = 1.5;
+        var fits = !!(
+            projection.minX >= safeRect.left - epsilon &&
+            projection.maxX <= safeRect.right + epsilon &&
+            projection.minY >= safeRect.top - epsilon &&
+            projection.maxY <= safeRect.bottom + epsilon &&
+            !projection.behindCamera
+        );
+
+        return {
+            fits: fits,
+            requiredScale: Math.max(1, requiredScale),
+            projection: projection,
+            safeRect: safeRect,
+            overflow: {
+                left: Math.max(0, safeRect.left - projection.minX),
+                right: Math.max(0, projection.maxX - safeRect.right),
+                top: Math.max(0, safeRect.top - projection.minY),
+                bottom: Math.max(0, projection.maxY - safeRect.bottom)
+            }
+        };
+    }
+
+    function getGalleryInspectCandidate(focusFrame, startRotation, autoDistance, lookTargetDownOffset, metrics, maxDistanceOverride) {
+        var objectPosition = focusFrame.target.clone();
+        var useCustomFocus = !!(focusFrame.focusState && focusFrame.focusState.useCustomOffset);
+        var cameraPosition = buildFocusCameraPosition(
+            objectPosition,
+            focusFrame.viewDirection.clone(),
+            autoDistance,
+            useCustomFocus ? focusFrame.focusState.distanceOffset : 0,
+            useCustomFocus ? focusFrame.focusState.cameraHeightOffset : 0,
+            useCustomFocus ? focusFrame.focusState.viewPitchDegrees : 0,
+            maxDistanceOverride
+        );
+        var lookTarget = objectPosition.clone();
+        lookTarget.y -= Number(lookTargetDownOffset || 0);
+        var rotation = getGalleryInspectRotationForCandidate(
+            cameraPosition,
+            lookTarget,
+            startRotation,
+            focusFrame,
+            useCustomFocus
+        );
+
+        return {
+            cameraPosition: cameraPosition,
+            lookTarget: lookTarget,
+            rotation: rotation,
+            finalDistance: cameraPosition.subtract(objectPosition).length()
+        };
+    }
+
+    function getGalleryBottomInspectComposition(focusFrame, startRotation) {
+        var metrics = getGalleryBottomInspectPopupMetrics();
+        var corners = getGalleryInspectWorldCorners(focusFrame);
+        var verticalFov = camera && camera.fov ? camera.fov : 0.8;
+        var focalLengthPx = metrics.renderHeight / Math.max(0.001, 2 * Math.tan(verticalFov * 0.5));
+        var autoDistance = Math.max(
+            galleryObjectFocusMinDistance,
+            Number(focusFrame && focusFrame.distance || 0)
+        );
+        var useCustomFocus = !!(focusFrame && focusFrame.focusState && focusFrame.focusState.useCustomOffset);
+        var customDistanceOffset = useCustomFocus
+            ? Number(focusFrame.focusState.distanceOffset || 0)
+            : 0;
+        var estimatedFinalDistance = Math.max(
+            galleryObjectFocusMinDistance,
+            autoDistance + customDistanceOffset
+        );
+        var upwardPixels = Math.max(0, metrics.renderHeight * 0.5 - metrics.safeRect.centerY);
+        var lookTargetDownOffset = estimatedFinalDistance * upwardPixels / Math.max(1, focalLengthPx);
+        var maxDistanceOverride = Math.max(120, autoDistance + Math.abs(customDistanceOffset) + 30);
+        var iteration = 0;
+        var centerCorrectionRuns = 0;
+        var candidate = null;
+        var projection = null;
+        var validation = null;
+
+        for (iteration = 0; iteration < 16; iteration += 1) {
+            // First align the real projected center with the center of the safe area.
+            // This makes camera-height and custom pitch part of the same validated result.
+            for (centerCorrectionRuns = 0; centerCorrectionRuns < 4; centerCorrectionRuns += 1) {
+                candidate = getGalleryInspectCandidate(
+                    focusFrame,
+                    startRotation,
+                    autoDistance,
+                    lookTargetDownOffset,
+                    metrics,
+                    maxDistanceOverride
+                );
+                projection = projectGalleryInspectCorners(
+                    corners,
+                    candidate.cameraPosition,
+                    candidate.rotation,
+                    metrics
+                );
+
+                if (!projection.valid || !isFinite(Number(projection.centerY))) {
+                    break;
+                }
+
+                var centerDeltaPx = projection.centerY - metrics.safeRect.centerY;
+
+                if (Math.abs(centerDeltaPx) <= 0.75) {
+                    break;
+                }
+
+                lookTargetDownOffset += candidate.finalDistance * centerDeltaPx / Math.max(1, focalLengthPx);
+                lookTargetDownOffset = BABYLON.Scalar.Clamp(
+                    lookTargetDownOffset,
+                    -candidate.finalDistance * 1.5,
+                    candidate.finalDistance * 1.5
+                );
+            }
+
+            candidate = getGalleryInspectCandidate(
+                focusFrame,
+                startRotation,
+                autoDistance,
+                lookTargetDownOffset,
+                metrics,
+                maxDistanceOverride
+            );
+            projection = projectGalleryInspectCorners(
+                corners,
+                candidate.cameraPosition,
+                candidate.rotation,
+                metrics
+            );
+            validation = evaluateGalleryInspectSafeFrame(projection, metrics);
+
+            if (validation.fits || !corners.length) {
+                break;
+            }
+
+            var scale = BABYLON.Scalar.Clamp(
+                Number(validation.requiredScale || 1.08) * 1.035,
+                1.035,
+                2.4
+            );
+            var desiredFinalDistance = Math.max(
+                candidate.finalDistance + 0.14,
+                candidate.finalDistance * scale
+            );
+            autoDistance += Math.max(0.14, desiredFinalDistance - candidate.finalDistance);
+            maxDistanceOverride = Math.max(maxDistanceOverride, autoDistance + Math.abs(customDistanceOffset) + 20);
+        }
+
+        if (!candidate) {
+            candidate = getGalleryInspectCandidate(
+                focusFrame,
+                startRotation,
+                autoDistance,
+                lookTargetDownOffset,
+                metrics,
+                maxDistanceOverride
+            );
+            projection = projectGalleryInspectCorners(
+                corners,
+                candidate.cameraPosition,
+                candidate.rotation,
+                metrics
+            );
+            validation = evaluateGalleryInspectSafeFrame(projection, metrics);
+        }
+
+        return {
+            metrics: metrics,
+            corners: corners,
+            autoDistance: autoDistance,
+            distance: candidate.finalDistance,
+            lookTargetDownOffset: lookTargetDownOffset,
+            maxDistance: maxDistanceOverride,
+            cameraPosition: candidate.cameraPosition,
+            lookTarget: candidate.lookTarget,
+            rotation: candidate.rotation,
+            projection: projection,
+            validation: validation,
+            iterations: iteration + 1,
+            rotationAware: true
+        };
+    }
+
+    function refreshGalleryInspectFrame(options) {
+        options = options || {};
+
+        if (!galleryInspectRuntime.active || !galleryInspectRuntime.target) {
+            return false;
+        }
+
+        focusCameraOnObject(galleryInspectRuntime.target, {
+            immediate: options.immediate !== false,
+            skipSafePath: options.skipSafePath !== false,
+            inspectMode: true,
+            fromFocusCameraUi: !!options.fromFocusCameraUi,
+            onComplete: options.onComplete
+        });
+
+        return true;
+    }
+
+    function scheduleGalleryInspectRefreshForTarget(target, reason) {
+        if (!galleryInspectRuntime || !galleryInspectRuntime.active || !galleryInspectRuntime.target || galleryInspectRuntime.target !== target) {
+            return false;
+        }
+
+        if (galleryInspectRuntime.refreshFrame !== undefined && galleryInspectRuntime.refreshFrame !== null) {
+            try {
+                if (typeof cancelAnimationFrame === "function") {
+                    cancelAnimationFrame(galleryInspectRuntime.refreshFrame);
+                } else {
+                    clearTimeout(galleryInspectRuntime.refreshFrame);
+                }
+            } catch (error) {}
+        }
+
+        var run = function () {
+            galleryInspectRuntime.refreshFrame = null;
+            if (galleryInspectRuntime.active && galleryInspectRuntime.target === target) {
+                refreshGalleryInspectFrame({ immediate: true, skipSafePath: true });
+                updateGalleryInspectExhibitNavigation(
+                    target,
+                    galleryInspectRuntime.type,
+                    artworkInfoPopup && artworkInfoPopup.classList.contains("is-visible")
+                );
+                galleryInspectRuntime.lastReason = reason || galleryInspectRuntime.lastReason;
+            }
+        };
+
+        galleryInspectRuntime.refreshFrame = typeof requestAnimationFrame === "function"
+            ? requestAnimationFrame(run)
+            : setTimeout(run, 0);
+        return true;
+    }
+
+    function closeGalleryInspect(reason) {
+        var wasOpening = galleryInspectRuntime.opening;
+        galleryInspectRuntime.requestId += 1;
+        releaseGalleryInspectCameraToWalk(reason || "close");
+
+        if (galleryInspectRuntime.refreshFrame !== null) {
+            try {
+                if (typeof cancelAnimationFrame === "function") {
+                    cancelAnimationFrame(galleryInspectRuntime.refreshFrame);
+                } else {
+                    clearTimeout(galleryInspectRuntime.refreshFrame);
+                }
+            } catch (error) {}
+            galleryInspectRuntime.refreshFrame = null;
+        }
+        galleryInspectRuntime.active = false;
+        galleryInspectRuntime.opening = false;
+        galleryInspectRuntime.editPreview = false;
+        galleryInspectRuntime.allowPlaceholder = false;
+        galleryInspectRuntime.placeholder = false;
+        galleryInspectRuntime.target = null;
+        galleryInspectRuntime.type = null;
+        galleryInspectRuntime.closedAt = Date.now();
+        galleryInspectRuntime.lastReason = reason || "close";
+        hideGalleryInspectNavigation();
+        hideArtworkInfoPopup();
+
+        if (wasOpening) {
+            try {
+                stopViewerSafeFocusRuntimeAnimation();
+                scene.stopAnimation(camera);
+            } catch (error) {}
+        }
+
+        if (document.body) {
+            document.body.classList.remove("gallery-inspect-active");
+            document.body.classList.remove("gallery-edit-inspect-preview");
+        }
+
+        return true;
+    }
+
+    function openGalleryInspectTarget(targetMesh, options) {
+        options = options || {};
+        var editPreview = options.editPreview !== undefined ? !!options.editPreview : !!editMode;
+        var allowPlaceholder = !!options.allowPlaceholder || editPreview;
+        var resolved = resolveGalleryInspectTarget(targetMesh, { allowPlaceholder: allowPlaceholder });
+
+        if (!resolved || !resolved.object) {
+            closeGalleryInspect(options.reason || "invalid-target");
+            return false;
+        }
+
+        var preservePopup = !!(
+            options.preservePopup &&
+            galleryInspectRuntime.active &&
+            artworkInfoPopup &&
+            artworkInfoPopup.classList.contains("is-visible")
+        );
+        var sourceInspectObject = options.sourceObject || (galleryInspectRuntime.active ? galleryInspectRuntime.target : null);
+        var requestId = galleryInspectRuntime.requestId + 1;
+        galleryInspectRuntime.requestId = requestId;
+        galleryInspectRuntime.active = true;
+        galleryInspectRuntime.opening = true;
+        galleryInspectRuntime.editPreview = editPreview;
+        galleryInspectRuntime.allowPlaceholder = allowPlaceholder;
+        galleryInspectRuntime.placeholder = !!resolved.placeholder;
+        galleryInspectRuntime.target = resolved.object;
+        galleryInspectRuntime.type = resolved.type;
+        galleryInspectRuntime.openedAt = Date.now();
+        galleryInspectRuntime.lastReason = options.reason || (editPreview ? "edit-double-click" : "viewer-click");
+
+        if (!options.immediate) {
+            beginGalleryInspectCameraTransition(galleryInspectRuntime.lastReason);
+        }
+
+        if (!preservePopup) {
+            hideArtworkInfoPopup();
+        }
+
+        updateArtworkInfoPopupContent(resolved.object);
+        currentArtworkInfoPopupMesh = resolved.object;
+        artworkInfoPopup.classList.toggle("is-sculpture-popup", resolved.type === "sculpture");
+        artworkInfoPopup.classList.toggle("is-artwork-popup", resolved.type === "artwork");
+
+        if (document.body) {
+            document.body.classList.add("gallery-inspect-active");
+            document.body.classList.toggle("gallery-edit-inspect-preview", editPreview);
+        }
+
+        updateGalleryInspectExhibitNavigation(resolved.object, resolved.type, preservePopup);
+
+        var startFocus = function () {
+            if (galleryInspectRuntime.requestId !== requestId || !galleryInspectRuntime.active) {
+                return;
+            }
+
+            var focusStarted = focusCameraOnObject(resolved.object, {
+                inspectMode: true,
+                immediate: !!options.immediate,
+                skipSafePath: !!options.skipSafePath,
+                sourceObject: sourceInspectObject,
+                reason: options.reason || "inspect-open",
+                onPathBlocked: function (details) {
+                    if (galleryInspectRuntime.requestId !== requestId) return;
+                    galleryInspectRuntime.opening = false;
+                    galleryExhibitTourRuntime.lastPathFailure = details || galleryExhibitTourRuntime.lastPathFailure;
+                    notifyGalleryStatus("No collision-safe route to this exhibit. Check the generated path in Edit Mode.");
+                    closeGalleryInspect("safe-path-blocked");
+                },
+                onComplete: function () {
+                    if (
+                        galleryInspectRuntime.requestId !== requestId ||
+                        !galleryInspectRuntime.active ||
+                        galleryInspectRuntime.target !== resolved.object
+                    ) {
+                        return;
+                    }
+
+                    galleryInspectRuntime.opening = false;
+                    completeGalleryInspectCameraTransition();
+                    showArtworkInfoPopup(resolved.object);
+                    updateGalleryInspectExhibitNavigation(resolved.object, resolved.type, true);
+
+                    if (typeof options.onComplete === "function") {
+                        options.onComplete(resolved);
+                    }
+                }
+            });
+            if (focusStarted === false) {
+                galleryInspectRuntime.opening = false;
+                if (galleryInspectRuntime.active) releaseGalleryInspectCameraToWalk("focus-start-failed");
+            }
+        };
+
+        if (typeof requestAnimationFrame === "function") {
+            requestAnimationFrame(function () {
+                requestAnimationFrame(startFocus);
+            });
+        } else {
+            setTimeout(startFocus, 0);
+        }
+
+        return true;
+    }
+
+    if (galleryInspectNavigationRefs.previous) {
+        galleryInspectNavigationRefs.previous.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            navigateGalleryInspectExhibit("previous");
+        });
+    }
+
+    if (galleryInspectNavigationRefs.next) {
+        galleryInspectNavigationRefs.next.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            navigateGalleryInspectExhibit("next");
+        });
+    }
+
+    galleryInspectNavigation.addEventListener("pointerdown", function (event) {
+        event.stopPropagation();
+    });
+
+    artworkInfoPopup.addEventListener("pointerdown", function (event) {
+        event.stopPropagation();
+    });
+
+    registerGalleryDomEvent("galleryInspectEscape", window, "keydown", function (event) {
+        if (event.key === "Escape" && galleryInspectRuntime.active) {
+            event.preventDefault();
+            closeGalleryInspect("escape");
+        }
+    });
+
+    registerGalleryDomEvent("galleryInspectExhibitNavigationKeys", window, "keydown", function (event) {
+        if (
+            !galleryInspectRuntime.active ||
+            galleryInspectRuntime.opening ||
+            isGalleryTextEditingElement(event.target)
+        ) {
+            return;
+        }
+
+        if (event.key === "ArrowLeft") {
+            if (navigateGalleryInspectExhibit("previous")) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (event.stopImmediatePropagation) {
+                    event.stopImmediatePropagation();
+                }
+            }
+        } else if (event.key === "ArrowRight") {
+            if (navigateGalleryInspectExhibit("next")) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (event.stopImmediatePropagation) {
+                    event.stopImmediatePropagation();
+                }
+            }
+        }
+    }, true);
+
+    registerGalleryDomEvent("galleryInspectMobileSafeFrameViewportChange", window, "gallery-mobile-viewport-change", function () {
+        updateGalleryMobileInspectSafeFrame("visual-viewport-change");
+    });
+
+    registerGalleryDomEvent("galleryInspectMobileSafeFrameOrientationChange", window, "orientationchange", function () {
+        setTimeout(function () {
+            updateGalleryMobileInspectSafeFrame("orientation-change");
+        }, 60);
+    });
+
+    if (scene && scene.getEngine && scene.getEngine().onResizeObservable) {
+        registerGalleryEngineResizeObserver("galleryInspectBottomCompositionResize", function () {
+            if (!galleryInspectRuntime.active || !galleryInspectRuntime.target) {
+                return;
+            }
+
+            setTimeout(function () {
+                refreshGalleryInspectFrame({ immediate: true, skipSafePath: true });
+                updateGalleryInspectNavigationPosition();
+            }, 80);
+        });
+    }
+
+    if (typeof ResizeObserver === "function" && artworkInfoPopup) {
+        var galleryInspectPopupResizeObserver = new ResizeObserver(function () {
+            if (!galleryInspectRuntime.active || galleryInspectRuntime.opening || !galleryInspectRuntime.target) {
+                return;
+            }
+
+            updateGalleryInspectNavigationPosition();
+            scheduleGalleryInspectRefreshForTarget(
+                galleryInspectRuntime.target,
+                "popup-size-change"
+            );
+        });
+
+        galleryInspectPopupResizeObserver.observe(artworkInfoPopup);
+        if (artworkInfoPopupRefs.inner) {
+            galleryInspectPopupResizeObserver.observe(artworkInfoPopupRefs.inner);
+        }
+        if (artworkInfoPopupRefs.avatar) {
+            galleryInspectPopupResizeObserver.observe(artworkInfoPopupRefs.avatar);
+        }
+        if (galleryInspectNavigationRefs.previous) {
+            galleryInspectPopupResizeObserver.observe(galleryInspectNavigationRefs.previous);
+        }
+        if (galleryInspectNavigationRefs.next) {
+            galleryInspectPopupResizeObserver.observe(galleryInspectNavigationRefs.next);
+        }
+        scene.onDisposeObservable.add(function () {
+            try {
+                galleryInspectPopupResizeObserver.disconnect();
+            } catch (error) {}
+        });
+    }
+
+    window.BerryboyArtGalleryInspect = {
+        open: function (meshName) {
+            return openGalleryInspectTarget(scene.getMeshByName(meshName), { reason: "debug-open" });
+        },
+        close: function () {
+            return closeGalleryInspect("debug-close");
+        },
+        previous: function () {
+            return navigateGalleryInspectExhibit("previous");
+        },
+        next: function () {
+            return navigateGalleryInspectExhibit("next");
+        },
+        getDebug: function () {
+            return {
+                stage: galleryInspectRuntime.stage,
+                active: galleryInspectRuntime.active,
+                opening: galleryInspectRuntime.opening,
+                editPreview: galleryInspectRuntime.editPreview,
+                placeholder: galleryInspectRuntime.placeholder,
+                type: galleryInspectRuntime.type,
+                targetName: galleryInspectRuntime.target ? galleryInspectRuntime.target.name : null,
+                lastReason: galleryInspectRuntime.lastReason,
+                cameraOwnership: {
+                    state: galleryInspectCameraRuntime.state,
+                    reason: galleryInspectCameraRuntime.reason,
+                    transitionId: galleryInspectCameraRuntime.transitionId
+                },
+                navigation: {
+                    sequence: galleryInspectRuntime.navigationSequence.map(function (artwork) {
+                        return artwork ? artwork.name : null;
+                    }),
+                    index: galleryInspectRuntime.navigationIndex,
+                    previous: galleryInspectRuntime.previousTarget ? galleryInspectRuntime.previousTarget.name : null,
+                    next: galleryInspectRuntime.nextTarget ? galleryInspectRuntime.nextTarget.name : null,
+                    wall: galleryInspectRuntime.navigationWall,
+                    updatedAt: galleryInspectRuntime.navigationUpdatedAt
+                },
+                lastComposition: galleryInspectRuntime.lastComposition,
+                mobileSafeFrame: Object.assign({}, galleryMobileInspectSafeFrameRuntime)
+            };
+        }
+    };
 
     scene.onPointerDown = function (evt, pickResult) {
 
@@ -32350,9 +36476,14 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             return;
         }
 
+        if (editMode && evt.button === 1 && galleryInspectRuntime.active) {
+            closeGalleryInspect("edit-manual-look");
+        }
+
         // TRYB EDYCJI = prawy przycisk myszy czysci zaznaczenie i aktywne narzedzia.
         if (editMode && evt.button === 2) {
             evt.preventDefault();
+            closeGalleryInspect("editor-right-click");
             clearEditSelection();
 
             if (lightingPanelMode === "lighting" && lightingContentMode === "local") {
@@ -32368,9 +36499,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
             evt.preventDefault();
 
-            // STAGE 11I - IMAGE PLANE EDIT SELECTION PASS-THROUGH
-            // Po Stage 11F widoczna grafika imagePlane jest pickable dla center-ray popupu.
-            // Kliknięcie w grafikę ma jednak działać jak kliknięcie w fizyczny Artwork_XX.
+            // IMAGE PLANE CLICK-TO-INSPECT PASS-THROUGH
+            // Widoczny imagePlane jest pickable, ale kliknięcie zawsze resolve'uje do bazowego Artwork_XX.
             var pickedArtworkMesh = pickResult.hit
                 ? getArtworkFromPopupPickMesh(pickResult.pickedMesh)
                 : null;
@@ -32380,6 +36510,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 : null;
 
             if (editMode && pickedLocalLightItem) {
+                closeGalleryInspect("editor-local-light-selection");
                 // Selekcja lamp automatycznie odznacza obrazy i narzedzia edycji obrazow.
                 clearEditSelection();
 
@@ -32419,6 +36550,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 wallMeshes.includes(pickResult.pickedMesh) &&
                 isPaintableWallSegmentMesh(pickResult.pickedMesh)
             ) {
+                closeGalleryInspect("editor-wall-paint");
                 applyWallColorMaterialToSegment(
                     pickResult.pickedMesh,
                     selectedWallMaterial
@@ -32442,6 +36574,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                     lastArtworkClickMesh === clickedArtwork &&
                     currentClickTime - lastArtworkClickTime <= doubleClickDelay;
 
+                if (galleryInspectRuntime.active && !isDoubleClick) {
+                    closeGalleryInspect("editor-artwork-selection");
+                }
+
                 selectArtwork(
                     clickedArtwork,
                     evt.shiftKey
@@ -32456,7 +36592,11 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 }
 
                 if (isDoubleClick && !evt.shiftKey) {
-                    focusCameraOnObject(clickedArtwork);
+                    openGalleryInspectTarget(clickedArtwork, {
+                        editPreview: true,
+                        allowPlaceholder: true,
+                        reason: "editor-artwork-double-click"
+                    });
 
                     isDraggingArtwork = false;
                     selectedArtwork = null;
@@ -32480,6 +36620,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 pickResult.hit &&
                 wallMeshes.includes(pickResult.pickedMesh)
             ) {
+                closeGalleryInspect("editor-artwork-wall-move");
                 selectedArtwork = activeArtwork;
                 primaryArtwork = activeArtwork;
                 isDraggingArtwork = true;
@@ -32508,6 +36649,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                     lastSculptureClickSlot === clickedModel3dSlot &&
                     currentSculptureClickTime - lastSculptureClickTime <= doubleClickDelay;
 
+                if (galleryInspectRuntime.active && !isSculptureDoubleClick) {
+                    closeGalleryInspect("editor-sculpture-selection");
+                }
+
                 selectModel3dSlot(clickedModel3dSlot, evt.shiftKey);
 
                 if (!evt.shiftKey) {
@@ -32518,7 +36663,11 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 }
 
                 if (isSculptureDoubleClick && !evt.shiftKey) {
-                    focusCameraOnObject(getModel3dSlotFocusTarget(clickedModel3dSlot));
+                    openGalleryInspectTarget(clickedModel3dSlot, {
+                        editPreview: true,
+                        allowPlaceholder: true,
+                        reason: "editor-sculpture-double-click"
+                    });
 
                     isDraggingSphere = false;
                     selectedSphere = null;
@@ -32542,6 +36691,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 pickResult.hit &&
                 floorMeshes.includes(pickResult.pickedMesh)
             ) {
+                closeGalleryInspect("editor-sculpture-floor-move");
                 selectedSphere = activeModel3dSlot;
                 refreshSculptureOutlines();
                 isDraggingSphere = true;
@@ -32558,7 +36708,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 pickResult.hit &&
                 pickedArtworkMesh
             ) {
-                focusCameraOnObject(pickedArtworkMesh);
+                openGalleryInspectTarget(pickedArtworkMesh, { reason: "desktop-artwork-click" });
                 return;
             }
 
@@ -32569,7 +36719,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 getModel3dSlotFromPickedMesh(pickResult.pickedMesh)
             ) {
                 var viewerModel3dSlot = getModel3dSlotFromPickedMesh(pickResult.pickedMesh);
-                focusCameraOnObject(getModel3dSlotFocusTarget(viewerModel3dSlot));
+                openGalleryInspectTarget(viewerModel3dSlot, { reason: "desktop-sculpture-click" });
                 return;
             }
 
@@ -32579,7 +36729,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 pickResult.hit &&
                 floorMeshes.includes(pickResult.pickedMesh)
             ) {
+                closeGalleryInspect("editor-floor-click");
                 return;
+            }
+
+            if (galleryInspectRuntime.active) {
+                closeGalleryInspect(editMode ? "editor-empty-click" : "viewer-empty-click");
             }
 
             // Klik w podloge = chodzenie.
@@ -32587,6 +36742,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 pickResult.hit &&
                 floorMeshes.includes(pickResult.pickedMesh)
             ) {
+                closeGalleryInspect("floor-click");
                 let targetPoint = pickResult.pickedPoint;
 
                 if (lookAtObserver) {
@@ -32706,6 +36862,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             if (releasedArtwork) {
                 updateArtworkLight(releasedArtwork);
                 markGalleryObjectBoundsDirty(releasedArtwork);
+                scheduleGalleryExhibitTourRebuild("artwork-moved", { recalculateAutoOrder: true, delayMs: 90 });
             }
 
             attachGalleryCameraControl();
@@ -32729,6 +36886,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             updateViewerModePlaceholderVisibility();
             updateModel3dSlotUi();
             updateModel3dTransformUi();
+            scheduleGalleryExhibitTourRebuild("sculpture-moved", { recalculateAutoOrder: true, delayMs: 90 });
 
             attachGalleryCameraControl();
         }
@@ -32907,6 +37065,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                     image: getArtworkImageState(artwork),
                     artworkTransform: getArtworkTransformState(artwork),
                     focusCamera: getGalleryObjectFocusCameraState(artwork),
+                    tourOrder: getGalleryExhibitTourOrder(artwork),
+                    tourOrderLocked: isGalleryExhibitTourOrderLocked(artwork),
                     info: getArtworkInfoState(artwork)
                 };
             }),
@@ -32927,6 +37087,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                         ? normalizeSculptureInfo(sphere.metadata.sculptureInfo)
                         : null,
                     focusCamera: getGalleryObjectFocusCameraState(sphere),
+                    tourOrder: getGalleryExhibitTourOrder(sphere),
+                    tourOrderLocked: isGalleryExhibitTourOrderLocked(sphere),
                     model3d: getModel3dState(sphere)
                 };
             })
@@ -33047,6 +37209,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                     artwork,
                     artworkState.focusCamera || artworkState.cameraFocus || artworkState.artworkFocusCamera || null
                 );
+
+                if (artworkState.tourOrder !== undefined) {
+                    setGalleryExhibitTourMetadata(artwork, artworkState.tourOrder, !!artworkState.tourOrderLocked);
+                }
 
                 try {
                     var restoredInfo = getArtworkInfoState(artwork);
@@ -33232,6 +37398,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                     sphereState.focusCamera || sphereState.cameraFocus || sphereState.sculptureFocusCamera || null
                 );
 
+                if (sphereState.tourOrder !== undefined) {
+                    setGalleryExhibitTourMetadata(sphere, sphereState.tourOrder, !!sphereState.tourOrderLocked);
+                }
+
                 ensureModel3dSlotUnifiedStructure(sphere, sphereState.index !== undefined ? Number(sphereState.index) : artSpheres.indexOf(sphere));
                 applySculptureTransformToSlot(sphere);
 
@@ -33260,11 +37430,17 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         refreshCommonLightingMaterialSupport();
         refreshArtworkLightExclusions();
         refreshPedestalLightIncludedMeshes();
-        refreshAllCommonLocalLightTargets();
-        refreshAllLocalSpotShadows();
+
+        if (!galleryFastStartRuntime.stateApplyActive) {
+            refreshAllCommonLocalLightTargets();
+            refreshAllLocalSpotShadows();
+        }
+
         updateEditHelpStatus();
         updateAlignmentPanel();
         updateFocusCameraUi();
+        rebuildGalleryExhibitTour({ reason: "editor-state-applied", recalculateAutoOrder: true, force: true });
+        updateGalleryTourOrderUi();
     }
 
     function serializeGalleryState() {
@@ -33341,9 +37517,13 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         refreshCommonLightingMaterialSupport();
         refreshArtworkLightExclusions();
         refreshPedestalLightIncludedMeshes();
-        refreshAllCommonLocalLightTargets();
-        scheduleLoadTimeLocalLightRetarget("applyGalleryState", localLightLoadTimeRetargetDelayMs);
-        refreshAllLocalSpotShadows();
+
+        if (!galleryFastStartRuntime.stateApplyActive) {
+            refreshAllCommonLocalLightTargets();
+            scheduleLoadTimeLocalLightRetarget("applyGalleryState", localLightLoadTimeRetargetDelayMs);
+            refreshAllLocalSpotShadows();
+        }
+
         updateLocalLightsUi();
     }
 
@@ -33559,6 +37739,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             galleryEditorLoginEnabled = !!isEnabled;
             setEditorAuthenticated(globalThis.galleryEditorAuthenticated);
         },
+        getMobileQuality: getGalleryAdaptiveMobileQualityDebug,
+        setMobileQualityMode: setGalleryMobileQualityMode,
         saveStateToSupabase: saveGalleryStateToSupabase,
         loadStateFromSupabase: loadGalleryStateFromSupabase,
         getState: serializeGalleryState,
@@ -33613,7 +37795,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                     hasImage: !!imageState,
                     needsVariants: artworkImageStateNeedsVariants(imageState),
                     selectedUrl: getArtworkImageUrlFromState(imageState),
-                    mobileDevice: isArtworkMobileTextureDevice(),
+                    mobileDevice: isGalleryDeviceProfileMobile(),
                     imageUrl: imageState ? imageState.imageUrl || "" : "",
                     imageUrlWeb: imageState ? imageState.imageUrlWeb || "" : "",
                     imageUrlMobile: imageState ? imageState.imageUrlMobile || "" : "",
@@ -33743,7 +37925,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                     id: author.id,
                     name: author.name,
                     needsVariants: authorPhotoStateNeedsVariants(author),
-                    mobileDevice: isArtworkMobileTextureDevice(),
+                    mobileDevice: isGalleryDeviceProfileMobile(),
                     selectedUrl: getBestAuthorPhotoUrlFromInfo(author),
                     photoUrl: author.photoUrl,
                     photoUrlWeb: author.photoUrlWeb,
@@ -33754,24 +37936,27 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             });
         },
         getArtworkInfoPopupTargetDebug: function () {
-            return Object.assign(
-                {
-                    centerRayEnabled: artworkInfoPopupCenterRayEnabled,
-                    popupDistance: getArtworkPopupDistance(),
-                    imagePlaneSurfaceEpsilon: artworkImagePlaneSurfaceEpsilon,
-                    imagePlanePickableForPopup: artworkImagePlanePickableForPopup,
-                    wallColorTextureBaseUrl: wallColorTextureBaseUrl,
-                    wallModelRootUrl: typeof wallModelRootUrl !== "undefined" ? wallModelRootUrl : "",
-                    artworkImagePlaneMirrorFix: true,
-                    imagePlaneEditSelectionPassthrough: true
-                },
-                artworkInfoPopupLastTargetDebug || {}
-            );
+            var inspectDebug = window.BerryboyArtGalleryInspect && window.BerryboyArtGalleryInspect.getDebug
+                ? window.BerryboyArtGalleryInspect.getDebug()
+                : {};
+
+            return Object.assign({
+                mode: "click-to-inspect",
+                proximityPolling: false,
+                centerRayEnabled: false,
+                imagePlaneSurfaceEpsilon: artworkImagePlaneSurfaceEpsilon,
+                imagePlanePickableForPopup: artworkImagePlanePickableForPopup,
+                wallColorTextureBaseUrl: wallColorTextureBaseUrl,
+                wallModelRootUrl: typeof wallModelRootUrl !== "undefined" ? wallModelRootUrl : "",
+                artworkImagePlaneMirrorFix: true,
+                imagePlaneEditSelectionPassthrough: true
+            }, inspectDebug);
         },
-        setArtworkInfoPopupCenterRay: function (enabled) {
-            artworkInfoPopupCenterRayEnabled = !!enabled;
+        setArtworkInfoPopupCenterRay: function () {
             return {
-                centerRayEnabled: artworkInfoPopupCenterRayEnabled
+                supported: false,
+                mode: "click-to-inspect",
+                centerRayEnabled: false
             };
         },
         updateViewerModePlaceholderVisibility: function () {
@@ -33811,9 +37996,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         getViewerSafeFocusPathDebug: function () {
             return viewerSafeFocusPathDebug ? Object.assign({}, viewerSafeFocusPathDebug) : null;
         },
-        setViewerSafeFocusPathEnabled: function (isEnabled) {
-            viewerSafeFocusPathEnabled = !!isEnabled;
-            return viewerSafeFocusPathEnabled;
+        setViewerSafeFocusPathEnabled: function () {
+            // Stage 12C64J: collision-safe inspect navigation is mandatory and cannot be disabled.
+            return true;
         },
         setViewerWASDMovementEnabled: function (isEnabled) {
             viewerWASDMovementEnabled = !!isEnabled;
@@ -34214,6 +38399,36 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
             return this.getViewerCollisionDebug();
         },
+        getGalleryExhibitTourDebug: function () {
+            return {
+                stage: galleryExhibitTourRuntime.stage,
+                schema: galleryExhibitTourRuntime.schema,
+                sequence: ensureGalleryExhibitTourSequence(false).map(function (descriptor) {
+                    return {
+                        key: descriptor.key,
+                        type: descriptor.type,
+                        name: descriptor.object ? descriptor.object.name : null,
+                        order: getGalleryExhibitTourOrder(descriptor.object),
+                        locked: isGalleryExhibitTourOrderLocked(descriptor.object)
+                    };
+                }),
+                paths: galleryExhibitTourRuntime.pathEntries.map(function (entry) {
+                    return { from: entry.from.key, to: entry.to.key, valid: entry.valid, pointCount: entry.points.length };
+                }),
+                lastPath: galleryExhibitTourRuntime.lastPath,
+                lastPathFailure: galleryExhibitTourRuntime.lastPathFailure,
+                rebuildRevision: galleryExhibitTourRuntime.rebuildRevision,
+                lastRebuildReason: galleryExhibitTourRuntime.lastRebuildReason,
+                lastRebuildAt: galleryExhibitTourRuntime.lastRebuildAt
+            };
+        },
+        rebuildGalleryExhibitTour: function (recalculateAutoOrder) {
+            return rebuildGalleryExhibitTour({ reason: "debug-api", recalculateAutoOrder: recalculateAutoOrder !== false, force: true });
+        },
+        setGalleryExhibitTourOrder: function (meshName, order) {
+            var object = getArtworkByName(meshName) || getSphereByName(meshName);
+            return object ? setGalleryExhibitTourOrder(object, order, { lock: true, reason: "debug-api-order" }) : false;
+        },
         getArtworkImagePlaneDepthDebug: function () {
             return scene.meshes.filter(function (mesh) {
                 return !!(
@@ -34238,7 +38453,29 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
     };
 
+    globalThis.BerryboyArtGalleryFastStart = {
+        getDebug: function () {
+            return JSON.parse(JSON.stringify(Object.assign({}, galleryFastStartRuntime, {
+                deferredArtworkLoads: galleryFastStartRuntime.deferredArtworkLoads.length,
+                deferredFullArtworkLoads: galleryFastStartRuntime.deferredFullArtworkLoads.length,
+                deferredModelLoads: galleryFastStartRuntime.deferredModelLoads.length,
+                modelContainerCacheEntries: Object.keys(galleryModel3dAssetContainerCache || {}).length
+            })));
+        },
+        releaseBackgroundContent: function () {
+            galleryFastStartRuntime.viewerReady = true;
+            drainGalleryFastStartBackgroundQueue("manual-debug-release");
+            return this.getDebug();
+        },
+        runLightFinalization: function () {
+            runGalleryFastStartFinalizationNow("manual-debug-finalization");
+            return this.getDebug();
+        }
+    };
+
     setEditorAuthenticated(editorAuthenticated);
+    rebuildGalleryExhibitTour({ reason: "scene-ready", recalculateAutoOrder: true, force: true });
+    refreshGalleryExhibitTourOrderBadges();
     window.dispatchEvent(new CustomEvent("gallery-ready"));
 
 
