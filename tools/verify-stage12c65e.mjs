@@ -6,7 +6,7 @@ const minified = fs.readFileSync(new URL('../src/Gallery_V0_11.min.js', import.m
 const index = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const bootstrap = fs.readFileSync(new URL('../src/bootstrap/gallery-viewer-bootstrap.js', import.meta.url), 'utf8');
 const editorBootstrap = fs.readFileSync(new URL('../src/bootstrap/gallery-editor-bootstrap.js', import.meta.url), 'utf8');
-const txt = fs.readFileSync(new URL('../Gallery_V0_11_STAGE12C65E_STABLE_INSPECT_NAVIGATION_UI_FIX_LOGIN_DISABLED.txt', import.meta.url), 'utf8');
+const txt = fs.readFileSync(new URL('../Gallery_V0_11_STAGE12C65E_EDIT_MODE_POINTER_FIX_LOGIN_DISABLED.txt', import.meta.url), 'utf8');
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -63,7 +63,8 @@ assert(index.includes('stage: "12C65E"'), 'Boot Guard stage missing');
 assert(source.includes('Stage 12C65E: Mobile Asset Streaming / Memory Budget'), 'Stage E source history missing');
 assert(source.includes('stage: "12C65E"'), 'Source Stage E runtime identity missing');
 assert(bootstrap.includes('Stage 12C65E Mobile Asset Streaming / Memory Budget'), 'Viewer bootstrap Stage E label missing');
-assert(bootstrap.includes('stage12c65e_stable_inspect_navigation_20260716'), 'Stable Inspect Navigation cache key missing');
+assert(bootstrap.includes('stage12c65e_edit_mode_pointer_fix_20260720'), 'Stable Inspect Navigation cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=stage12c65e_edit_mode_pointer_fix_20260720'), 'Page bootstrap cache key missing');
 assert(bootstrap.includes('stage: "12C65E"'), 'Viewer runtime Stage E identity missing');
 assert(editorBootstrap.includes('Stage 12C65E'), 'Editor bootstrap Stage E label missing');
 assert(!bootstrap.includes('stage12c65d'), 'Old Stage D cache key remains');
@@ -164,6 +165,18 @@ assert(navigationState.includes('is-transition-locked'), 'Transition-lock class 
 assert(source.includes('#galleryInspectNavigation.is-visible {\n                min-height: var(--gallery-inspect-navigation-size) !important;'), 'Visible mobile navigation row height is not reserved');
 assert(!source.includes('.gallery-inspect-navigation-button.is-hidden,\n            .gallery-inspect-navigation-button:disabled {\n                display: none !important;'), 'Mobile disabled buttons still collapse layout');
 assert(source.includes('.gallery-inspect-navigation-button:disabled:not(.is-hidden)'), 'Visible disabled transition style missing');
+
+
+// Edit Mode button remains interactive after moving into the click-through HUD controls layer.
+assert(index.includes('#galleryMobileControlsLayer > #editModeButton'), 'Page-level Edit Mode hit-target rule missing');
+assert(index.includes(`pointer-events: auto;
+      touch-action: manipulation;`), 'Page-level Edit Mode pointer recovery missing');
+assert(source.includes('STAGE 12C65E UI FIX — the button lives inside a HUD layer'), 'Engine Edit Mode pointer fix marker missing');
+const floatingButtonCssStart = source.indexOf('.gallery-editor-floating-mode-button {', source.indexOf('.gallery-editor-floating-mode-button {') + 1);
+const floatingButtonCss = source.slice(floatingButtonCssStart, floatingButtonCssStart + 900);
+assert(floatingButtonCss.includes('pointer-events: auto;'), 'Floating Edit Mode button does not restore pointer events');
+assert(floatingButtonCss.includes('touch-action: manipulation;'), 'Floating Edit Mode button touch policy missing');
+assert(minified.includes('pointer-events: auto;\\n            touch-action: manipulation;'), 'Minified Edit Mode pointer recovery missing');
 
 // Production/login-disabled exact contract.
 assert(count(source, 'var galleryEditorLoginEnabled = true;') === 1, 'Production source login must be enabled exactly once');

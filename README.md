@@ -53,6 +53,10 @@ npm run check
 This checks JavaScript syntax, Stage identity, queue contracts, KTX2 fallback, model LOD, memory release, zone-based Local Lights, the login ON/OFF contract, minified output and protected Inspect functions.
 
 
-## Stable Inspect Navigation UI Fix
+## Edit Mode Pointer Fix
 
 During Previous/Next camera transitions the buttons are now temporarily disabled without being removed from layout. The mobile navigation row keeps a fixed height, so the popup safe-frame and camera composition no longer jump.
+
+
+## Edit Mode Pointer Fix
+The floating Edit Mode button now explicitly restores pointer hit testing inside the click-through HUD controls layer. The engine import cache key was refreshed.

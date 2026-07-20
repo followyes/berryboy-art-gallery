@@ -1,8 +1,8 @@
 {
-  "name": "berryboy-art-gallery-stage12c65e-stable-inspect-navigation-fix",
-  "version": "0.11.65-e-hotfix-1",
+  "name": "berryboy-art-gallery-stage12c65e-edit-mode-pointer-fix",
+  "version": "0.11.65-e-hotfix-2",
   "private": true,
-  "description": "Berryboy Art Gallery — Stage 12C65E Stable Inspect Navigation UI Fix",
+  "description": "Berryboy Art Gallery — Stage 12C65E Edit Mode Pointer Fix",
   "type": "module",
   "scripts": {
     "verify": "node tools/verify-stage12c65e.mjs",

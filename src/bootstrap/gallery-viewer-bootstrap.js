@@ -1,10 +1,10 @@
 /*
-  Berryboy Art Gallery — Stage 12C65E Mobile Asset Streaming / Memory Budget — Stable Inspect Navigation UI Fix
+  Berryboy Art Gallery — Stage 12C65E Mobile Asset Streaming / Memory Budget — Edit Mode Pointer Fix
   Public bootstrap. Editor/auth actions are dynamically imported only when needed.
 */
 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-import { createScene } from "../Gallery_V0_11.min.js?v=stage12c65e_stable_inspect_navigation_20260716";
+import { createScene } from "../Gallery_V0_11.min.js?v=stage12c65e_edit_mode_pointer_fix_20260720";
 
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";

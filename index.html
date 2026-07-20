@@ -285,6 +285,13 @@
     #galleryMobileInspectLayer { z-index: 30; }
     #galleryMobileSystemLayer { z-index: 50; }
 
+    /* Stage 12C65E hotfix: the HUD controls layer is click-through by default,
+       while the floating Edit Mode control must remain a real hit target. */
+    #galleryMobileControlsLayer > #editModeButton {
+      pointer-events: auto;
+      touch-action: manipulation;
+    }
+
     #galleryBootGuard {
       position: absolute;
       pointer-events: auto;
@@ -1671,6 +1678,6 @@
   <script src="https://cdn.babylonjs.com/babylon.js" onerror="window.BerryboyBootGuard && window.BerryboyBootGuard.fail('babylon-cdn', 'The Babylon.js engine could not be downloaded. Check the connection and reload.')"></script>
   <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js" onerror="window.BerryboyBootGuard && window.BerryboyBootGuard.fail('babylon-loaders-cdn', 'The 3D model loader could not be downloaded. Check the connection and reload.')"></script>
 
-  <script type="module" src="./src/bootstrap/gallery-viewer-bootstrap.js?v=stage12c65c_mobile_viewport_hud_rebuild_20260716" onerror="window.BerryboyBootGuard && window.BerryboyBootGuard.fail('viewer-bootstrap', 'The gallery startup module could not be loaded. Reload or open the page in the full browser.')"></script>
+  <script type="module" src="./src/bootstrap/gallery-viewer-bootstrap.js?v=stage12c65e_edit_mode_pointer_fix_20260720" onerror="window.BerryboyBootGuard && window.BerryboyBootGuard.fail('viewer-bootstrap', 'The gallery startup module could not be loaded. Reload or open the page in the full browser.')"></script>
 </body>
 </html>

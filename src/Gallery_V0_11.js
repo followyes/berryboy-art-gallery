@@ -72,6 +72,7 @@
   - Stage 12C65D: Mobile Inspect UI / Safe-Frame — mobilny popup otrzymuje jeden finalny układ avatar + treść + nawigacja, strzałki są częścią komponentu, a mierzony safe-frame omija joystick w portrait i wykorzystuje boczne miejsce w niskim landscape.
   - Stage 12C65E: Mobile Asset Streaming / Memory Budget — przestrzenne strefy galerii sterują kolejkami critical → nearby → deferred, tekstury i modele są zwalniane poza aktywnymi strefami, modele dostają distance LOD, KTX2 ma decoder/fallback, a Local Lights aktywują się dla bieżącej i sąsiednich stref.
   - Stage 12C65E UI Fix: Stable Inspect Navigation — przyciski Previous/Next zachowują stałą geometrię podczas przejazdu kamery, dzięki czemu mobilny popup i jego safe-frame nie skaczą.
+  - Stage 12C65E UI Fix: Edit Mode Pointer Recovery — pływający przycisk Edit Mode jawnie odzyskuje pointer-events wewnątrz warstwy HUD controls.
   - Stage 12C62S1: Blend Target Coverage Clamp — Blend nie zawęża agresywnie targetowania; targety Spota liczone są po pełnym Angle, a Blend zostaje dla miękkości światła/helpera. Bez Hard Cut.
   - Stage 12C62S: Consolidated Production Cleanup / No Hard Cut — stabilizacja C62N1, bezpieczne mapowanie Blend, audyt budzetow swiatel/cieni, target cache dirty versions, static bounds cache i loading guards. Zero shader Hard Cut / Proof View / native bypass.
   - UI ONLY: Transform przeniesiony pod naglowek GENERAL SETTINGS, mixed-info przeniesione pod Range.
@@ -15363,6 +15364,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             right: var(--gallery-editor-screen-gap);
             bottom: var(--gallery-editor-bottom-gap);
             z-index: 999;
+            /* STAGE 12C65E UI FIX — the button lives inside a HUD layer whose default
+               pointer policy is none. Restore hit testing explicitly for this control. */
+            pointer-events: auto;
+            touch-action: manipulation;
             background:
                 linear-gradient(145deg, rgba(255, 255, 255, 0.48), rgba(246, 245, 240, 0.26)),
                 rgba(255, 255, 255, 0.20);
