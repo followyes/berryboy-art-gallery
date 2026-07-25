@@ -16,6 +16,8 @@
   <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
 
   <style>
+    #siteHeader #saveStateButton { display: none !important; }
+
     :root {
       --header-height: 64px;
       --mobile-header-height: 54px;
@@ -305,13 +307,13 @@
         max(22px, env(safe-area-inset-bottom))
         max(18px, env(safe-area-inset-left));
       background:
-        radial-gradient(circle at 50% 38%, rgba(71, 39, 45, 0.22), transparent 44%),
-        #080909;
+        radial-gradient(circle at 50% 34%, rgba(111, 65, 75, 0.24), transparent 43%),
+        linear-gradient(180deg, rgba(8, 9, 9, 0.96), rgba(8, 9, 9, 1));
       color: #f7f3ea;
       font-family: var(--font);
       opacity: 1;
       visibility: visible;
-      transition: opacity 220ms ease, visibility 220ms ease;
+      transition: opacity 240ms ease, visibility 240ms ease;
     }
 
     #galleryBootGuard.is-hidden {
@@ -321,25 +323,51 @@
     }
 
     .galleryBootCard {
-      width: min(440px, 100%);
-      padding: 24px;
+      width: min(560px, 100%);
+      padding: clamp(22px, 4vw, 32px);
       border: 1px solid rgba(255, 255, 255, 0.14);
-      border-radius: 22px;
-      background: rgba(15, 17, 18, 0.86);
-      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.09);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      border-radius: 24px;
+      background: rgba(15, 17, 18, 0.82);
+      box-shadow: 0 28px 84px rgba(0, 0, 0, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
       text-align: center;
     }
 
+    .galleryBootBrand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      color: rgba(247, 243, 234, 0.86);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .galleryBootBrand::before {
+      content: "";
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: #f0eade;
+      box-shadow: 0 0 0 5px rgba(240, 234, 222, 0.10);
+    }
+
     .galleryBootSpinner {
-      width: 42px;
-      height: 42px;
-      margin: 0 auto 18px;
-      border: 3px solid rgba(255, 255, 255, 0.16);
+      display: none;
+      width: 44px;
+      height: 44px;
+      margin: 0 auto 20px;
+      border: 3px solid rgba(255, 255, 255, 0.15);
       border-top-color: rgba(255, 255, 255, 0.94);
       border-radius: 50%;
-      animation: galleryBootSpin 850ms linear infinite;
+      animation: galleryBootSpin 880ms linear infinite;
+    }
+
+    #galleryBootGuard[data-state="loading"] .galleryBootSpinner {
+      display: block;
     }
 
     @keyframes galleryBootSpin {
@@ -348,59 +376,70 @@
 
     #galleryBootTitle {
       margin: 0;
-      font-size: 22px;
-      line-height: 1.1;
-      letter-spacing: -0.035em;
+      font-size: clamp(25px, 4vw, 38px);
+      line-height: 1.06;
+      letter-spacing: -0.04em;
     }
 
     #galleryBootMessage {
-      margin: 10px 0 0;
+      margin: 12px auto 0;
+      max-width: 460px;
       color: rgba(247, 243, 234, 0.72);
       font-size: 14px;
-      line-height: 1.5;
+      line-height: 1.55;
     }
 
-    #galleryBootDetails {
+    #galleryBootTimefiller {
       display: none;
-      margin: 12px 0 0;
-      padding: 10px 12px;
-      max-height: 120px;
-      overflow: auto;
-      border-radius: 12px;
+      min-height: 42px;
+      margin: 22px 0 0;
+      padding: 12px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 14px;
       background: rgba(255, 255, 255, 0.055);
-      color: rgba(247, 243, 234, 0.62);
-      font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      text-align: left;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
+      color: rgba(247, 243, 234, 0.78);
+      font-size: 13px;
+      line-height: 1.4;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 180ms ease;
+    }
+
+    #galleryBootGuard[data-state="loading"] #galleryBootTimefiller {
+      display: flex;
     }
 
     #galleryBootActions {
-      display: none;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      display: flex;
       gap: 10px;
-      margin-top: 18px;
+      margin-top: 22px;
     }
 
-    #galleryBootGuard.is-error .galleryBootSpinner {
+    #galleryBootStart,
+    #galleryBootReload,
+    #galleryBootExternal,
+    #galleryBootAbout {
       display: none;
     }
 
-    #galleryBootGuard.is-error #galleryBootActions {
-      display: grid;
+    #galleryBootGuard[data-state="prestart"] #galleryBootStart,
+    #galleryBootGuard[data-state="prestart"] #galleryBootAbout,
+    #galleryBootGuard[data-state="error"] #galleryBootReload,
+    #galleryBootGuard[data-state="error"] #galleryBootExternal {
+      display: inline-flex;
     }
 
     .galleryBootAction {
-      min-height: 44px;
-      padding: 10px 12px;
-      display: inline-flex;
+      flex: 1 1 0;
+      min-height: 48px;
+      padding: 11px 14px;
       align-items: center;
       justify-content: center;
       border: 1px solid rgba(255, 255, 255, 0.24);
-      border-radius: 12px;
+      border-radius: 13px;
       background: rgba(255, 255, 255, 0.08);
       color: #f7f3ea;
-      font: 700 13px/1.2 var(--font);
+      font: 750 13px/1.2 var(--font);
       text-decoration: none;
       cursor: pointer;
     }
@@ -411,14 +450,19 @@
       border-color: #f0eade;
     }
 
+    .galleryBootAction:disabled {
+      cursor: wait;
+      opacity: 0.58;
+    }
+
     @media (max-width: 720px) {
       .galleryBootCard {
-        padding: 21px 18px;
-        border-radius: 18px;
+        padding: 22px 18px;
+        border-radius: 19px;
       }
 
       #galleryBootActions {
-        grid-template-columns: 1fr;
+        flex-direction: column;
       }
     }
 
@@ -1146,13 +1190,16 @@
         <div id="galleryMobileControlsLayer" class="galleryMobileHudLayer"></div>
         <div id="galleryMobileInspectLayer" class="galleryMobileHudLayer"></div>
         <div id="galleryMobileSystemLayer" class="galleryMobileHudLayer">
-          <div id="galleryBootGuard" role="status" aria-live="polite">
+          <div id="galleryBootGuard" data-state="prestart" role="status" aria-live="polite">
             <div class="galleryBootCard">
+              <div class="galleryBootBrand">Berryboy Art Gallery</div>
               <div class="galleryBootSpinner" aria-hidden="true"></div>
-              <h2 id="galleryBootTitle">Loading gallery</h2>
-              <p id="galleryBootMessage">Preparing the 3D scene…</p>
-              <pre id="galleryBootDetails"></pre>
+              <h2 id="galleryBootTitle">Berryboy Art Gallery</h2>
+              <p id="galleryBootMessage">The 3D exhibition starts only after you choose to enter.</p>
+              <p id="galleryBootTimefiller"></p>
               <div id="galleryBootActions">
+                <button id="galleryBootStart" type="button" class="galleryBootAction is-primary">Enter gallery</button>
+                <a id="galleryBootAbout" class="galleryBootAction" href="#project-info">About project</a>
                 <button id="galleryBootReload" type="button" class="galleryBootAction is-primary">Reload gallery</button>
                 <a id="galleryBootExternal" class="galleryBootAction" href="./" target="_blank" rel="noopener noreferrer">Open in browser</a>
               </div>
@@ -1351,7 +1398,6 @@
 
     <footer id="siteFooter">
       <span>Berryboy Art Gallery</span>
-      <span>Gallery_V0_11 · Stage 12C65E</span>
     </footer>
   </div>
 
@@ -1594,90 +1640,198 @@
       var guard = document.getElementById("galleryBootGuard");
       var title = document.getElementById("galleryBootTitle");
       var message = document.getElementById("galleryBootMessage");
-      var details = document.getElementById("galleryBootDetails");
+      var timefiller = document.getElementById("galleryBootTimefiller");
+      var startButton = document.getElementById("galleryBootStart");
+      var aboutButton = document.getElementById("galleryBootAbout");
       var reload = document.getElementById("galleryBootReload");
       var external = document.getElementById("galleryBootExternal");
-      var finished = false;
+      var state = "prestart";
+      var currentLanguage = localStorage.getItem("berryboy_art_gallery_lang") === "pl" ? "pl" : "en";
       var failure = null;
-      var bootStartedAt = Date.now();
+      var fillerIndex = 0;
+      var fillerTimer = 0;
+      var timeoutId = 0;
+      var startResolved = false;
+      var resolveStart;
+      var startPromise = new Promise(function (resolve) { resolveStart = resolve; });
+
+      var copy = {
+        pl: {
+          preTitle: "Berryboy Art Gallery",
+          preMessage: "Interaktywna wystawa 3D uruchomi się dopiero po wybraniu wejścia.",
+          start: "Uruchom galerię",
+          about: "O projekcie",
+          loadingTitle: "Przygotowujemy galerię",
+          loadingMessage: "Jeszcze chwila — za moment rozpoczniesz zwiedzanie.",
+          errorTitle: "Nie udało się uruchomić galerii",
+          errorMessage: "Odśwież stronę i spróbuj ponownie.",
+          reload: "Odśwież galerię",
+          external: "Otwórz w przeglądarce",
+          fillers: [
+            "Za chwilę wejdziesz do galerii.",
+            "Przygotowujemy przestrzeń do zwiedzania.",
+            "Światło i prace zajmują swoje miejsca.",
+            "Jeszcze moment — wystawa jest prawie gotowa."
+          ]
+        },
+        en: {
+          preTitle: "Berryboy Art Gallery",
+          preMessage: "The interactive 3D exhibition starts only after you choose to enter.",
+          start: "Enter gallery",
+          about: "About project",
+          loadingTitle: "Preparing the gallery",
+          loadingMessage: "One moment — your visit will begin shortly.",
+          errorTitle: "The gallery could not start",
+          errorMessage: "Reload the page and try again.",
+          reload: "Reload gallery",
+          external: "Open in browser",
+          fillers: [
+            "You will enter the gallery in a moment.",
+            "Preparing the space for your visit.",
+            "The artworks and lighting are taking their places.",
+            "Almost there — the exhibition is nearly ready."
+          ]
+        }
+      };
+
+      function getCopy() {
+        return copy[currentLanguage] || copy.en;
+      }
 
       function setText(element, value) {
         if (element) element.textContent = value || "";
       }
 
-      function setPhase(phase, text) {
-        if (finished || failure) return;
-        if (guard) guard.dataset.phase = phase || "boot";
-        setText(message, text || "Preparing the 3D scene…");
+      function stopFiller() {
+        window.clearInterval(fillerTimer);
+        fillerTimer = 0;
+      }
+
+      function updateFiller() {
+        var items = getCopy().fillers;
+        if (!timefiller || !items.length) return;
+        timefiller.style.opacity = "0";
+        window.setTimeout(function () {
+          setText(timefiller, items[fillerIndex % items.length]);
+          fillerIndex += 1;
+          timefiller.style.opacity = "1";
+        }, 170);
+      }
+
+      function startFiller() {
+        stopFiller();
+        fillerIndex = 0;
+        updateFiller();
+        fillerTimer = window.setInterval(updateFiller, 3600);
+      }
+
+      function render() {
+        var c = getCopy();
+        if (guard) guard.dataset.state = state;
+
+        if (state === "prestart") {
+          setText(title, c.preTitle);
+          setText(message, c.preMessage);
+          setText(startButton, c.start);
+          setText(aboutButton, c.about);
+        } else if (state === "loading") {
+          setText(title, c.loadingTitle);
+          setText(message, c.loadingMessage);
+        } else if (state === "error") {
+          setText(title, c.errorTitle);
+          setText(message, c.errorMessage);
+          setText(reload, c.reload);
+          setText(external, c.external);
+        }
+      }
+
+      function setLanguage(lang) {
+        currentLanguage = lang === "pl" ? "pl" : "en";
+        render();
+        if (state === "loading") {
+          fillerIndex = 0;
+          updateFiller();
+        }
+      }
+
+      function setPhase(phase, technicalMessage) {
+        if (state !== "loading" || failure) return;
+        try {
+          window.dispatchEvent(new CustomEvent("gallery-debug-status", {
+            detail: {
+              stage: "12C66C6C2",
+              phase: phase || "startup",
+              technicalMessage: technicalMessage || null
+            }
+          }));
+        } catch (_error) {}
+      }
+
+      function waitForStart() {
+        return startPromise;
+      }
+
+      function beginStart() {
+        if (state !== "prestart" || startResolved) return;
+        startResolved = true;
+        state = "loading";
+        if (startButton) startButton.disabled = true;
+        render();
+        startFiller();
+        timeoutId = window.setTimeout(function () {
+          fail("boot-timeout", getCopy().errorMessage, new Error("Startup timeout"));
+        }, 120000);
+        resolveStart();
       }
 
       function ready() {
-        if (finished || failure) return;
-        finished = true;
-        window.clearTimeout(api.timeoutId);
+        if (state !== "loading" || failure) return;
+        state = "ready";
+        stopFiller();
+        window.clearTimeout(timeoutId);
         if (guard) guard.classList.add("is-hidden");
       }
 
-      function fail(code, friendlyMessage, error) {
-        finished = false;
+      function fail(code, _friendlyMessage, error) {
         failure = code || "startup-error";
-        window.clearTimeout(api.timeoutId);
+        state = "error";
+        stopFiller();
+        window.clearTimeout(timeoutId);
         if (guard) {
           guard.classList.remove("is-hidden");
-          guard.classList.add("is-error");
           guard.dataset.failure = failure;
         }
-        setText(title, "Gallery could not start");
-        setText(message, friendlyMessage || "The 3D scene could not be initialized on this browser.");
-        if (details && error) {
-          details.style.display = "block";
-          details.textContent = error && error.stack ? error.stack : String(error);
-        }
+        render();
+        console.error("Gallery startup diagnostic:", failure, error || "");
       }
 
-      var api = {
-        stage: "12C65E",
-        bootStartedAt: bootStartedAt,
-        setPhase: setPhase,
-        ready: ready,
-        fail: fail,
-        timeoutId: window.setTimeout(function () {
-          fail(
-            "boot-timeout",
-            "The gallery is taking too long to initialize. Reload it or open it in the full browser."
-          );
-        }, 45000)
-      };
-
-      if (reload) {
-        reload.addEventListener("click", function () {
-          window.location.reload();
-        });
-      }
-
-      if (external) {
-        external.href = window.location.href;
-      }
+      if (startButton) startButton.addEventListener("click", beginStart);
+      if (reload) reload.addEventListener("click", function () { window.location.reload(); });
+      if (external) external.href = window.location.href;
 
       window.addEventListener("error", function (event) {
-        if (!finished) {
-          fail("window-error", "A startup script failed before the gallery was ready.", event.error || event.message);
-        }
+        if (state === "loading") fail("window-error", null, event.error || event.message);
       });
 
       window.addEventListener("unhandledrejection", function (event) {
-        if (!finished) {
-          fail("unhandled-rejection", "A startup request failed before the gallery was ready.", event.reason);
-        }
+        if (state === "loading") fail("unhandled-rejection", null, event.reason);
       });
 
-      window.BerryboyBootGuard = api;
+      window.BerryboyBootGuard = {
+        stage: "12C66C6C2",
+        schema: "click-start-timefillers.v1",
+        setLanguage: setLanguage,
+        setPhase: setPhase,
+        waitForStart: waitForStart,
+        ready: ready,
+        fail: fail,
+        getState: function () { return state; }
+      };
+
+      render();
     })();
   </script>
 
-  <script src="https://cdn.babylonjs.com/babylon.js" onerror="window.BerryboyBootGuard && window.BerryboyBootGuard.fail('babylon-cdn', 'The Babylon.js engine could not be downloaded. Check the connection and reload.')"></script>
-  <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js" onerror="window.BerryboyBootGuard && window.BerryboyBootGuard.fail('babylon-loaders-cdn', 'The 3D model loader could not be downloaded. Check the connection and reload.')"></script>
-
-  <script type="module" src="./src/bootstrap/gallery-viewer-bootstrap.js?v=stage12c65e_edit_mode_pointer_fix_20260720" onerror="window.BerryboyBootGuard && window.BerryboyBootGuard.fail('viewer-bootstrap', 'The gallery startup module could not be loaded. Reload or open the page in the full browser.')"></script>
+  <script type="module" src="./src/bootstrap/gallery-viewer-bootstrap.js?v=stage12c66c6c2_mobile_memory_survival_tiered_artwork_20260725" onerror="window.BerryboyBootGuard && window.BerryboyBootGuard.fail('viewer-bootstrap', null, new Error('Viewer bootstrap could not be loaded.'))"></script>
 </body>
 </html>

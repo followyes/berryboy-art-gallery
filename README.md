@@ -1,62 +1,75 @@
-# Berryboy Art Gallery — Stage 12C65E
+# Berryboy Art Gallery — Stage 12C66C6C2
 
-## Mobile Asset Streaming / Memory Budget
+## Mobile Memory Survival / Tiered Artwork Residency
 
-Stage 12C65E is one complete production stage built on Stage 12C65D. It replaces the previous post-entry "load everything" behavior with a zone-aware runtime:
+Baza: **Stage 12C66C6C1 — Canonical Visual State / Mobile Lighting & Reflection Parity**.
 
-- **critical** — the current gallery zone; required previews and sculptures are prepared before Interaction Ready,
-- **nearby** — adjacent zones; loaded after entry with lower priority,
-- **deferred** — distant zones; left unloaded until the camera approaches.
+Celem tego etapu jest ustabilizowanie długiego zwiedzania galerii na telefonie bez powrotu do pustych ram i bez zmiany kanonicznego oświetlenia, odbić ani kolorystyki względem wersji PC.
 
-The global collision shell (walls, floor and ceiling) remains startup-critical so navigation and Local Light targeting do not operate on incomplete architecture. Props remain optional and begin after Interaction Ready.
+## Główne zmiany
 
-## Included systems
+### Warstwowa rezydencja artworków
 
-- zones derived from floor bounds, with grid fallback for large segmented floors,
-- prioritized artwork and sculpture queues,
-- current-zone full-resolution artwork upgrades,
-- mobile texture and model resident budgets,
-- disposal and re-queue of distant artwork textures and sculpture models,
-- explicit KTX2 artwork variants with JPG/WebP fallback,
-- support for KTX2 textures embedded in GLB,
-- optional low-LOD sculpture URL for nearby zones and high-detail URL for the critical zone,
-- distance culling LOD for loaded sculpture and Props meshes,
-- mobile AssetContainer cache bypass so unloaded models can actually release GPU resources,
-- current + adjacent zone activation for Props and Local Lights,
-- streaming budgets updated when Adaptive Quality changes,
-- debug API at `window.BerryboyArtGalleryStreaming`.
+- Każdy przypisany obraz zachowuje stale widoczny wariant Preview AVIF 768 px.
+- Tylko kontrolowana liczba najważniejszych obrazów utrzymuje wariant Full Mobile AVIF 2048 px.
+- Priorytet Full otrzymują: cel Inspect, Previous/Next, zaznaczone dzieło, obiekty widoczne w kadrze, aktualna strefa i najbliższe obrazy.
+- Po utracie priorytetu Full jest atomowo zastępowany Preview, a pełna tekstura zostaje zwolniona.
+- Rama nie jest wyłączana i nigdy nie pozostaje pusta.
 
-## Optional state fields
+Budżety startowe:
 
-Artwork image state can include:
+- Mobile High: 8 Full; w osadzonej przeglądarce maksymalnie 5.
+- Mobile Balanced: 6 Full; w osadzonej przeglądarce maksymalnie 5.
+- Mobile Safe: 4 Full; w osadzonej przeglądarce maksymalnie 4.
 
-- `imageUrlKtx2Preview` / `ktx2PreviewUrl`
-- `imageUrlKtx2Mobile` / `ktx2MobileUrl`
-- `imageUrlKtx2Web` / `ktx2WebUrl`
-- `imageUrlKtx2` / `ktx2Url`
+### Czyszczenie pamięci sceny
 
-Sculpture model state can include:
+- Streamowane modele są usuwane ze wszystkich rejestrów casterów i receiverów cieni przed disposalem.
+- Rejestry cieni są czyszczone z nieaktualnych oraz dispose’owanych wpisów.
+- Nieaktywne mobilne generatory cieni Spot są rzeczywiście dispose’owane.
+- Po wyłączeniu SSAO zwalniany jest pipeline, Geometry Buffer i jego render targety.
+- Monitor Tour Order nie wykonuje cyklicznych obliczeń w Viewer Mode.
 
-- `lodUrl` (aliases accepted during normalization: `modelUrlLow`, `lowUrl`)
-- `lodCullDistance`
+### Mobilna diagnostyka bez konsoli
 
-Existing JPG/WebP artwork URLs and original GLB URLs remain valid fallbacks. Stage 12C65E does not fabricate converted KTX2 or low-poly assets; the runtime consumes these variants when they exist in Storage/state.
+Na telefonie w prawym górnym rogu pojawia się przycisk **DBG**. Panel oferuje:
 
-## Verification
+- **LIVE** — aktualne dane,
+- **FREEZE** — zatrzymany snapshot do wykonania screena,
+- **LAST** — ostatni zapis poprzedniej sesji,
+- **CLOSE** — zamknięcie panelu.
 
-Run:
+Snapshot pokazuje między innymi profil, FPS, render buffer, liczbę Preview/Full, szacowaną pamięć artworków, kolejki, modele, tekstury, materiały, meshe, shadow registry, generatory cieni, SSAO i Geometry Buffer. Lekki snapshot jest zapisywany do localStorage co 2,2 sekundy oraz przy `pagehide`/ukryciu strony.
+
+## Zachowana zgodność wizualna
+
+Stage C6C2 nie zmienia kanonicznych ustawień:
+
+- Hemispheric i Directional Light,
+- `scene.environmentIntensity`,
+- odbić podłogi, ścian i sufitu,
+- roughness materiałów,
+- kolorów Local Lights,
+- ustawień zapisanych w `gallery_state`.
+
+Dalsze artworki mogą być chwilowo wyświetlane jako Preview 768 px zamiast Full 2048 px, ale pozostają widoczne. Obrazy w bieżącym kadrze i Inspect są promowane do Full.
+
+## Diagnostyka programistyczna
+
+```js
+BerryboyMobileSurvival.getSnapshot()
+BerryboyMobileSurvival.getLastSession()
+BerryboyMobileSurvival.open()
+BerryboyMobileSurvival.enforceResidency()
+
+BerryboyArtGalleryMobileQuality.getSurvivalSnapshot()
+BerryboyArtGalleryMobileQuality.openSurvivalPanel()
+```
+
+## Testy
 
 ```bash
 npm run check
 ```
 
-This checks JavaScript syntax, Stage identity, queue contracts, KTX2 fallback, model LOD, memory release, zone-based Local Lights, the login ON/OFF contract, minified output and protected Inspect functions.
-
-
-## Edit Mode Pointer Fix
-
-During Previous/Next camera transitions the buttons are now temporarily disabled without being removed from layout. The mobile navigation row keeps a fixed height, so the popup safe-frame and camera composition no longer jump.
-
-
-## Edit Mode Pointer Fix
-The floating Edit Mode button now explicitly restores pointer hit testing inside the click-through HUD controls layer. The engine import cache key was refreshed.
+Testy automatyczne sprawdzają strukturę i zachowanie systemów, ale potwierdzenie braku zamknięcia strony wymaga długiego testu na rzeczywistych telefonach i osadzonych WebView.
