@@ -1,25 +1,156 @@
 /*
-  Berryboy Art Gallery — Stage 12C66C6C2
+  Exhibition Platform — Stage 12C66C6C8C16 — Persistent Draft / Instant Public Preview
   Save Integrity Repair / Correct Startup Rebuild.
   Babylon, GLB loaders and the gallery engine start only after an explicit visitor click.
-  The accepted engine-owned instructional popup is shown unchanged after true interaction readiness.
+  The engine-owned instructional popup is shown after true interaction readiness; C6C8C16 keeps its mobile CTA pinned.
 */
 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import { gallerySpaceDefinition } from "../config/gallery-space-config.js?v=stage12c66c6c8c16_mobile_ui_polish_inspect_cursor_20260813";
+import { registerExhibitionAssetCache, getExhibitionAssetDeliveryStats } from "./asset-cache-bootstrap.js?v=stage12c66c6c8c16_mobile_ui_polish_inspect_cursor_20260813";
+import { beginTransitionGuard, endTransitionGuard, isTransitionGuardActive } from "./transition-guard.js?v=stage12c66c6c8c16_mobile_ui_polish_inspect_cursor_20260813";
 
-const STAGE = "12C66C6C2";
-const ENGINE_CACHE_KEY = "stage12c66c6c2_mobile_memory_survival_tiered_artwork_20260725";
+const STAGE = "12C66C6C8C16";
+const ENGINE_CACHE_KEY = "stage12c66c6c8c16_mobile_ui_polish_inspect_cursor_20260813";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 window.gallerySupabase = supabase;
 
+async function resolvePublishedExhibitionId(requestedId) {
+  const requested = String(requestedId || "main").trim() || "main";
+  try {
+    const exact = await supabase.from("gallery_exhibitions")
+      .select("id")
+      .eq("id", requested)
+      .eq("is_published", true)
+      .limit(1);
+    if (!exact.error && Array.isArray(exact.data) && exact.data[0] && exact.data[0].id) {
+      return String(exact.data[0].id);
+    }
+
+    const fallback = await supabase.from("gallery_exhibitions")
+      .select("id")
+      .eq("is_published", true)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true })
+      .limit(1);
+    if (!fallback.error && Array.isArray(fallback.data) && fallback.data[0] && fallback.data[0].id) {
+      return String(fallback.data[0].id);
+    }
+  } catch (_error) {}
+  return requested;
+}
+
+const assetCacheReadyPromise = registerExhibitionAssetCache();
+
+function deliveryStatsDelta(before, after) {
+  before = before || {};
+  after = after || {};
+  return {
+    assetRequests: Math.max(0, Number(after.assetRequests || 0) - Number(before.assetRequests || 0)),
+    cacheHits: Math.max(0, Number(after.cacheHits || 0) - Number(before.cacheHits || 0)),
+    networkFetches: Math.max(0, Number(after.networkFetches || 0) - Number(before.networkFetches || 0)),
+    networkKnownBytes: Math.max(0, Number(after.networkKnownBytes || 0) - Number(before.networkKnownBytes || 0)),
+    supabaseNetworkFetches: Math.max(0, Number(after.supabaseNetworkFetches || 0) - Number(before.supabaseNetworkFetches || 0)),
+    supabaseNetworkKnownBytes: Math.max(0, Number(after.supabaseNetworkKnownBytes || 0) - Number(before.supabaseNetworkKnownBytes || 0))
+  };
+}
+
+function publishTransitionNetworkDiagnostic(record) {
+  window.ExhibitionNetworkDiagnostics = window.ExhibitionNetworkDiagnostics || {};
+  window.ExhibitionNetworkDiagnostics.lastTransition = record;
+  try { window.dispatchEvent(new CustomEvent("exhibition-network-diagnostic", { detail: record })); } catch (_error) {}
+  return record;
+}
+
+async function finishModeTransitionDiagnostic(beforeOrPromise, startedAt, fromLabel, toLabel) {
+  const before = await Promise.resolve(beforeOrPromise).catch(() => null);
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  const after = await getExhibitionAssetDeliveryStats().catch(() => null);
+  const delta = deliveryStatsDelta(before, after);
+  return publishTransitionNetworkDiagnostic({
+    type: "workspace-mode",
+    from: fromLabel,
+    to: toLabel,
+    mode: "instant-workspace-ui-only",
+    durationMs: Math.round((performance.now() - startedAt) * 10) / 10,
+    network: delta,
+    zeroStorageNetwork: delta.supabaseNetworkFetches === 0,
+    at: Date.now()
+  });
+}
+
+
+function publishInstantWorkspaceModeDiagnostic(startedAt, fromLabel, toLabel, engineRecord) {
+  // C6C8C15: never query the Service Worker on the click path. The Asset Delivery
+  // panel keeps session-level network telemetry; this record measures UI latency only.
+  return publishTransitionNetworkDiagnostic({
+    type: "workspace-mode",
+    from: fromLabel,
+    to: toLabel,
+    mode: engineRecord && engineRecord.mode ? engineRecord.mode : "zero-work-public-return",
+    draftPreserved: !!(engineRecord && engineRecord.draftPreserved),
+    durationMs: Math.round((performance.now() - startedAt) * 10) / 10,
+    engineDurationMs: engineRecord && Number.isFinite(Number(engineRecord.durationMs))
+      ? Number(engineRecord.durationMs)
+      : null,
+    corePresentationMs: engineRecord && Number.isFinite(Number(engineRecord.corePresentationMs))
+      ? Number(engineRecord.corePresentationMs)
+      : null,
+    networkMeasuredOnClickPath: false,
+    zeroStorageNetwork: null,
+    at: Date.now()
+  });
+}
+
+function canUseInstantWorkspaceModeSwitch() {
+  if (!activeEngine || !activeScene || !window.GalleryApp) return false;
+  if (typeof window.GalleryApp.canUseInstantWorkspaceModeSwitch === "function") {
+    try { return window.GalleryApp.canUseInstantWorkspaceModeSwitch() === true; } catch (_error) {}
+  }
+  if (typeof window.GalleryApp.getForegroundReadiness === "function") {
+    try {
+      const readiness = window.GalleryApp.getForegroundReadiness();
+      return !!(readiness && readiness.ready);
+    } catch (_error) {}
+  }
+  return false;
+}
+
+let inlineWorkspaceModeSwitchActive = false;
+
+function getRequestedExhibitionId() {
+  try { const params = new URLSearchParams(window.location.search); return (params.get("exhibition") || "main").trim() || "main"; } catch (error) { return "main"; }
+}
+
+function readNavigationHandoff(id) {
+  const key = `exhibition_platform_handoff_${id}`;
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    sessionStorage.removeItem(key);
+    const parsed = JSON.parse(raw);
+    if (!parsed || parsed.schema !== "exhibition-navigation-handoff.v1") return null;
+    if (!parsed.exhibition || String(parsed.exhibition.id) !== String(id)) return null;
+    if (!parsed.state || typeof parsed.state !== "object") return null;
+    if (Date.now() - Number(parsed.createdAt || 0) > 120000) return null;
+    if (String(parsed.spaceId || gallerySpaceDefinition.id) !== String(gallerySpaceDefinition.id)) return null;
+    return parsed;
+  } catch (_error) {
+    try { sessionStorage.removeItem(key); } catch (_ignore) {}
+    return null;
+  }
+}
+
 const canvas = document.getElementById("renderCanvas");
 const startupError = document.getElementById("startupError");
 const galleryToast = document.getElementById("galleryToast");
 const loginButton = document.getElementById("loginButton");
 const logoutButton = document.getElementById("logoutButton");
+const adminWorkspaceButton = document.getElementById("adminWorkspaceButton");
 const saveStateButton = document.getElementById("saveStateButton");
 const exploreBelowButton = document.getElementById("exploreBelowButton");
 const authStatus = document.getElementById("authStatus");
@@ -41,6 +172,276 @@ let activeEngine = null;
 let activeScene = null;
 let galleryStartPromise = null;
 let currentLang = localStorage.getItem("berryboy_art_gallery_lang") || "en";
+
+let inlineAdminModulePromise = null;
+let inlineAdminWorkspaceMounted = false;
+let gallerySectionHomeParent = null;
+let gallerySectionHomeNextSibling = null;
+
+function ensureInlineAdminWorkspaceStyles() {
+  if (document.getElementById("inlineAdminWorkspaceStyles")) return;
+  const style = document.createElement("style");
+  style.id = "inlineAdminWorkspaceStyles";
+  style.textContent = `
+    #inlineAdminWorkspace { position:fixed; inset:0; z-index:19000; display:none; grid-template-rows:64px minmax(0,1fr); background:#0b0d0c; color:rgba(255,255,255,.92); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    #inlineAdminWorkspace.active { display:grid; }
+    body.inline-admin-workspace-active { overflow:hidden !important; }
+    body.inline-admin-workspace-active #siteHeader, body.inline-admin-workspace-active #siteContent, body.inline-admin-workspace-active #siteFooter { visibility:hidden !important; pointer-events:none !important; }
+    #inlineAdminTopbar { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:0 22px; border-bottom:1px solid rgba(255,255,255,.10); background:rgba(13,15,14,.98); }
+    #inlineAdminTopbar .adminBrand { display:flex; align-items:center; gap:12px; min-width:0; }
+    #inlineAdminTopbar .adminBrandMark { width:30px; height:30px; border:1px solid rgba(255,255,255,.18); border-radius:9px; display:grid; place-items:center; font-weight:800; font-size:11px; }
+    #inlineAdminTopbar .adminBrandText strong { display:block; font-size:13px; letter-spacing:.07em; text-transform:uppercase; }
+    #inlineAdminTopbar .adminBrandText span { display:block; margin-top:2px; color:rgba(255,255,255,.57); font-size:11px; }
+    #inlineAdminTopbar .topActions { display:flex; align-items:center; gap:8px; }
+    #inlineAdminTopbar .topUser { color:rgba(255,255,255,.57); font-size:12px; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    #inlineAdminWorkspace .adminButton { min-height:36px; padding:0 13px; border:1px solid rgba(255,255,255,.18); border-radius:10px; background:rgba(255,255,255,.055); color:rgba(255,255,255,.92) !important; cursor:pointer; font-weight:700; font-size:11px; letter-spacing:.04em; text-decoration:none !important; display:inline-flex; align-items:center; justify-content:center; }
+    #inlineAdminWorkspace .adminButton:visited { color:rgba(255,255,255,.92) !important; }
+    #inlineAdminWorkspace #publicPageButton, #inlineAdminWorkspace #publicPageButton:link, #inlineAdminWorkspace #publicPageButton:visited, #inlineAdminWorkspace #publicPageButton:hover, #inlineAdminWorkspace #publicPageButton:active { color:rgba(255,255,255,.92) !important; text-decoration:none !important; }
+    #inlineAdminWorkspace .adminButton:hover { background:rgba(255,255,255,.09); }
+    #inlineAdminWorkspace .adminButton.primary { background:rgba(125,160,127,.16); border-color:rgba(154,180,155,.45); }
+    #inlineAdminWorkspace .adminButton.danger { color:#f0b5b5 !important; }
+    #inlineAdminWorkspace .adminButton:disabled { opacity:.4; cursor:default; }
+    #inlineAdminBody { min-height:0; display:grid; grid-template-columns:360px minmax(0,1fr); }
+    #inlineAdminSidebar { min-height:0; overflow:auto; border-right:1px solid rgba(255,255,255,.10); background:rgba(17,19,18,.98); padding:18px; }
+    #inlineAdminWorkspace .workspaceSection { border:1px solid rgba(255,255,255,.10); border-radius:14px; background:rgba(255,255,255,.035); overflow:hidden; margin-bottom:14px; }
+    #inlineAdminWorkspace .sectionHead { padding:14px 14px 10px; display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+    #inlineAdminWorkspace .sectionHead h2 { margin:0; font-size:12px; letter-spacing:.08em; text-transform:uppercase; }
+    #inlineAdminWorkspace .sectionHead p { margin:5px 0 0; color:rgba(255,255,255,.57); font-size:11px; line-height:1.45; }
+    #inlineAdminWorkspace .sectionBody { padding:0 14px 14px; }
+    #inlineAdminWorkspace #createExhibitionForm { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:7px; }
+    #inlineAdminWorkspace .adminInput, #inlineAdminWorkspace .adminTextarea { width:100%; border:1px solid rgba(255,255,255,.18); border-radius:10px; background:rgba(255,255,255,.055); color:rgba(255,255,255,.92); outline:none; font:inherit; }
+    #inlineAdminWorkspace .adminInput { height:38px; padding:0 11px; }
+    #inlineAdminWorkspace .adminTextarea { min-height:92px; resize:vertical; padding:10px 11px; line-height:1.45; }
+    #inlineAdminWorkspace #exhibitionList { display:grid; gap:7px; max-height:280px; overflow:auto; padding-right:2px; }
+    #inlineAdminWorkspace .exhibitionRow { width:100%; display:grid; grid-template-columns:48px minmax(0,1fr); gap:10px; align-items:center; text-align:left; padding:7px; border:1px solid transparent; border-radius:10px; background:transparent; color:rgba(255,255,255,.92); cursor:pointer; }
+    #inlineAdminWorkspace .exhibitionRow:hover { background:rgba(255,255,255,.045); }
+    #inlineAdminWorkspace .exhibitionRow.active { border-color:rgba(154,180,155,.38); background:rgba(125,160,127,.16); }
+    #inlineAdminWorkspace .exhibitionThumb { width:48px; height:48px; border-radius:8px; border:1px solid rgba(255,255,255,.10); object-fit:cover; background:rgba(255,255,255,.035); }
+    #inlineAdminWorkspace .exhibitionMeta { min-width:0; }
+    #inlineAdminWorkspace .exhibitionMeta strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
+    #inlineAdminWorkspace .exhibitionMeta span { display:block; margin-top:4px; color:rgba(255,255,255,.57); font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    #inlineAdminWorkspace .statusDot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#777; margin-right:5px; vertical-align:1px; }
+    #inlineAdminWorkspace .statusDot.published { background:#7fa982; }
+    #inlineAdminWorkspace #detailsForm { display:grid; gap:11px; }
+    #inlineAdminWorkspace .fieldLabel { display:grid; gap:6px; color:rgba(255,255,255,.57); font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+    #inlineAdminWorkspace .fieldMeta { color:rgba(255,255,255,.57); font-size:10px; line-height:1.4; }
+    #inlineAdminWorkspace .inlineFields { display:grid; grid-template-columns:1fr 110px; gap:9px; }
+    #inlineAdminWorkspace .checkRow { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:38px; border:1px solid rgba(255,255,255,.10); border-radius:10px; padding:0 10px; }
+    #inlineAdminWorkspace .checkRow span { font-size:11px; color:rgba(255,255,255,.57); }
+    #inlineAdminWorkspace .posterCard { display:grid; grid-template-columns:94px minmax(0,1fr); gap:11px; align-items:start; }
+    #inlineAdminWorkspace #posterPreview { width:94px; aspect-ratio:4/5; object-fit:cover; border-radius:10px; border:1px solid rgba(255,255,255,.18); background:#101210; }
+    #inlineAdminWorkspace .posterActions { display:grid; gap:7px; }
+    #inlineAdminWorkspace #posterFileInput { display:none; }
+    #inlineAdminMain { min-width:0; min-height:0; padding:18px; background:radial-gradient(circle at 30% 10%,rgba(255,255,255,.035),transparent 36%),#0b0d0c; }
+    #inlineAdminViewportCard { height:100%; min-height:0; display:grid; grid-template-rows:56px minmax(0,1fr); border:1px solid rgba(255,255,255,.10); border-radius:16px; overflow:hidden; background:#050606; box-shadow:0 28px 90px rgba(0,0,0,.22); }
+    #inlineAdminViewportToolbar { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:0 12px; border-bottom:1px solid rgba(255,255,255,.10); background:rgba(20,22,21,.96); }
+    #inlineAdminWorkspace #viewportStatus { min-width:0; color:rgba(255,255,255,.57); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    #inlineAdminWorkspace #viewportStatus strong { color:rgba(255,255,255,.92); }
+    #adminViewportStage { position:relative; min-width:0; min-height:0; overflow:hidden; isolation:isolate; }
+    #inlineAdminWorkspace #gallerySection { width:100% !important; height:100% !important; min-height:0 !important; }
+    #inlineAdminWorkspace .workspaceLoading { position:absolute; inset:0; z-index:45; display:grid; place-items:center; pointer-events:none; background:rgba(5,6,6,.72); backdrop-filter:blur(4px); }
+    #inlineAdminWorkspace .workspaceLoading.hidden { display:none; }
+    #inlineAdminWorkspace .loadingCard { padding:13px 16px; border:1px solid rgba(255,255,255,.10); border-radius:10px; background:#161918; color:rgba(255,255,255,.57); font-size:11px; }
+    @media (max-width:980px) { #inlineAdminBody { grid-template-columns:1fr; overflow:auto; } #inlineAdminSidebar { max-height:45vh; border-right:0; border-bottom:1px solid rgba(255,255,255,.10); } #inlineAdminMain { min-height:680px; } }
+  `;
+  document.head.appendChild(style);
+}
+
+function ensureInlineAdminWorkspaceDom() {
+  if (inlineAdminWorkspaceMounted) return document.getElementById("inlineAdminWorkspace");
+  ensureInlineAdminWorkspaceStyles();
+  const gallerySection = document.getElementById("gallerySection");
+  gallerySectionHomeParent = gallerySection ? gallerySection.parentNode : null;
+  gallerySectionHomeNextSibling = gallerySection ? gallerySection.nextSibling : null;
+
+  const shell = document.createElement("div");
+  shell.id = "inlineAdminWorkspace";
+  shell.innerHTML = `
+    <header id="inlineAdminTopbar">
+      <div class="adminBrand"><div class="adminBrandMark">EP</div><div class="adminBrandText"><strong>Admin Workspace</strong><span>Exhibition Platform</span></div></div>
+      <div class="topActions"><span id="adminUser" class="topUser">Editor</span><a class="adminButton" id="publicPageButton" href="#">PUBLIC PAGE</a><button id="inlineAdminLogoutButton" class="adminButton danger" type="button">LOG OUT</button></div>
+    </header>
+    <div id="inlineAdminBody">
+      <aside id="inlineAdminSidebar">
+        <section class="workspaceSection"><div class="sectionHead"><div><h2>Exhibitions</h2><p>Switch the active exhibition or create a new one in the current 3D Space.</p></div><button id="refreshExhibitionsButton" class="adminButton" type="button">↻</button></div><div class="sectionBody"><form id="createExhibitionForm"><input id="newExhibitionName" class="adminInput" maxlength="120" placeholder="New exhibition name" autocomplete="off"/><button id="createExhibitionButton" class="adminButton primary" type="submit">CREATE</button></form><div style="height:10px"></div><div id="exhibitionList"><div class="fieldMeta">Loading exhibition catalog…</div></div></div></section>
+        <section class="workspaceSection"><div class="sectionHead"><div><h2>Exhibition details</h2><p>Metadata used by the admin workspace and the future public carousel.</p></div></div><div class="sectionBody"><form id="detailsForm"><label class="fieldLabel">Name<input id="exhibitionName" class="adminInput" maxlength="120" required/></label><label class="fieldLabel">Description<textarea id="exhibitionDescription" class="adminTextarea" maxlength="4000" placeholder="Short exhibition description"></textarea></label><div class="inlineFields"><label class="fieldLabel">Slug<input id="exhibitionSlug" class="adminInput" readonly/></label><label class="fieldLabel">Order<input id="exhibitionSortOrder" class="adminInput" type="number" step="1"/></label></div><div class="checkRow"><span>Published / visible publicly</span><input id="exhibitionPublished" type="checkbox"/></div><div class="fieldLabel">Poster / cover</div><div class="posterCard"><img id="posterPreview" alt="Exhibition poster preview"/><div class="posterActions"><button id="choosePosterButton" class="adminButton" type="button">UPLOAD / REPLACE</button><button id="removePosterButton" class="adminButton danger" type="button">REMOVE</button><div id="posterStatus" class="fieldMeta">No poster assigned.</div><input id="posterFileInput" type="file" accept="image/jpeg,image/png,image/webp,image/avif"/></div></div><div class="fieldMeta">Space: <strong id="exhibitionSpaceId">main-space</strong></div><button id="saveMetadataButton" class="adminButton primary" type="submit">SAVE EXHIBITION DETAILS</button></form></div></section>
+      </aside>
+      <main id="inlineAdminMain"><section id="inlineAdminViewportCard"><div id="inlineAdminViewportToolbar"><div><div id="viewportStatus">3D preview: <strong>ready</strong></div><div id="assetDeliveryStatus" class="fieldMeta">Asset delivery: same runtime</div><div id="networkDiagnostics" class="fieldMeta">Network: measuring Storage delivery…</div></div><div class="fieldMeta">Same live 3D runtime — no scene reload.</div></div><div id="adminViewportStage"><div id="workspaceLoading" class="workspaceLoading hidden"><div class="loadingCard">Preparing Admin Workspace…</div></div></div></section></main>
+    </div>`;
+  document.body.appendChild(shell);
+  const logout = document.getElementById("inlineAdminLogoutButton");
+  if (logout) logout.addEventListener("click", async () => {
+    const closed = await closeInlineAdminWorkspace({ reason: "logout" });
+    if (!closed) return;
+    await supabase.auth.signOut();
+  });
+  inlineAdminWorkspaceMounted = true;
+  return shell;
+}
+
+async function closeInlineAdminWorkspace(options = {}) {
+  const shell = document.getElementById("inlineAdminWorkspace");
+  if (!shell || !shell.classList.contains("active")) return true;
+  if (inlineWorkspaceModeSwitchActive) return false;
+
+  const adminModule = inlineAdminModulePromise ? await inlineAdminModulePromise.catch(() => null) : null;
+  const metadataDirty = !!(adminModule && typeof adminModule.hasAdminMetadataUnsavedChanges === "function" && adminModule.hasAdminMetadataUnsavedChanges());
+  const sceneDirty = !!(window.GalleryApp && window.GalleryApp.hasUnsavedChanges ? window.GalleryApp.hasUnsavedChanges() : false);
+  const preserveDraft = options.preserveDraft === true;
+  let discardUnsaved = options.discardUnsaved === true;
+
+  // C6C8C15: PUBLIC PAGE is a live preview of the current draft, not a discard action.
+  // Only destructive exits (logout/explicit discard) still ask for confirmation.
+  if ((metadataDirty || sceneDirty) && !preserveDraft && !discardUnsaved && !options.force) {
+    const action = options.reason === "logout" ? "log out" : "return to the public Viewer";
+    discardUnsaved = window.confirm(`You have unsaved Admin changes. Discard them and ${action}?`);
+    if (!discardUnsaved) return false;
+  }
+
+  if (isTransitionGuardActive()) return false;
+  inlineWorkspaceModeSwitchActive = true;
+  const activeBefore = window.GalleryApp && window.GalleryApp.getActiveExhibition ? window.GalleryApp.getActiveExhibition() : null;
+  const transitionStartedAt = performance.now();
+
+  // C6C8C15: a preserved dirty draft is just as reusable as a clean scene.
+  // No published snapshot, network check or foreground rebuild belongs on this path.
+  const instantFastPath = (preserveDraft || !sceneDirty) && canUseInstantWorkspaceModeSwitch();
+  const transitionBeforePromise = instantFastPath
+    ? null
+    : getExhibitionAssetDeliveryStats().catch(() => null);
+
+  let guardToken = null;
+  if (!instantFastPath) {
+    guardToken = await beginTransitionGuard({
+      title: "Returning to Public Page…",
+      detail: "Finishing pending gallery work before returning to Viewer.",
+      minVisibleMs: 120
+    });
+    if (!guardToken) {
+      inlineWorkspaceModeSwitchActive = false;
+      return false;
+    }
+  }
+
+  try {
+    if (discardUnsaved && metadataDirty && adminModule && typeof adminModule.discardAdminMetadataChanges === "function") {
+      adminModule.discardAdminMetadataChanges();
+    }
+
+    if (window.GalleryApp && typeof window.GalleryApp.exitAdminWorkspaceMode === "function") {
+      const exited = window.GalleryApp.exitAdminWorkspaceMode({ discardUnsaved, preserveDraft });
+      if (!exited) return false;
+    }
+
+    // Move the already-running canvas back first. No network, no Scene rebuild.
+    const gallerySection = document.getElementById("gallerySection");
+    if (gallerySection && gallerySectionHomeParent) {
+      if (gallerySectionHomeNextSibling && gallerySectionHomeNextSibling.parentNode === gallerySectionHomeParent) gallerySectionHomeParent.insertBefore(gallerySection, gallerySectionHomeNextSibling);
+      else gallerySectionHomeParent.appendChild(gallerySection);
+    }
+    shell.classList.remove("active");
+    document.body.classList.remove("inline-admin-workspace-active");
+
+    // Admin housekeeping is not allowed to delay the public frame.
+    if (adminModule && typeof adminModule.suspendAdminWorkspace === "function") {
+      const suspendPromise = adminModule.suspendAdminWorkspace({ preserveDraft });
+      if (!instantFastPath) await suspendPromise;
+      else void Promise.resolve(suspendPromise).catch(() => null);
+    }
+
+    const active = window.GalleryApp && window.GalleryApp.getActiveExhibition ? window.GalleryApp.getActiveExhibition() : activeBefore;
+    try {
+      const url = new URL(location.href);
+      url.searchParams.set("exhibition", active && active.id ? active.id : "main");
+      history.replaceState(null, "", url);
+    } catch (_error) {}
+
+    window.requestAnimationFrame(() => {
+      if (activeEngine) activeEngine.resize();
+      if (instantFastPath) {
+        const engineRecord = window.GalleryApp && typeof window.GalleryApp.getExhibitionRuntimeDebug === "function"
+          ? (window.GalleryApp.getExhibitionRuntimeDebug().lastModeTransition || null)
+          : null;
+        publishInstantWorkspaceModeDiagnostic(
+          transitionStartedAt,
+          `Admin:${active && active.id ? active.id : "main"}`,
+          `Public:${active && active.id ? active.id : "main"}`,
+          engineRecord
+        );
+      }
+    });
+
+    // Fallback only: scene changed/discarded and must really revalidate foreground.
+    if (!instantFastPath && window.GalleryApp && typeof window.GalleryApp.waitForForegroundReady === "function") {
+      await window.GalleryApp.waitForForegroundReady("admin-to-public-fallback", { pendingTimeoutMs: 7000, quietTimeoutMs: 3600 });
+    }
+
+    if (!instantFastPath) {
+      void finishModeTransitionDiagnostic(
+        transitionBeforePromise,
+        transitionStartedAt,
+        `Admin:${active && active.id ? active.id : "main"}`,
+        `Public:${active && active.id ? active.id : "main"}`
+      ).catch(() => null);
+    }
+    return true;
+  } finally {
+    if (guardToken) await endTransitionGuard(guardToken);
+    inlineWorkspaceModeSwitchActive = false;
+  }
+}
+
+async function openInlineAdminWorkspace(exhibitionId) {
+  if (!currentSession || isTransitionGuardActive() || inlineWorkspaceModeSwitchActive) return false;
+  const foregroundReadyBeforeOpen = canUseInstantWorkspaceModeSwitch();
+  const guardToken = await beginTransitionGuard({
+    title: "Opening Admin Workspace…",
+    detail: "Reusing the live 3D scene — no building reload.",
+    minVisibleMs: 150
+  });
+  if (!guardToken) return false;
+
+  if (!activeEngine || !activeScene || !window.GalleryApp) {
+    const target = `./admin.html?exhibition=${encodeURIComponent(exhibitionId || getRequestedExhibitionId())}`;
+    location.href = target;
+    return false;
+  }
+
+  try {
+    const shell = ensureInlineAdminWorkspaceDom();
+    const stage = document.getElementById("adminViewportStage");
+    const gallerySection = document.getElementById("gallerySection");
+    if (stage && gallerySection && gallerySection.parentNode !== stage) stage.appendChild(gallerySection);
+    shell.classList.add("active");
+    document.body.classList.add("inline-admin-workspace-active");
+    if (window.GalleryApp.hideViewerIntroOverlay) window.GalleryApp.hideViewerIntroOverlay();
+    const inlineContext = window.__EXHIBITION_INLINE_ADMIN_CONTEXT__ || {};
+    Object.assign(inlineContext, {
+      engine: activeEngine,
+      scene: activeScene,
+      supabase,
+      session: currentSession,
+      exhibitionId: exhibitionId || (window.GalleryApp.getActiveExhibition && window.GalleryApp.getActiveExhibition().id) || "main",
+      close: closeInlineAdminWorkspace,
+      onSessionLost: () => closeInlineAdminWorkspace({ discardUnsaved: true, force: true })
+    });
+    window.__EXHIBITION_INLINE_ADMIN_CONTEXT__ = inlineContext;
+    if (window.GalleryApp.enterAdminWorkspaceMode) window.GalleryApp.enterAdminWorkspaceMode();
+    if (!inlineAdminModulePromise) inlineAdminModulePromise = import(`./admin-workspace-bootstrap.js?v=${ENGINE_CACHE_KEY}`);
+    const adminModule = await inlineAdminModulePromise;
+    if (adminModule && typeof adminModule.resumeAdminWorkspace === "function") await adminModule.resumeAdminWorkspace();
+    window.requestAnimationFrame(() => { if (activeEngine) activeEngine.resize(); });
+    if (!foregroundReadyBeforeOpen && window.GalleryApp && typeof window.GalleryApp.waitForForegroundReady === "function") {
+      await window.GalleryApp.waitForForegroundReady("public-to-admin-fallback", { pendingTimeoutMs: 7000, quietTimeoutMs: 3600 });
+    }
+    return true;
+  } finally {
+    await endTransitionGuard(guardToken);
+  }
+}
+
+window.ExhibitionPlatformOpenAdminWorkspace = openInlineAdminWorkspace;
+window.ExhibitionPlatformCloseAdminWorkspace = closeInlineAdminWorkspace;
 
 const uiText = {
   pl: {
@@ -128,7 +529,9 @@ function updateAuthUi() {
 
   if (loginButton) loginButton.classList.toggle("hidden", isLoggedIn);
   if (logoutButton) logoutButton.classList.toggle("hidden", !isLoggedIn);
-  if (saveStateButton) saveStateButton.classList.toggle("hidden", !isLoggedIn);
+  // Public index is viewer-only. Saving/editing belongs exclusively to admin.html.
+  if (saveStateButton) saveStateButton.classList.add("hidden");
+  if (adminWorkspaceButton) adminWorkspaceButton.classList.toggle("hidden", !isLoggedIn);
 
   if (authStatus) {
     authStatus.textContent = isLoggedIn
@@ -200,6 +603,16 @@ document.querySelectorAll("[data-set-lang]").forEach(function (button) {
     applyLanguage(button.getAttribute("data-set-lang"));
   });
 });
+
+if (adminWorkspaceButton) {
+  adminWorkspaceButton.addEventListener("click", function (event) {
+    event.preventDefault();
+    const active = window.GalleryApp && window.GalleryApp.getActiveExhibition ? window.GalleryApp.getActiveExhibition() : null;
+    openInlineAdminWorkspace(active && active.id ? active.id : getRequestedExhibitionId()).catch(function (error) {
+      console.warn("Inline Admin Workspace open failed:", error);
+    });
+  });
+}
 
 if (loginButton) {
   loginButton.addEventListener("pointerenter", function () {
@@ -413,6 +826,8 @@ async function startGalleryRuntime() {
   if (galleryStartPromise) return galleryStartPromise;
 
   galleryStartPromise = (async function () {
+    // Give the persistent asset cache a chance to claim this page before heavy Storage requests begin.
+    await assetCacheReadyPromise;
     await ensureBabylonDependencies();
 
     bootGuard.setPhase("engine-module", "Gallery engine module");
@@ -436,7 +851,21 @@ async function startGalleryRuntime() {
     activeEngine = engine;
 
     bootGuard.setPhase("scene", "Gallery scene");
-    const scene = engineModule.createScene(engine, canvas);
+    const requestedExhibitionId = getRequestedExhibitionId();
+    const publicExhibitionId = await resolvePublishedExhibitionId(requestedExhibitionId);
+    if (publicExhibitionId !== requestedExhibitionId) {
+      try {
+        const nextUrl = new URL(location.href);
+        nextUrl.searchParams.set("exhibition", publicExhibitionId);
+        history.replaceState(null, "", nextUrl);
+      } catch (_error) {}
+    }
+    const navigationHandoff = readNavigationHandoff(publicExhibitionId);
+    const scene = engineModule.createScene(engine, canvas, {
+      spaceDefinition: gallerySpaceDefinition,
+      exhibitionId: publicExhibitionId,
+      initialExhibitionSnapshot: navigationHandoff || null
+    });
     activeScene = scene;
     updateAuthUi();
 

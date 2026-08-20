@@ -96,13 +96,232 @@
   - Stage 12C66C6C: Atomic AVIF Media Lifecycle / Mobile Scene Quality Parity — upload, replace i import URL commitują wyłącznie kompletne zestawy AVIF, panel migracyjny zastępują dwa narzędzia naprawcze, a jakość mobilna jest sterowana niezależnymi domenami renderu, cieni, świateł, efektów i streamingu.
   - Stage 12C66C6C2: Canonical Visual State / Mobile Lighting & Reflection Parity — ustawienia zapisywane w gallery_state są kanoniczne i niezależne od urządzenia, profile mobilne tylko raz wyprowadzają runtime post-process, odbicia i environment response pozostają zgodne z PC, Messenger startuje od Balanced, a DPR/resize ma jednego właściciela.
   - Stage 12C66C6C2: Mobile Memory Survival / Tiered Artwork Residency — wszystkie ramy zachowują stale widoczny Preview, tylko kontrolowany zestaw dzieł rezyduje jako Full 2048, a pełne tekstury, modele, cienie i SSAO są rzeczywiście zwalniane. Mobilny przycisk DBG pokazuje LIVE/FREEZE/LAST SESSION bez konsoli.
+  - Stage 12C66C6C3: Artwork Frame Library — GLB variants are read from gallery-artworks/main/frames, assigned per artwork, follow the existing aspect/transform runtime, persist in gallery_state, participate in picking/Inspect and artwork-targeted local lighting.
+  - Stage 12C66C6C4: Artwork Frame Fit / Prefetch — frame GLBs are prefetched after Storage catalog read, scaling uses the frame inner opening instead of the outer mesh bounds, depth offset seats the frame over the artwork edges, and runtime adds the required 180° Z rotation.
+  - Stage 12C66C6C5: Artwork Frame Facing Fix — adds a local 180° Y facing flip after frame normalization so the decorative/front side faces away from the wall while preserving the required 180° Z in-plane rotation.
+  - Stage 12C66C6C6: Artwork Frame Runtime Performance — frame GLBs warm in parallel on Edit entry, per-variant geometry descriptors are cached after first use, and frame assignment updates only the new frame materials/local-light membership instead of rescanning the whole gallery.
+  - Stage 12C66C6C7C8: Space / Exhibition Split + Multi-Exhibition — the current building definition moves outside the engine, gallery_state is keyed by active exhibition instead of hard-coded main, Storage is scoped per exhibition, and the editor can create/switch independent exhibitions inside the same 3D Space.
+  - Stage 12C66C6C7C8B: Admin Workspace — exhibition catalog/metadata management moves out of the in-scene editor into admin.html; the engine keeps only scene-editing controls and exposes programmatic exhibition/edit-mode APIs for the workspace.
+  - Stage 12C66C6C7C8B1: Public Viewer / Admin Edit Gate — the public index is viewer-only; its Edit Mode control routes authenticated editors into admin.html for the active exhibition, while Edit Mode can only be enabled inside Admin Workspace.
+  - Stage 12C66C6C8C: Asset Residency / Egress Guard — artwork Full textures become proximity/Inspect-driven on desktop and mobile, Full residency is bounded globally, repeated Storage asset requests are expected to be served by the persistent browser asset cache across Viewer/Admin navigation, and poster uploads are normalized to a compact delivery asset.
+  - Stage 12C66C6C8C1: Runtime Lifecycle / Admin Transition Fix — Exhibition/Save runtimes are initialized before state preload, public Viewer no longer owns editor dirty tracking or unload prompts, Viewer/Admin handoff uses confirmed published snapshots, Admin preview hydration uses the intended desktop concurrency, Full upgrades yield to Preview population, and active Exhibition is preserved when returning to the public page.
+  - Stage 12C66C6C8C2: Same-Runtime Admin Workspace — authenticated Viewer→Admin transitions reuse the already-running Babylon engine, scene, GPU textures and Space instead of navigating to a second document; Admin can return to the public Viewer without rebuilding the scene, while direct admin.html remains supported.
+  - Stage 12C66C6C8C3: Runtime Hygiene / Cache Versioning — editor heartbeat exists only while Admin Workspace is active, same-runtime Admin policies refresh on enter/exit, dirty scene state can be discarded without rebuilding the scene, Space/Frame fixed-path GLBs receive cache-busting versions, and public visibility of Main follows the same publication flag as every other Exhibition.
+  - Stage 12C66C6C8C4: Space Residency / Exhibition Delta Switch — switching Exhibitions inside the same space_id keeps the loaded building, static collision geometry and Space assets resident; only Exhibition-owned content/presentation is replaced, global refreshes are batched once, and entering Admin reuses a valid Tour instead of rebuilding it unconditionally.
+  - Stage 12C66C6C8C5: Exhibition Residency / Zero-Reload Mode Transition — clean same-Space Exhibitions are parked as disabled Babylon layers instead of disposed, recently visited layers resume from RAM/GPU, Admin↔Public mode changes avoid collision/tour rebuilds, and transition/network diagnostics expose whether a switch generated Storage traffic.
+  - Stage 12C66C6C8C6: Transition Guard / Loading Feedback — Exhibition and Admin↔Public transitions show one full-page interaction lock before synchronous Babylon work begins, preventing click/scroll spam while preserving the zero-reload/resident runtime paths.
+  - Stage 12C66C6C8C7: Scene Ownership / Atomic Exhibition Hydration — Space nodes have immutable ownership barriers and canonical integrity checks; Exhibition layers park complete owned runtime, stale light callbacks are owner-scoped, first-load state hydration is batched, heavy Tour/light work is deferred after the visible transition paint.
+  - Stage 12C66C6C8C8: Stable Texture Residency / No-Thrash Streaming — Preview/Full quality changes are idle/Inspect-gated, workspace mode changes never rebalance textures, downgrade-to-Preview cannot immediately requeue Full, and a hard residency ceiling with hysteresis replaces distance-driven texture ping-pong.
+  - Stage 12C66C6C8C9: Scene Isolation + True Readiness — Exhibition ownership is enforced by scene-wide owner sweeps so detached/orphan nodes cannot leak between layers; static Space materials are GPU-warmed before interaction, transition guards wait for foreground readiness, and long-main-thread work is observed while optional hydration yields cooperatively.
+  - Stage 12C66C6C8C10: Startup Critical Path + Background Hydration Budget — interactive readiness waits only for the static Space shell and a bounded foreground artwork set; sculpture/model hydration and non-active-zone artwork previews leave the critical path, background work is single-slice, motion-aware and idle-budgeted, and Space GPU warmup is cached and compiled in small cooperative batches.
+  - Stage 12C66C6C8C11: Guaranteed Preview Fill — every assigned artwork Preview belongs to the foreground readiness gate, all required Preview textures start immediately with bounded decode concurrency, gray artwork placeholders cannot be exposed by normal startup/switch readiness, while Full textures and sculpture/model hydration remain idle/background work.
+  - Stage 12C66C6C8C12: Hard Space Visual Ready — Props join the critical Space shell, static Space props remain resident instead of zone-popping, and GPU warmup compiles/verifies every visual Space mesh (including every Wall_segment_*) before interaction so camera turns cannot expose first-use shader holes.
+  - Stage 12C66C6C8C13: Instant Workspace Mode Switch — same-runtime Admin↔Public transitions preserve foreground readiness and touch only UI/camera controls; owner sweeps and Space integrity checks move to idle background audits so returning to Public does not re-run gallery readiness work.
+  - Stage 12C66C6C8C14: Zero-Work Public Return — clean Admin→Public transitions no longer run full placeholder/sculpture visual refreshes or selection UI rebuilds; viewer presentation toggles only existing nodes, collision proxies are reused without bounds recomputation, and any repair work is deferred/chunked after the public frame is visible.
+  - Stage 12C66C6C8C15: Persistent Draft / Instant Public Preview — PUBLIC PAGE becomes an in-memory preview of the current Admin draft: unsaved scene state is not discarded or reapplied, the same live scene is shown immediately, and returning to Admin resumes the preserved draft while unload protection remains active.
+  - Stage 12C66C6C8C16: Mobile UI Polish / Inspect Layout / Cursor Refresh — mobile intro keeps Start exploring pinned outside the scrollable instructions, Inspect navigation floats on the popup edge without stealing metadata width, and the desktop floor cursor uses a smaller/thinner low-glow SDF ring and lighter click ripple.
+  - Stage C6C8C20: Current-Zone Model Fast Lane — sculpture/model GLBs in the camera's current gallery streaming zone start immediately after Interaction Ready without waiting for the generic viewer-motion / 2.8 s model idle budget; nearby/deferred models keep the existing conservative background streaming policy.
 */
 
 
-export const createScene = function (engineArg, canvasArg) {
+export const createScene = function (engineArg, canvasArg, runtimeOptionsArg) {
 
     var engine = engineArg || globalThis.engine;
     var canvas = canvasArg || globalThis.canvas || document.getElementById("renderCanvas");
+    var runtimeOptions = runtimeOptionsArg && typeof runtimeOptionsArg === "object" ? runtimeOptionsArg : {};
+    var galleryAdminWorkspaceMode = runtimeOptions.adminWorkspace === true;
+    var galleryPublicViewerOnly = !galleryAdminWorkspaceMode;
+    // C6C8C15: when Admin temporarily previews the public presentation, keep the
+    // in-memory scene draft alive without keeping Edit/Admin UI active.
+    var galleryAdminDraftPreviewActive = false;
+    var gallerySpaceDefinition = runtimeOptions.spaceDefinition || globalThis.BerryboyGallerySpaceDefinition || null;
+
+    function normalizeGalleryRuntimeId(value, fallbackValue) {
+        var normalized = String(value || "")
+            .trim()
+            .replace(/[^a-zA-Z0-9_-]+/g, "-")
+            .replace(/^-+|-+$/g, "");
+        return normalized ? normalized.slice(0, 96) : String(fallbackValue || "main");
+    }
+
+    function appendGalleryAssetVersion(value, versionToken) {
+        var source = String(value || "");
+        var token = String(versionToken || "").trim();
+        if (!source || !token) return source;
+        var encoded = encodeURIComponent(token);
+        if (/[?&]v=[^&#]*/i.test(source)) {
+            return source.replace(/([?&])v=[^&#]*/i, "$1v=" + encoded);
+        }
+        var separator = source.indexOf("?") >= 0 ? "&" : "?";
+        return source + separator + "v=" + encoded;
+    }
+
+    function requireGallerySpaceAsset(assetKey) {
+        var assets = gallerySpaceDefinition && gallerySpaceDefinition.assets;
+        var asset = assets && assets[assetKey];
+        if (!asset || !asset.rootUrl || !asset.fileName) {
+            throw new Error("Missing Space asset definition: " + assetKey + ".");
+        }
+        var spaceVersion = String(gallerySpaceDefinition.version || "1");
+        var assetVersion = String(asset.version || "1");
+        var cacheVersion = galleryActiveSpaceId + "-" + spaceVersion + "-" + assetKey + "-" + assetVersion;
+        return Object.assign({}, asset, {
+            cacheVersion: cacheVersion,
+            deliveryFileName: appendGalleryAssetVersion(asset.fileName, cacheVersion)
+        });
+    }
+
+    if (!gallerySpaceDefinition || !gallerySpaceDefinition.id || !gallerySpaceDefinition.assets) {
+        throw new Error("Gallery Space definition is missing. Load src/config/gallery-space-config.js and pass it to createScene().");
+    }
+
+    var galleryActiveSpaceId = normalizeGalleryRuntimeId(gallerySpaceDefinition.id, "main-space");
+    var galleryRequestedExhibitionId = normalizeGalleryRuntimeId(runtimeOptions.exhibitionId, "main");
+    var galleryActiveExhibitionId = galleryRequestedExhibitionId;
+    var galleryArtworkStoragePrefix = galleryActiveExhibitionId === "main"
+        ? "main"
+        : "exhibitions/" + galleryActiveExhibitionId;
+
+    // STAGE 12C66C6C8C1 — RUNTIME LIFECYCLE ORDER
+    // These two runtimes must exist before the startup state preload begins.
+    // A Viewer -> Admin handoff is synchronous, unlike Supabase fetches, so late
+    // initialization could make the first Main Exhibition preload race the engine startup.
+    var gallerySaveIntegrityRuntime = {
+        stage: "12C66C6C8C1",
+        schema: "gallery-save-integrity.v4",
+        sessionId: "gallery-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10),
+        tabId: createGalleryEditorPageInstanceId(),
+        activeTabsStorageKey: "berryboy_gallery_active_editor_tabs_v1",
+        heartbeatIntervalMs: 4000,
+        heartbeatStaleMs: 2 * 60 * 1000,
+        backgroundTabGraceMs: 24 * 60 * 60 * 1000,
+        foreignDraftGraceMs: 24 * 60 * 60 * 1000,
+        heartbeatTimer: null,
+        resolvedCleanupKeys: {},
+        resolvedDraftUploadKeys: {},
+        publishedRevision: 0,
+        publishedStateFingerprint: "",
+        publishedServerStateFingerprint: "",
+        publishedStateSnapshot: null,
+        publishedServerRowExists: false,
+        publishedStateConfirmed: false,
+        baselineReady: false,
+        dirty: false,
+        dirtyReason: "startup",
+        dirtySince: 0,
+        lastStateCheckAt: 0,
+        stateCheckTimer: null,
+        stateCheckIntervalMs: 5000,
+        stateWatcherStarted: false,
+        saveInFlight: false,
+        pendingStorageDeletes: [],
+        pendingDraftUploads: [],
+        cleanupFailures: [],
+        remoteBackupId: "main__previous",
+        localBackupStorageKey: "berryboy_gallery_previous_state_backup_main_v1",
+        pendingCleanupStorageKey: "berryboy_gallery_pending_storage_cleanup_main_v1",
+        pendingDraftUploadStorageKey: "berryboy_gallery_pending_draft_uploads_main_v1",
+        latestSaveResult: null
+    };
+
+    var galleryExhibitionRuntime = {
+        stage: "12C66C6C8C16",
+        schema: "exhibition-platform-multi-exhibition.v10",
+        defaultExhibitionId: "main",
+        activeId: galleryActiveExhibitionId,
+        active: null,
+        catalog: [],
+        catalogLoaded: false,
+        catalogLoading: null,
+        switching: false,
+        creating: false,
+        lastError: "",
+        spaceBaselineCaptured: false,
+        spaceBaseline: null,
+        stateCache: Object.create(null),
+        stateCacheHits: 0,
+        stateCacheMisses: 0,
+        deltaSwitchActive: false,
+        sameSpaceSwitchCount: 0,
+        fullRuntimeResetCount: 0,
+        lastSwitchMode: "startup",
+        lastSwitchDurationMs: 0,
+        lastSwitchFromId: null,
+        lastSwitchToId: null,
+        lastSwitchSpaceId: galleryActiveSpaceId,
+        layerResidency: Object.create(null),
+        residentLayerHits: 0,
+        residentLayerMisses: 0,
+        residentLayerParks: 0,
+        residentLayerEvictions: 0,
+        maxParkedLayers: galleryDeviceProfile && galleryDeviceProfile.mobile ? 1 : 2,
+        lastResidentLayerAction: "startup",
+        lastResidentLayerId: null,
+        lastModeTransition: null,
+        workspaceModeFastPathCount: 0,
+        workspaceModeAuditRuns: 0,
+        workspaceModeAuditFailures: 0,
+        workspaceModeAuditPending: false,
+        workspaceModeAuditLast: null,
+        transitionEpoch: 0,
+        hydrationActive: false,
+        hydrationExhibitionId: null,
+        hydrationEpoch: 0,
+        ownershipViolations: 0,
+        blockedSpaceDisposals: 0,
+        spaceIntegrityBaseline: Object.create(null),
+        lastSpaceIntegrity: null,
+        lastHydrationProfile: null,
+        deferredTourReason: null,
+        ownerSweepRuns: 0,
+        ownerSweepDisabledNodes: 0,
+        ownerSweepDisabledLights: 0,
+        ownerSweepLast: null,
+        orphanSweepDetections: 0,
+        staleOwnerCallbacksBlocked: 0,
+        foregroundReady: false,
+        foregroundReadyReason: "startup",
+        foregroundReadyAt: 0,
+        foregroundReadyPromise: null,
+        foregroundReadyToken: 0,
+        foregroundReadinessLast: null,
+        cooperativeYields: 0,
+        longTaskCount: 0,
+        longTaskDurationMs: 0,
+        lastLongTaskAt: 0,
+        lastLongTaskDurationMs: 0,
+        spaceGpuWarmup: { runs: 0, compiled: 0, skipped: 0, failed: 0, batches: 0, lastMs: 0, lastReason: null, lastAt: 0 },
+        startupCriticalPath: {
+            stage: "12C66C6C8C12",
+            schema: "gallery-startup-critical-path.v2",
+            previewGateMode: "all-assigned-preview",
+            foregroundArtworkSelected: 0,
+            foregroundArtworkLoaded: 0,
+            requiredPreviewCount: 0,
+            readyPreviewCount: 0,
+            missingPreviewCount: 0,
+            foregroundBudgetKey: null,
+            initialInteractiveReadyMs: 0,
+            lastForegroundReadyMs: 0,
+            lastForegroundReadyReason: null,
+            lastReadyAt: 0
+        },
+        backgroundHydration: {
+            stage: "12C66C6C8C12",
+            schema: "gallery-background-hydration-budget.v1",
+            slices: 0,
+            artworkStarts: 0,
+            modelStarts: 0,
+            motionPauses: 0,
+            foregroundPauses: 0,
+            pendingTexturePauses: 0,
+            lastSliceMs: 0,
+            lastReason: null,
+            lastPauseReason: null,
+            lastStartedAt: 0,
+            lastFinishedAt: 0
+        }
+    };
 
     if (!engine) {
         throw new Error("Gallery_V0_9_ENGINE: brak obiektu engine. Przekaż engine do createScene(engine, canvas) albo ustaw globalThis.engine.");
@@ -621,12 +840,12 @@ export const createScene = function (engineArg, canvasArg) {
 
     installGalleryMobileRenderResolutionViewportOwner();
 
-    // Props remain deferred by the single startup gate, but this queue is no longer mobile-specific.
+    // Optional startup deferral remains generic for future Space assets. C6C8C12 has no deferred Space asset: Props are critical.
     var galleryStartupDeferredOptionalAssetImports = [];
     var galleryStartupDeferredOptionalAssetsReleased = false;
 
     function shouldGalleryDeferOptionalStartupAsset(assetName) {
-        return assetName === "props";
+        return galleryOptionalAssetNames.indexOf(assetName) !== -1;
     }
 
     function queueGalleryStartupDeferredOptionalAssetImport(assetName, run) {
@@ -1131,6 +1350,22 @@ export const createScene = function (engineArg, canvasArg) {
         return handler;
     }
 
+
+    function unregisterGalleryDomEvent(key) {
+        if (!key) return false;
+        var removed = false;
+        for (var i = galleryDomListenerRegistry.length - 1; i >= 0; i--) {
+            var existing = galleryDomListenerRegistry[i];
+            if (!existing || existing.key !== key) continue;
+            try {
+                existing.element.removeEventListener(existing.type, existing.handler, existing.options || false);
+            } catch (removeError) {}
+            galleryDomListenerRegistry.splice(i, 1);
+            removed = true;
+        }
+        return removed;
+    }
+
     var galleryBeforeRenderObserverRegistry = {};
     var galleryEngineResizeObserverRegistry = {};
 
@@ -1296,8 +1531,6 @@ export const createScene = function (engineArg, canvasArg) {
     }
 
     setEnvironmentRotationY(environmentRotationY);
-
-
 
 
     registerGalleryDomEvent("galleryCrossTabStorageSync", window, "storage", function (event) {
@@ -3333,17 +3566,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return false;
     }
 
-    function ensureCommonLightShadowLogic(item) {
-        if (!item || !item.light) {
-            return;
-        }
-
-        if (isLocalLightNativeShadowCapable(item)) {
-            refreshLocalSpotShadowForItem(item);
-        }
-    }
-
-    function setMainDirectionalAngles(horizontalDegrees, verticalDegrees) {
+        function setMainDirectionalAngles(horizontalDegrees, verticalDegrees) {
         var horizontal = Number(horizontalDegrees);
         var vertical = Number(verticalDegrees);
 
@@ -3563,27 +3786,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         });
     }
 
-    function unfreezeStaticGalleryMesh(mesh) {
-        if (!mesh || !mesh.unfreezeWorldMatrix) {
-            return;
-        }
-
-        try {
-            mesh.unfreezeWorldMatrix();
-        } catch (unfreezeError) {}
-
-        if (mesh.metadata) {
-            mesh.metadata.galleryStaticWorldMatrixFrozen = false;
-        }
-
-        if (galleryStaticWorldBoundsCache) {
-            try {
-                galleryStaticWorldBoundsCache.delete(mesh);
-            } catch (cacheDeleteError) {}
-        }
-    }
-
-
+    
     // STAGE 9B - VIEWER BUILT-IN COLLISION STEP 1
     // Poprzedni Stage 9 zepsul chodzenie, bo dodal agresywny custom guard
     // i reczne cofanie kamery. Tutaj uzywamy tylko natywnego systemu Babylon:
@@ -3748,6 +3951,25 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         });
     }
 
+    function refreshViewerExhibitionCollisionMeshes() {
+        if (viewerCollisionTargets.artworks) {
+            getActiveArtworks().forEach(function (artwork) {
+                registerViewerCollisionMesh(artwork, "artwork");
+            });
+        }
+
+        artSpheres.forEach(function (slot) {
+            if (!slot) return;
+            unregisterViewerCollisionMesh(slot);
+            if (slot.metadata && slot.metadata.sculptureMesh) unregisterViewerCollisionMesh(slot.metadata.sculptureMesh);
+            if (slot.metadata && slot.metadata.model3dRuntime && slot.metadata.model3dRuntime.meshes) {
+                slot.metadata.model3dRuntime.meshes.forEach(function (mesh) { unregisterViewerCollisionMesh(mesh); });
+            }
+            if (viewerCollisionTargets.sculptures) refreshSculptureCollisionProxy(slot);
+            else disableSculptureCollisionProxy(slot);
+        });
+    }
+
     function serializeGroundCollisionVector(vector) {
         return vector ? { x: Number(vector.x), y: Number(vector.y), z: Number(vector.z) } : null;
     }
@@ -3897,11 +4119,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return isViewerCollisionActive() && viewerCollisionTargets.sculptures;
     }
 
-    function isViewerCustomBlockActive() {
-        return isViewerWallBlockActive() || isViewerSculptureBlockActive();
-    }
-
-    function getViewerSculptureCollisionProxies() {
+        function getViewerSculptureCollisionProxies() {
         if (!isViewerSculptureBlockActive()) return [];
         return Object.keys(gallerySculptureCoreRuntime.colliderRegistry).map(function (slotId) {
             return gallerySculptureCoreRuntime.colliderRegistry[slotId];
@@ -3954,11 +4172,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return null;
     }
 
-    function isViewerSculptureHitBetweenPositions(fromPosition, toPosition) {
-        return !!findViewerSculptureCollisionRecord(fromPosition, toPosition);
-    }
-
-    function findViewerSculptureTooCloseRecord(position, fromPosition) {
+        function findViewerSculptureTooCloseRecord(position, fromPosition) {
         if (!isViewerSculptureBlockActive() || !position) return null;
         var padding = Math.max(viewerCollisionRadius, 0.34) + 0.08;
         var proxies = getViewerSculptureCollisionProxies();
@@ -3985,16 +4199,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return null;
     }
 
-    function isViewerSculptureTooCloseAtPosition(position, fromPosition) {
-        return !!findViewerSculptureTooCloseRecord(position, fromPosition);
-    }
-
-    function isViewerObstacleHitBetweenPositions(fromPosition, toPosition) {
-        return isViewerWallHitBetweenPositions(fromPosition, toPosition) ||
-            isViewerSculptureHitBetweenPositions(fromPosition, toPosition);
-    }
-
-    function getViewerHorizontalPerpendicular(direction) {
+            function getViewerHorizontalPerpendicular(direction) {
         return new BABYLON.Vector3(-direction.z, 0, direction.x);
     }
 
@@ -4172,9 +4377,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
 
-
-
-
     updateViewerCollisionMode();
 
     var lampCeilingY = -0.55;
@@ -4310,6 +4512,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
             if (wallMesh) {
                 includedMeshes.push(wallMesh);
+            }
+
+            if (ownerMesh.metadata && ownerMesh.metadata.artworkFrameRuntime && Array.isArray(ownerMesh.metadata.artworkFrameRuntime.meshes)) {
+                ownerMesh.metadata.artworkFrameRuntime.meshes.forEach(function (mesh) {
+                    includedMeshes.push(mesh);
+                });
             }
 
             floorMeshes.forEach(function (floorMesh) {
@@ -4636,7 +4844,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
     function markGalleryObjectsDirty(reason) {
         galleryObjectVersion += 1;
-        markLocalLightTargetCacheDirty(reason || "objectsDirty");
+        localLightTargetCacheVersion += 1;
+        clearLocalLightTargetMeshCacheForAll(reason || "objectsDirty");
+        localLightTargetDebugStats.lastReason = reason || "objectsDirty";
     }
 
     function markLocalLightTargetItemCacheDirty(item, reason) {
@@ -4722,19 +4932,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return center;
     }
 
-    function getHorizontalSegmentDistanceToReference(mesh, referencePoint) {
-        if (!mesh || !referencePoint) {
-            return Number.POSITIVE_INFINITY;
-        }
-
-        var targetPoint = getClosestPointOnMeshWorldBounds(mesh, referencePoint);
-        var dx = targetPoint.x - referencePoint.x;
-        var dz = targetPoint.z - referencePoint.z;
-
-        return Math.sqrt(dx * dx + dz * dz);
-    }
-
-    function getLocalLightBudgetItemId(item) {
+        function getLocalLightBudgetItemId(item) {
         return item ? (item.id || item.name || (item.light && item.light.name) || null) : null;
     }
 
@@ -4871,144 +5069,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return Math.round(value * 1000) / 1000;
     }
 
-    function getLocalLightSegmentDecisionReason(candidate, candidateAccepted, selected, budgetRejected, maxLimitReached, candidateData) {
-        if (selected) {
-            return null;
-        }
-
-        if (budgetRejected) {
-            return "segmentBudget";
-        }
-
-        if (!candidate) {
-            return "notScanned";
-        }
-
-        if (candidate.frontFacing === false) {
-            return "frontFacing";
-        }
-
-        if (candidate.visibleFromLight === false) {
-            return "occlusion";
-        }
-
-        if (!candidateAccepted) {
-            if (
-                candidateData &&
-                candidateData.reference &&
-                candidateData.reference.primaryMesh &&
-                candidate.mesh === candidateData.reference.primaryMesh
-            ) {
-                return "primaryRejected";
-            }
-
-            return "range";
-        }
-
-        if (maxLimitReached) {
-            return "maxSegmentsPerLight";
-        }
-
-        return "candidateNotSelected";
-    }
-
-    function buildLocalLightSurfaceSegmentDiagnostic(item, surfaceName, segmentMeshes, candidateData, selectedSegments, selectedByName, rejectedByBudgetNames) {
-        candidateData = candidateData || {};
-        selectedSegments = selectedSegments || [];
-        selectedByName = selectedByName || {};
-        rejectedByBudgetNames = rejectedByBudgetNames || {};
-
-        var acceptedByName = {};
-        (candidateData.candidates || []).forEach(function (candidate) {
-            if (candidate && candidate.mesh) {
-                acceptedByName[candidate.mesh.name] = candidate;
-            }
-        });
-
-        var allByName = {};
-        (candidateData.allCandidates || candidateData.candidates || []).forEach(function (candidate) {
-            if (candidate && candidate.mesh) {
-                allByName[candidate.mesh.name] = candidate;
-            }
-        });
-
-        var selectedNameMap = {};
-        selectedSegments.forEach(function (mesh) {
-            if (mesh && mesh.name) {
-                selectedNameMap[mesh.name] = true;
-            }
-        });
-
-        var rows = (segmentMeshes || []).map(function (mesh) {
-            var name = mesh && mesh.name ? mesh.name : "unknown-segment";
-            var candidate = allByName[name] || null;
-            var accepted = !!acceptedByName[name];
-            var selected = !!selectedNameMap[name];
-            var budgetRejected = !!rejectedByBudgetNames[name];
-            var maxLimitReached = selectedSegments.length >= getLocalLightCurrentMaxSegmentsPerLight();
-            var rejectReason = getLocalLightSegmentDecisionReason(
-                candidate,
-                accepted,
-                selected,
-                budgetRejected,
-                maxLimitReached,
-                candidateData
-            );
-
-            return {
-                segment: name,
-                surface: surfaceName,
-                candidate: accepted,
-                scanned: !!candidate,
-                included: selected,
-                includedBy: selected ? (selectedByName[name] || "target") : null,
-                rejectReason: rejectReason,
-                distance: candidate ? roundLocalLightDiagnosticNumber(candidate.distance) : null,
-                priority: candidate ? candidate.priority : null,
-                frontFacing: candidate && candidate.frontFacing !== undefined ? !!candidate.frontFacing : null,
-                visibleFromLight: candidate && candidate.visibleFromLight !== undefined ? !!candidate.visibleFromLight : null
-            };
-        });
-
-        var rejectedRows = rows.filter(function (row) {
-            return !row.included && !!row.rejectReason;
-        });
-
-        var summary = {
-            surface: surfaceName,
-            lightId: getLocalLightDiagnosticItemId(item),
-            lightType: item ? item.type : null,
-            source: candidateData.reference ? candidateData.reference.source : "unknown",
-            referencePoint: candidateData.referencePoint ? serializeVector3(candidateData.referencePoint) : null,
-            radius: candidateData.radius,
-            softRadius: candidateData.softRadius,
-            segmentCount: rows.length,
-            candidateCount: (candidateData.candidates || []).length,
-            scannedCount: (candidateData.allCandidates || []).length,
-            includedCount: selectedSegments.length,
-            rejectedCount: rejectedRows.length,
-            occludedCount: candidateData.occludedCount || 0,
-            maxSegmentsPerLight: getLocalLightCurrentMaxSegmentsPerLight(),
-            maxLightsPerSegment: localLightWallSegmentMaxLightsPerSegment
-        };
-
-        var reasonCounts = {};
-        rejectedRows.forEach(function (row) {
-            reasonCounts[row.rejectReason] = (reasonCounts[row.rejectReason] || 0) + 1;
-        });
-        summary.rejectReasons = reasonCounts;
-
-        return {
-            summary: summary,
-            rows: rows.slice(0, localLightSegmentDiagnosticsMaxRows),
-            rejected: rejectedRows.slice(0, localLightSegmentDiagnosticsMaxRows),
-            included: rows.filter(function (row) {
-                return row.included;
-            })
-        };
-    }
-
-    function storeLocalLightSurfaceSegmentDiagnostic(item, surfaceName, diagnostic) {
+            function storeLocalLightSurfaceSegmentDiagnostic(item, surfaceName, diagnostic) {
         if (!item || !diagnostic) {
             return;
         }
@@ -5895,50 +5956,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     // Center-only tests were too strict for large floor / ceiling segments. A PointLight near a wall
     // may legitimately touch the near part of a ceiling/floor segment even if the segment center is behind a blocker.
     // Use the closest point on the segment bounds for distance and line-of-sight checks.
-    function getMeshWorldBoundsForLocalLight(mesh) {
-        if (!mesh || !mesh.getBoundingInfo) {
-            return null;
-        }
-
-        return getCachedMeshWorldBounds(mesh, false);
-    }
-
-    function clampNumber(value, min, max) {
-        return Math.max(min, Math.min(max, value));
-    }
-
-    function getClosestPointOnMeshWorldBounds(mesh, point) {
-        var bounds = getMeshWorldBoundsForLocalLight(mesh);
-
-        if (!bounds || !point) {
-            return getMeshWorldCenter(mesh);
-        }
-
-        return new BABYLON.Vector3(
-            clampNumber(point.x, bounds.min.x, bounds.max.x),
-            clampNumber(point.y, bounds.min.y, bounds.max.y),
-            clampNumber(point.z, bounds.min.z, bounds.max.z)
-        );
-    }
-
-    function getLocalLightSurfaceTargetPoint(mesh, item, sourceName) {
-        var lightPosition = getLocalLightPosition(item);
-        var point = getClosestPointOnMeshWorldBounds(mesh, lightPosition);
-
-        // If the light is exactly on the surface bounds edge, move slightly toward the mesh center.
-        // This avoids zero-length rays and edge hits on neighbouring blocker segments.
-        var center = getLocalLightSegmentCachedCenter(mesh);
-        var towardCenter = center.subtract(point);
-
-        if (towardCenter.lengthSquared() > 0.000001) {
-            towardCenter.normalize();
-            point = point.add(towardCenter.scale(0.025));
-        }
-
-        return point;
-    }
-
-    function getLocalLightPosition(item) {
+                    function getLocalLightPosition(item) {
         if (item && item.light && item.light.position) {
             return item.light.position.clone();
         }
@@ -6145,7 +6163,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     function applyLocalLightUserState(item) {
         if (!item || !item.light) return false;
 
-        var shouldEnable = !item.softDeleted && getLocalLightUserEnabled(item);
+        var shouldEnable = !item.softDeleted && !item.exhibitionLayerParked && getLocalLightUserEnabled(item);
         if (item.light.setEnabled && item.light.isEnabled) {
             var currentlyEnabled = !!item.light.isEnabled();
             if (currentlyEnabled !== shouldEnable) item.light.setEnabled(shouldEnable);
@@ -6162,13 +6180,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         applyLocalLightUserState(item);
     }
 
-    function updateAllLocalLightUserStates() {
-        (localLightItems || []).forEach(function (item) {
-            applyLocalLightUserState(item);
-        });
-    }
-
-    function getLocalLightBudgetDebug() {
+        function getLocalLightBudgetDebug() {
         return {
             materialBudget: {
                 defaultMaxSimultaneousLights: commonLightingMaxSimultaneousLights,
@@ -6619,13 +6631,48 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         };
     }
 
-    // STAGE 12C66C6C2 — MOBILE MEMORY SURVIVAL / TIERED ARTWORK RESIDENCY
-    // Every assigned frame keeps a Preview texture visible. Full Mobile AVIF textures are
-    // admitted by one bounded residency owner and are atomically downgraded to Preview.
+    // STAGE 12C66C6C8C — ASSET RESIDENCY / EGRESS GUARD
+    // Every assigned artwork keeps a Preview visible. Full AVIF/KTX2 is promoted only when
+    // the artwork is close enough, visible/active, or explicitly protected by Inspect/Edit.
+    // The same bounded owner now applies on desktop and mobile so a public visit never
+    // hydrates every 3072px artwork merely because the viewer stayed on the page.
+    var galleryArtworkEgressPolicy = {
+        stage: "12C66C6C8C12",
+        schema: "exhibition-asset-delivery.v4",
+        // C6C8C8: Viewer and Admin share one texture policy. A UI mode transition must never
+        // change Full/Preview residency or trigger a texture rebalance by itself.
+        desktopFullTextures: 6,
+        desktopHardFullTextures: 8,
+        desktopFullDistance: 13.5,
+        mobileFullDistance: 9.5,
+        desktopGraceMs: 45000,
+        desktopVisibleGraceMs: 12000,
+        fullReentryCooldownMs: 18000,
+        downgradeCooldownMs: 12000,
+        idleBeforeFullMs: 1800
+    };
+
+    function syncGalleryArtworkEgressPolicyForWorkspaceMode(reason) {
+        // Same-runtime Admin/Public is presentation-only for texture streaming.
+        // Do not schedule residency maintenance here: that previously caused Full ↔ Preview
+        // swaps solely because the workspace UI changed mode.
+        if (typeof galleryArtworkResidencyRuntime !== "undefined" && galleryArtworkResidencyRuntime) {
+            galleryArtworkResidencyRuntime.lastWorkspacePolicyReason = reason || (galleryAdminWorkspaceMode ? "admin" : "viewer");
+            galleryArtworkResidencyRuntime.workspaceModeNoRebalanceCount += 1;
+        }
+        return {
+            adminWorkspace: !!galleryAdminWorkspaceMode,
+            fullTextures: galleryArtworkEgressPolicy.desktopFullTextures,
+            hardFullTextures: galleryArtworkEgressPolicy.desktopHardFullTextures,
+            fullDistance: galleryArtworkEgressPolicy.desktopFullDistance,
+            textureRebalance: false
+        };
+    }
+
     var galleryArtworkResidencyRuntime = {
-        stage: "12C66C6C2",
-        schema: "gallery-artwork-residency.v1",
-        enabled: !!galleryDeviceProfile.mobile,
+        stage: "12C66C6C8C12",
+        schema: "gallery-artwork-residency.v3",
+        enabled: true,
         desiredFullIds: Object.create(null),
         desiredFullOrder: [],
         currentBudget: 0,
@@ -6640,10 +6687,14 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         fullPromotions: 0,
         previewDowngrades: 0,
         preventedFullLoads: 0,
+        blockedWhileMoving: 0,
+        thrashPrevented: 0,
+        workspaceModeNoRebalanceCount: 0,
+        lastDowngradeAt: 0,
         estimatedArtworkMiB: 0,
         estimatedFullMiB: 0,
         estimatedPreviewMiB: 0,
-        sessionId: "mobile-survival-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8),
+        sessionId: "asset-residency-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8),
         snapshotStorageKey: "berryboy_mobile_survival_last_snapshot_v1",
         previousSessionSnapshot: null,
         snapshotTimer: null,
@@ -6667,17 +6718,26 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
     function getGalleryArtworkResidencyDefinition(profileName) {
         var profile = getGalleryMobileQualityProfileDefinition(profileName || galleryDeviceProfile.currentQualityProfile);
-        return Object.assign({
+        var definition = Object.assign({
             fullTextures: 6,
             embeddedFullTextures: 5,
             fullGraceMs: 8000,
             visibleGraceMs: 4800,
             inspectPinMs: 22000
         }, profile.artworkResidency || {});
+        if (!isGalleryDeviceProfileMobile()) {
+            definition.fullGraceMs = galleryArtworkEgressPolicy.desktopGraceMs;
+            definition.visibleGraceMs = galleryArtworkEgressPolicy.desktopVisibleGraceMs;
+        }
+        definition.reentryCooldownMs = galleryArtworkEgressPolicy.fullReentryCooldownMs;
+        definition.downgradeCooldownMs = galleryArtworkEgressPolicy.downgradeCooldownMs;
+        return definition;
     }
 
     function getGalleryArtworkFullResidencyBudget() {
-        if (!isGalleryDeviceProfileMobile()) return Number.POSITIVE_INFINITY;
+        if (!isGalleryDeviceProfileMobile()) {
+            return Math.max(2, Math.floor(Number(galleryArtworkEgressPolicy.desktopFullTextures) || 5));
+        }
         var definition = getGalleryArtworkResidencyDefinition();
         var budget = Math.max(2, Math.floor(Number(definition.fullTextures) || 6));
         if (galleryDeviceProfile.embeddedBrowser) {
@@ -6685,6 +6745,16 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
         if (galleryDeviceProfile.lowMemory) budget = Math.min(budget, 4);
         return budget;
+    }
+
+    function getGalleryArtworkFullResidencyHardLimit() {
+        var baseBudget = getGalleryArtworkFullResidencyBudget();
+        if (!isGalleryDeviceProfileMobile()) {
+            return Math.max(baseBudget, Math.floor(Number(galleryArtworkEgressPolicy.desktopHardFullTextures) || 8));
+        }
+        // Mobile still gets a small hysteresis reserve, but low-memory devices remain strict.
+        if (galleryDeviceProfile.lowMemory) return Math.max(baseBudget, Math.min(5, baseBudget + 1));
+        return Math.max(baseBudget, Math.min(8, baseBudget + 2));
     }
 
     function getGalleryArtworkTextureFromMesh(artwork) {
@@ -6743,20 +6813,35 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return { score: score, protectedTarget: protectedTarget, visible: visible, tier: tier, distance: distance };
     }
 
+    function isGalleryArtworkFullEgressEligible(artwork, priority) {
+        if (!artwork || !priority) return false;
+        if (priority.protectedTarget) return true;
+        var distance = Number(priority.distance);
+        if (!isFinite(distance)) return false;
+        var threshold = isGalleryDeviceProfileMobile()
+            ? Number(galleryArtworkEgressPolicy.mobileFullDistance) || 9.5
+            : Number(galleryArtworkEgressPolicy.desktopFullDistance) || 12.5;
+        // Current-zone artworks get a small lead so Full can finish before the visitor reaches them.
+        if (priority.tier === "critical") threshold += isGalleryDeviceProfileMobile() ? 1.5 : 2.0;
+        if (distance > threshold) return false;
+        return priority.visible || priority.tier === "critical" || priority.tier === "nearby";
+    }
+
     function refreshGalleryArtworkResidencyDesired(reason, force) {
-        if (!isGalleryDeviceProfileMobile()) return { budget: Number.POSITIVE_INFINITY, desiredIds: [] };
         var now = Date.now();
         if (!force && now - galleryArtworkResidencyRuntime.lastRefreshAt < galleryArtworkResidencyRuntime.refreshMinimumMs) {
             return { budget: galleryArtworkResidencyRuntime.effectiveBudget, desiredIds: galleryArtworkResidencyRuntime.desiredFullOrder.slice() };
         }
         galleryArtworkResidencyRuntime.lastRefreshAt = now;
-        var candidates = getActiveArtworks().filter(function (artwork) {
+        var allCandidates = getActiveArtworks().filter(function (artwork) {
             return !!(artwork && !isArtworkDeleted(artwork) && getArtworkImageState(artwork));
         }).map(function (artwork) {
-            return { artwork: artwork, priority: getGalleryArtworkResidencyPriority(artwork, now) };
+            var priority = getGalleryArtworkResidencyPriority(artwork, now);
+            return { artwork: artwork, priority: priority, eligible: isGalleryArtworkFullEgressEligible(artwork, priority) };
         }).sort(function (a, b) {
             return b.priority.score - a.priority.score || Number(a.priority.distance || 0) - Number(b.priority.distance || 0);
         });
+        var candidates = allCandidates.filter(function (entry) { return entry.eligible || entry.priority.protectedTarget; });
         var baseBudget = getGalleryArtworkFullResidencyBudget();
         var protectedCount = candidates.filter(function (entry) { return entry.priority.protectedTarget; }).length;
         var effectiveBudget = Math.max(baseBudget, Math.min(10, protectedCount));
@@ -6771,17 +6856,18 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         galleryArtworkResidencyRuntime.desiredFullOrder = order;
         galleryArtworkResidencyRuntime.currentBudget = baseBudget;
         galleryArtworkResidencyRuntime.effectiveBudget = effectiveBudget;
-        candidates.forEach(function (entry) {
+        allCandidates.forEach(function (entry) {
             var stream = entry.artwork.metadata.galleryStreaming = entry.artwork.metadata.galleryStreaming || {};
             stream.residencyDesiredFull = !!desired[ensureArtworkIdentity(entry.artwork)];
+            stream.residencyEgressEligible = !!entry.eligible;
             stream.residencyPriority = Math.round(entry.priority.score);
+            stream.residencyDistance = isFinite(Number(entry.priority.distance)) ? Number(entry.priority.distance) : null;
             stream.residencyReason = reason || "refresh";
         });
-        return { budget: effectiveBudget, desiredIds: order.slice(), candidates: candidates };
+        return { budget: effectiveBudget, desiredIds: order.slice(), candidates: allCandidates };
     }
 
     function isGalleryArtworkFullResidencyDesired(artwork) {
-        if (!isGalleryDeviceProfileMobile()) return true;
         if (!artwork) return false;
         return !!galleryArtworkResidencyRuntime.desiredFullIds[ensureArtworkIdentity(artwork)];
     }
@@ -6790,6 +6876,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         if (!artwork || isArtworkDeleted(artwork)) return false;
         var stream = artwork.metadata.galleryStreaming = artwork.metadata.galleryStreaming || {};
         if (stream.textureState === "full" || stream.loading) return false;
+        var inspectPriority = !!(galleryInspectRuntime && galleryInspectRuntime.target === artwork);
+        if (!inspectPriority && Number(stream.fullReentryBlockedUntil || 0) > Date.now()) {
+            galleryArtworkResidencyRuntime.thrashPrevented += 1;
+            recordGalleryArtworkResidencyEvent("full-reentry-blocked", artwork, reason || "cooldown", { until: Number(stream.fullReentryBlockedUntil || 0) });
+            return false;
+        }
         var imageState = getArtworkImageState(artwork);
         if (!imageState || !hasGalleryArtworkPreviewVariant(imageState)) return false;
         var id = ensureArtworkIdentity(artwork);
@@ -6800,14 +6892,14 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             artwork: artwork,
             imageState: cloneGalleryFastStartState(imageState),
             queuedAt: Date.now(),
-            inspectPriority: !!(galleryInspectRuntime && galleryInspectRuntime.target === artwork),
+            inspectPriority: inspectPriority,
             priorityReason: reason || "residency"
         });
         return true;
     }
 
     function downgradeGalleryArtworkToPreview(artwork, reason) {
-        if (!isGalleryDeviceProfileMobile() || !artwork || galleryArtworkResidencyRuntime.downgradeActive) return false;
+        if (!artwork || galleryArtworkResidencyRuntime.downgradeActive) return false;
         var stream = artwork.metadata.galleryStreaming = artwork.metadata.galleryStreaming || {};
         var state = getArtworkImageState(artwork);
         if (!state || stream.textureState !== "full" || stream.loading || !hasGalleryArtworkPreviewVariant(state)) return false;
@@ -6819,7 +6911,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         previewState._galleryFastStartPreferPreview = true;
         previewState._galleryTextureOnlyUpgrade = true;
         previewState._galleryResidencyDowngrade = true;
+        previewState._galleryNoAutoFullQueue = true;
         previewState._galleryStreamingTier = getGalleryStreamingTierForObject(artwork);
+        stream.lastDowngradeStartedAt = Date.now();
         galleryArtworkResidencyRuntime.downgradeActive = true;
         galleryArtworkResidencyRuntime.downgradeArtworkId = artworkId;
         recordGalleryArtworkResidencyEvent("full-to-preview-start", artwork, reason || "budget");
@@ -6827,45 +6921,68 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             galleryArtworkResidencyRuntime.downgradeActive = false;
             galleryArtworkResidencyRuntime.downgradeArtworkId = null;
             if (!result || !result.failed) {
+                var settledAt = Date.now();
+                stream.lastDowngradedAt = settledAt;
+                stream.fullReentryBlockedUntil = settledAt + Math.max(1000, Number(galleryArtworkEgressPolicy.fullReentryCooldownMs) || 18000);
+                galleryArtworkResidencyRuntime.lastDowngradeAt = settledAt;
                 galleryArtworkResidencyRuntime.previewDowngrades += 1;
-                recordGalleryArtworkResidencyEvent("full-to-preview-complete", artwork, reason || "budget");
+                recordGalleryArtworkResidencyEvent("full-to-preview-complete", artwork, reason || "hard-cap", { reentryBlockedUntil: stream.fullReentryBlockedUntil });
             } else {
                 recordGalleryArtworkResidencyEvent("full-to-preview-failed", artwork, reason || "budget");
             }
-            scheduleGalleryArtworkResidencyMaintenance("downgrade-settled", 180, true);
-            scheduleGalleryFastStartFullArtworkDrainWhenIdle("downgrade-settled", 220);
+            scheduleGalleryArtworkResidencyMaintenance("downgrade-settled", 600, true);
         };
-        return !!applyArtworkImageStateSafely(artwork, previewState, "12C66C6C2 full-to-preview");
+        return !!applyArtworkImageStateSafely(artwork, previewState, "12C66C6C8C full-to-preview");
     }
 
     function enforceGalleryArtworkResidencyBudget(reason, force) {
-        if (!isGalleryDeviceProfileMobile() || !galleryArtworkResidencyRuntime.enabled) return null;
+        if (!galleryArtworkResidencyRuntime.enabled) return null;
         var refreshed = refreshGalleryArtworkResidencyDesired(reason || "residency", !!force);
         var now = Date.now();
         var definition = getGalleryArtworkResidencyDefinition();
+        var hardLimit = getGalleryArtworkFullResidencyHardLimit();
         var assigned = getActiveArtworks().filter(function (artwork) { return !!getArtworkImageState(artwork); });
         var fullEntries = assigned.filter(function (artwork) {
             return artwork.metadata && artwork.metadata.galleryStreaming && artwork.metadata.galleryStreaming.textureState === "full";
         });
-        var undesired = fullEntries.filter(function (artwork) { return !isGalleryArtworkFullResidencyDesired(artwork); }).sort(function (a, b) {
-            var sa = a.metadata.galleryStreaming || {};
-            var sb = b.metadata.galleryStreaming || {};
-            return Number(sa.residencyPriority || 0) - Number(sb.residencyPriority || 0);
+        var desiredMissingFull = assigned.some(function (entryArtwork) {
+            var entryStream = entryArtwork.metadata && entryArtwork.metadata.galleryStreaming ? entryArtwork.metadata.galleryStreaming : {};
+            return isGalleryArtworkFullResidencyDesired(entryArtwork) && entryStream.textureState !== "full" && !entryStream.loading;
         });
-        if (!galleryArtworkResidencyRuntime.downgradeActive && undesired.length) {
-            var candidate = undesired[0];
-            var stream = candidate.metadata.galleryStreaming || {};
-            var loadedAge = now - Number(stream.textureLoadedAt || 0);
-            var visibleAge = now - Number(stream.lastVisibleAt || 0);
-            var desiredMissingFull = assigned.some(function (entryArtwork) {
-                var entryStream = entryArtwork.metadata && entryArtwork.metadata.galleryStreaming ? entryArtwork.metadata.galleryStreaming : {};
-                return isGalleryArtworkFullResidencyDesired(entryArtwork) && entryStream.textureState !== "full";
-            });
-            var hardOverBudget = fullEntries.length > refreshed.budget || (fullEntries.length >= refreshed.budget && desiredMissingFull);
-            if (hardOverBudget || (loadedAge >= definition.fullGraceMs && visibleAge >= definition.visibleGraceMs)) {
-                downgradeGalleryArtworkToPreview(candidate, hardOverBudget ? "hard-full-budget" : (reason || "residency-budget"));
+
+        // C6C8C8 hysteresis: distance/visibility alone never downgrades a Full texture.
+        // We evict only at the hard resident ceiling, only while the viewer is idle, and
+        // only from an old, undesired Full texture. This breaks Preview ↔ Full ping-pong.
+        var needsHardEviction = fullEntries.length > hardLimit || (fullEntries.length >= hardLimit && desiredMissingFull);
+        if (!galleryArtworkResidencyRuntime.downgradeActive && needsHardEviction) {
+            var userBusy = typeof isGalleryViewerTextureStreamingMotionBlocked === "function" && isGalleryViewerTextureStreamingMotionBlocked();
+            var downgradeCooldownActive = now - Number(galleryArtworkResidencyRuntime.lastDowngradeAt || 0) < Math.max(1000, Number(definition.downgradeCooldownMs) || 12000);
+            if (!userBusy && !downgradeCooldownActive) {
+                var candidates = fullEntries.filter(function (artwork) {
+                    if (isGalleryArtworkFullResidencyDesired(artwork)) return false;
+                    if (galleryInspectRuntime && (galleryInspectRuntime.target === artwork || galleryInspectRuntime.previousTarget === artwork || galleryInspectRuntime.nextTarget === artwork)) return false;
+                    var stream = artwork.metadata.galleryStreaming || {};
+                    var loadedAge = now - Number(stream.textureLoadedAt || 0);
+                    var visibleAge = now - Number(stream.lastVisibleAt || 0);
+                    return loadedAge >= Math.max(12000, Number(definition.fullGraceMs) || 45000) && visibleAge >= Math.max(4000, Number(definition.visibleGraceMs) || 12000);
+                }).sort(function (a, b) {
+                    var sa = a.metadata.galleryStreaming || {};
+                    var sb = b.metadata.galleryStreaming || {};
+                    var distanceA = Number(sa.residencyDistance || 0);
+                    var distanceB = Number(sb.residencyDistance || 0);
+                    if (distanceA !== distanceB) return distanceB - distanceA;
+                    return Number(sa.textureLoadedAt || 0) - Number(sb.textureLoadedAt || 0);
+                });
+                if (candidates.length) {
+                    downgradeGalleryArtworkToPreview(candidates[0], "hard-residency-ceiling");
+                } else {
+                    galleryArtworkResidencyRuntime.thrashPrevented += 1;
+                }
+            } else if (userBusy) {
+                galleryArtworkResidencyRuntime.thrashPrevented += 1;
             }
         }
+
         assigned.forEach(function (artwork) {
             var stream = artwork.metadata.galleryStreaming = artwork.metadata.galleryStreaming || {};
             if (isGalleryArtworkFullResidencyDesired(artwork) && stream.textureState !== "full" && !stream.loading) {
@@ -6881,7 +6998,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
     function scheduleGalleryArtworkResidencyMaintenance(reason, delayMs, force) {
-        if (!isGalleryDeviceProfileMobile() || !galleryArtworkResidencyRuntime.enabled) return;
+        if (!galleryArtworkResidencyRuntime.enabled) return;
         if (galleryArtworkResidencyRuntime.maintenanceTimer) return;
         galleryArtworkResidencyRuntime.maintenanceTimer = setTimeout(function () {
             galleryArtworkResidencyRuntime.maintenanceTimer = null;
@@ -6908,6 +7025,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             loading: loading,
             budget: getGalleryArtworkFullResidencyBudget(),
             effectiveBudget: galleryArtworkResidencyRuntime.effectiveBudget || getGalleryArtworkFullResidencyBudget(),
+            hardLimit: getGalleryArtworkFullResidencyHardLimit(),
             fullMiB: mib(bytesFull),
             previewMiB: mib(bytesPreview),
             otherMiB: mib(bytesOther),
@@ -7149,7 +7267,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             residencyCounters: {
                 promotions: galleryArtworkResidencyRuntime.fullPromotions,
                 downgrades: galleryArtworkResidencyRuntime.previewDowngrades,
-                preventedFullLoads: galleryArtworkResidencyRuntime.preventedFullLoads
+                preventedFullLoads: galleryArtworkResidencyRuntime.preventedFullLoads,
+                blockedWhileMoving: galleryArtworkResidencyRuntime.blockedWhileMoving,
+                thrashPrevented: galleryArtworkResidencyRuntime.thrashPrevented,
+                workspaceModeNoRebalance: galleryArtworkResidencyRuntime.workspaceModeNoRebalanceCount
             }
         };
     }
@@ -7310,98 +7431,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
     setTimeout(ensureGalleryMobileSurvivalDebugUi, 0);
 
-    function getLocalLightWallHitFromSpotRay(item, wallSegments) {
-        if (
-            !item ||
-            item.type !== "spot" ||
-            !item.light ||
-            !item.light.position ||
-            !item.light.direction ||
-            !wallSegments ||
-            !wallSegments.length
-        ) {
-            return null;
-        }
-
-        var direction = item.light.direction.clone();
-
-        if (direction.lengthSquared() <= 0.0001) {
-            return null;
-        }
-
-        direction.normalize();
-
-        var rayLength = item.light.range || 12;
-        var ray = new BABYLON.Ray(
-            item.light.position.clone(),
-            direction,
-            rayLength
-        );
-
-        var hit = scene.pickWithRay(
-            ray,
-            function (mesh) {
-                return wallSegments.indexOf(mesh) !== -1;
-            }
-        );
-
-        if (hit && hit.hit && hit.pickedMesh && hit.pickedPoint) {
-            return {
-                source: "spotRay",
-                point: hit.pickedPoint.clone(),
-                primaryMesh: hit.pickedMesh
-            };
-        }
-
-        return null;
-    }
-
-    function getLocalLightWallReference(item, wallSegments) {
-        var spotHit = getLocalLightWallHitFromSpotRay(item, wallSegments);
-
-        if (spotHit) {
-            return spotHit;
-        }
-
-        if (item && item.ownerMesh) {
-            var ownerWallMesh = getWallMeshForArtwork(item.ownerMesh);
-
-            if (isLightingWallSegmentMesh(ownerWallMesh)) {
-                return {
-                    source: "ownerWall",
-                    point: item.ownerMesh.position.clone(),
-                    primaryMesh: ownerWallMesh
-                };
-            }
-
-            if (item.ownerMesh.position) {
-                return {
-                    source: "ownerPosition",
-                    point: item.ownerMesh.position.clone(),
-                    primaryMesh: null
-                };
-            }
-        }
-
-        return {
-            source: "lightPosition",
-            point: getLocalLightPosition(item),
-            primaryMesh: null
-        };
-    }
-
-    function getWallSegmentDistanceToReference(mesh, referencePoint) {
-        if (!mesh || !referencePoint) {
-            return Number.POSITIVE_INFINITY;
-        }
-
-        return BABYLON.Vector3.Distance(
-            getLocalLightSegmentCachedCenter(mesh),
-            referencePoint
-        );
-    }
-
-    // STAGE 12C62M - LEGACY SPOT OCCLUSION GUARD REMOVED
+                // STAGE 12C62M - LEGACY SPOT OCCLUSION GUARD REMOVED
     // Spot wall/floor visibility is now handled by helper-ray first-hit target resolving.
     // The old post-filter occlusion guard and front-facing wall filter were removed from
     // the active code path to avoid double decisions and stale debug/cache flags.
@@ -7518,6 +7548,11 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     function addArtworkMeshesUnique(targetList) {
         artworks.forEach(function (artwork) {
             addMeshUnique(targetList, artwork);
+            if (artwork && artwork.metadata && artwork.metadata.artworkFrameRuntime && Array.isArray(artwork.metadata.artworkFrameRuntime.meshes)) {
+                artwork.metadata.artworkFrameRuntime.meshes.forEach(function (mesh) {
+                    addMeshUnique(targetList, mesh);
+                });
+            }
         });
     }
 
@@ -7567,11 +7602,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         });
     }
 
-    function addCeilingMeshesUnique(targetList) {
-        addMeshArrayUnique(targetList, ceilingMeshes);
-    }
-
-    function addPropMeshesUnique(targetList) {
+        function addPropMeshesUnique(targetList) {
         addMeshArrayUnique(targetList, propMeshes);
     }
 
@@ -8701,6 +8732,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
 
         localLightLoadTimeRetargetReason = reason || "loadTimeRetargetScheduled";
+        var scheduledExhibitionId = getActiveGalleryExhibitionId();
+        var scheduledEpoch = Number(galleryExhibitionRuntime.transitionEpoch) || 0;
         localLightSegmentAwareRetargetDebugStats.loadFullScheduled += 1;
 
         if (localLightLoadTimeRetargetTimer) {
@@ -8714,6 +8747,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         localLightLoadTimeRetargetTimer = setTimeout(function () {
             var run = function () {
                 localLightLoadTimeRetargetTimer = null;
+                if (scheduledEpoch !== (Number(galleryExhibitionRuntime.transitionEpoch) || 0) || !isGalleryExhibitionOwnerActive(scheduledExhibitionId)) return;
                 commitLoadTimeLocalLightRetargetImmediate(localLightLoadTimeRetargetReason || reason || "loadTimeRetargetScheduled");
             };
 
@@ -8927,7 +8961,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
     function scheduleLocalLightAtomicTargetCommit(item, reason, delayMs) {
-        if (!item || item.softDeleted || !item.light) {
+        if (!item || item.softDeleted || item.exhibitionLayerParked || !item.light || (item.exhibitionId && !isGalleryExhibitionOwnerActive(item.exhibitionId))) {
             return;
         }
 
@@ -8939,7 +8973,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         item._localLightAtomicTargetCommitTimer = setTimeout(function () {
             item._localLightAtomicTargetCommitTimer = null;
 
-            if (!item || item.softDeleted || !item.light) {
+            if (!item || item.softDeleted || item.exhibitionLayerParked || !item.light || !isGalleryExhibitionOwnerActive(item.exhibitionId || getActiveGalleryExhibitionId())) {
                 return;
             }
 
@@ -8967,76 +9001,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         localLightTargetDebugStats.gizmoFinalRetargetCanceled += 1;
     }
 
-    function scheduleDeferredLocalLightFinalRetarget(item, reason, delayMs) {
-        if (!item || item.softDeleted || !item.light) {
-            return;
-        }
-
-        cancelDeferredLocalLightFinalRetarget(item);
-
-        var delay = Math.max(0, Number(delayMs != null ? delayMs : localLightGizmoFinalRetargetDelayMs) || 0);
-        localLightTargetDebugStats.gizmoFinalRetargetScheduled += 1;
-        item._localLightFinalRetargetReason = reason || "dragEnd";
-
-        item._localLightFinalRetargetTimer = setTimeout(function () {
-            item._localLightFinalRetargetTimer = null;
-
-            if (!item || item.softDeleted || !item.light) {
-                return;
-            }
-
-            localLightDynamicWallRetargetLastTime = Date.now();
-            localLightDynamicWallRetargetCount += 1;
-            localLightTargetDebugStats.gizmoFinalRetargetExecuted += 1;
-            item._localLightNeedsFinalRetarget = false;
-
-            // C60B3: deferred after drag, but segment-aware instead of global.
-            // This fixes neighbouring stale lights without forcing a full-scene rebuild.
-            commitSegmentAwareLocalLightTargetsImmediate(
-                item,
-                item._localLightFinalRetargetReason || reason || "dragEndSegmentAware"
-            );
-        }, delay);
-    }
-
-    function requestDynamicWallSegmentRetargetForLocalLight(item, force, reason) {
-        if (!localLightDynamicWallRetargetEnabled) {
-            return;
-        }
-
-        if (!item || item.softDeleted || !item.light) {
-            return;
-        }
-
-        if (
-            !getLocalTargetOption(item, "walls") &&
-            !getLocalTargetOption(item, "floor") &&
-            !getLocalTargetOption(item, "ceiling")
-        ) {
-            return;
-        }
-
-        var isFinal = !!force || reason === "dragEnd" || reason === "final";
-
-        localLightDynamicWallRetargetLastReason = reason || "unknown";
-
-        if (!isFinal) {
-            // STAGE 12C54:
-            // Podczas ciągłego ruszania gizmo NIE przepinamy includedOnlyMeshes i nie skanujemy segmentów.
-            // Helper jest live, ale segmenty nie są przepinane. Jeżeli był zaplanowany finalny retarget,
-            // anulujemy go, bo użytkownik dalej ustawia lampę.
-            cancelDeferredLocalLightFinalRetarget(item);
-            item._localLightNeedsFinalRetarget = true;
-            localLightTargetDebugStats.gizmoDragPreviewSkippedTargets += 1;
-            return;
-        }
-
-        // Final update after gizmo release is accurate for the moved light.
-        // C56: one atomic commit only; no progressive/chunked includedOnlyMeshes and no scanning while dragging.
-        scheduleLocalLightAtomicTargetCommit(item, reason || "final", localLightGizmoFinalRetargetDelayMs);
-    }
-
-    function updateDisplaySpotLight(ownerMesh) {
+            function updateDisplaySpotLight(ownerMesh) {
         if (
             !ownerMesh ||
             !ownerMesh.metadata ||
@@ -9295,6 +9260,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
     function isArtworkTextureLoadCurrent(artwork, generation, artworkId) {
         if (!artwork || (artwork.isDisposed && artwork.isDisposed())) return false;
+        if (artwork.metadata && artwork.metadata.exhibitionLayerParked) return false;
         return ensureArtworkIdentity(artwork) === normalizeGalleryArtworkId(artworkId) && getArtworkTextureLoadGeneration(artwork) === Number(generation);
     }
 
@@ -9314,6 +9280,611 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         });
         clean.artworkId = ensureArtworkIdentity(artwork);
         return clean;
+    }
+
+
+    // STAGE 12C66C6C5 - ARTWORK FRAME FACING FIX
+    // Frames are shared GLBs stored in gallery-artworks/main/frames.
+    // One frame runtime belongs to one artwork. The frame follows the artwork's
+    // already-authoritative aspect/transform calculation; no second aspect system exists.
+    // This stage fixes the first fit/orientation pass: frame GLBs are prefetched,
+    // X/Y scaling uses the frame inner opening rather than the outer mesh size,
+    // the frame seats backward over the artwork depth, and runtime adds 180° on Z.
+    var galleryArtworkFrameStorageFolder = "frames";
+    var galleryArtworkFrameSurfaceEpsilon = 0.002;
+    var galleryArtworkFrameDefaultCalibration = {
+        innerWidthRatio: 0.68,
+        innerHeightRatio: 0.68,
+        depthOverlapRatio: 0.92,
+        zRotationDegrees: 180
+    };
+    var galleryArtworkFrameCalibrationOverrides = {};
+    var galleryArtworkFrameCatalog = [];
+    var galleryArtworkFrameCatalogLoaded = false;
+    var galleryArtworkFrameCatalogLoading = null;
+    var galleryArtworkFrameCatalogPrefetchStarted = false;
+    var galleryArtworkFrameAssetContainerCache = {};
+    var galleryArtworkFrameRuntimeDescriptorCache = {};
+    var galleryArtworkFrameWarmupPromise = null;
+
+    function getGalleryArtworkFrameStoragePrefix() {
+        return "main/" + galleryArtworkFrameStorageFolder;
+    }
+
+    function getArtworkFrameCatalogKey(frameState) {
+        frameState = normalizeArtworkFrameState(frameState);
+        if (!frameState) return "";
+        return String((frameState.storageBucket || galleryArtworkStorageBucket || "") + "/" + (frameState.storagePath || "")).toLowerCase();
+    }
+
+    function getArtworkFrameCalibration(frameState) {
+        var calibration = Object.assign({}, galleryArtworkFrameDefaultCalibration);
+        var overrideKey = "";
+        frameState = normalizeArtworkFrameState(frameState);
+        if (frameState) {
+            overrideKey = String(frameState.fileName || frameState.storagePath.split("/").pop() || "")
+                .replace(/\.glb$/i, "")
+                .trim()
+                .toLowerCase();
+        }
+
+        if (overrideKey && galleryArtworkFrameCalibrationOverrides[overrideKey]) {
+            calibration = Object.assign(calibration, galleryArtworkFrameCalibrationOverrides[overrideKey]);
+        }
+
+        calibration.innerWidthRatio = BABYLON.Scalar.Clamp(Number(calibration.innerWidthRatio) || 0.68, 0.05, 0.98);
+        calibration.innerHeightRatio = BABYLON.Scalar.Clamp(Number(calibration.innerHeightRatio) || 0.68, 0.05, 0.98);
+        calibration.depthOverlapRatio = BABYLON.Scalar.Clamp(Number(calibration.depthOverlapRatio) || 0.92, 0, 1);
+        calibration.zRotationRadians = BABYLON.Tools.ToRadians(Number(calibration.zRotationDegrees) || 0);
+        return calibration;
+    }
+
+    async function prefetchGalleryArtworkFrameCatalogAssets(catalog) {
+        if (galleryArtworkFrameCatalogPrefetchStarted) return galleryArtworkFrameWarmupPromise;
+        galleryArtworkFrameCatalogPrefetchStarted = true;
+        var queue = Array.isArray(catalog) ? catalog.slice() : [];
+        var tasks = queue.map(function (rawEntry) {
+            var entry = normalizeArtworkFrameState(rawEntry);
+            if (!entry) return Promise.resolve(null);
+            var publicUrl = entry.publicUrl || getArtworkFramePublicUrl(entry);
+            if (!publicUrl) return Promise.resolve(null);
+            return getGalleryCachedArtworkFrameContainer(publicUrl).catch(function (error) {
+                console.warn("Artwork frame prefetch warning:", entry.label || entry.fileName || entry.storagePath, error);
+                return null;
+            });
+        });
+
+        galleryArtworkFrameWarmupPromise = Promise.all(tasks).finally(function () {
+            galleryArtworkFrameWarmupPromise = null;
+        });
+        return galleryArtworkFrameWarmupPromise;
+    }
+
+    function getGalleryArtworkFrameWarmupEntries(catalog) {
+        var usedKeys = Object.create(null);
+        getActiveArtworks().forEach(function (artwork) {
+            var state = getArtworkFrameState(artwork);
+            var key = getArtworkFrameCatalogKey(state);
+            if (key) usedKeys[key] = true;
+        });
+        return (Array.isArray(catalog) ? catalog : []).filter(function (entry) {
+            return !!usedKeys[getArtworkFrameCatalogKey(entry)];
+        });
+    }
+
+    function warmGalleryArtworkFrameLibrary() {
+        return loadGalleryArtworkFrameCatalog(false)
+            .then(function (catalog) {
+                return prefetchGalleryArtworkFrameCatalogAssets(getGalleryArtworkFrameWarmupEntries(catalog));
+            })
+            .catch(function (error) {
+                console.warn("Artwork frame library warmup warning:", error);
+                return null;
+            });
+    }
+
+    function getArtworkFrameLabelFromFileName(fileName) {
+        return String(fileName || "")
+            .replace(/\.glb$/i, "")
+            .replace(/[_-]+/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .replace(/\b\w/g, function (letter) { return letter.toUpperCase(); });
+    }
+
+    function normalizeArtworkFrameState(frameState) {
+        if (!frameState || typeof frameState !== "object") return null;
+        var storagePath = String(frameState.storagePath || frameState.path || "").replace(/^\/+/, "").trim();
+        if (!storagePath || !/\.glb$/i.test(storagePath)) return null;
+        var fileName = String(frameState.fileName || storagePath.split("/").pop() || "").trim();
+        return {
+            storageBucket: String(frameState.storageBucket || galleryArtworkStorageBucket || "").trim(),
+            storagePath: storagePath,
+            fileName: fileName,
+            label: String(frameState.label || getArtworkFrameLabelFromFileName(fileName) || fileName).trim(),
+            publicUrl: String(frameState.publicUrl || "").trim(),
+            cacheVersion: String(frameState.cacheVersion || "").trim()
+        };
+    }
+
+    function getArtworkFrameState(artwork) {
+        if (!artwork || !artwork.metadata) return null;
+        return normalizeArtworkFrameState(artwork.metadata.artworkFrame);
+    }
+
+    function getArtworkFrameStateForSave(artwork) {
+        var frameState = getArtworkFrameState(artwork);
+        if (!frameState) return null;
+        return {
+            storageBucket: frameState.storageBucket || galleryArtworkStorageBucket,
+            storagePath: frameState.storagePath,
+            fileName: frameState.fileName,
+            label: frameState.label
+        };
+    }
+
+    function getArtworkFramePublicUrl(frameState) {
+        frameState = normalizeArtworkFrameState(frameState);
+        if (!frameState) return "";
+        var baseUrl = frameState.publicUrl
+            ? String(frameState.publicUrl)
+            : getPublicArtworkUrlFromPath(frameState.storagePath, frameState.storageBucket || galleryArtworkStorageBucket);
+        return appendGalleryAssetVersion(baseUrl, frameState.cacheVersion);
+    }
+
+    async function loadGalleryArtworkFrameCatalog(force) {
+        if (galleryArtworkFrameCatalogLoaded && !force) return galleryArtworkFrameCatalog.slice();
+        if (galleryArtworkFrameCatalogLoading && !force) return galleryArtworkFrameCatalogLoading;
+
+        galleryArtworkFrameCatalogLoading = (async function () {
+            var files = await listGalleryStorageFilesRecursively(
+                galleryArtworkStorageBucket,
+                getGalleryArtworkFrameStoragePrefix(),
+                0
+            );
+            galleryArtworkFrameCatalog = (files || [])
+                .filter(function (entry) { return !!(entry && entry.path && /\.glb$/i.test(entry.path)); })
+                .map(function (entry) {
+                    var metadata = entry && entry.metadata ? entry.metadata : {};
+                    var cacheVersion = String(
+                        entry.updated_at || entry.updatedAt || metadata.eTag || metadata.etag || metadata.lastModified || entry.id || ""
+                    ).trim();
+                    return normalizeArtworkFrameState({
+                        storageBucket: galleryArtworkStorageBucket,
+                        storagePath: entry.path,
+                        fileName: entry.name || entry.path.split("/").pop(),
+                        label: getArtworkFrameLabelFromFileName(entry.name || entry.path.split("/").pop()),
+                        cacheVersion: cacheVersion
+                    });
+                })
+                .filter(Boolean)
+                .sort(function (a, b) { return a.label.localeCompare(b.label); });
+            galleryArtworkFrameCatalog.forEach(function (entry) {
+                entry.publicUrl = getArtworkFramePublicUrl(entry);
+            });
+            galleryArtworkFrameCatalogLoaded = true;
+            // C6C8C: listing the library must not download every GLB. Only frames already
+            // used by the active exhibition are warmed; a new variant loads on first use.
+            return galleryArtworkFrameCatalog.slice();
+        })().finally(function () {
+            galleryArtworkFrameCatalogLoading = null;
+        });
+
+        return galleryArtworkFrameCatalogLoading;
+    }
+
+    function getArtworkFrameLoadGeneration(artwork) {
+        return artwork && artwork.metadata ? Number(artwork.metadata.artworkFrameLoadGeneration) || 0 : 0;
+    }
+
+    function nextArtworkFrameLoadGeneration(artwork) {
+        if (!artwork) return 0;
+        artwork.metadata = artwork.metadata || {};
+        artwork.metadata.artworkFrameLoadGeneration = getArtworkFrameLoadGeneration(artwork) + 1;
+        return artwork.metadata.artworkFrameLoadGeneration;
+    }
+
+    function getArtworkFrameMeshBounds(meshes) {
+        var min = new BABYLON.Vector3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
+        var max = new BABYLON.Vector3(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY);
+        var found = false;
+
+        (meshes || []).forEach(function (mesh) {
+            if (!mesh || (mesh.isDisposed && mesh.isDisposed())) return;
+            if (mesh.getTotalVertices && mesh.getTotalVertices() <= 0) return;
+            try {
+                mesh.computeWorldMatrix(true);
+                var box = mesh.getBoundingInfo().boundingBox;
+                if (!box || !box.minimumWorld || !box.maximumWorld) return;
+                min.x = Math.min(min.x, box.minimumWorld.x);
+                min.y = Math.min(min.y, box.minimumWorld.y);
+                min.z = Math.min(min.z, box.minimumWorld.z);
+                max.x = Math.max(max.x, box.maximumWorld.x);
+                max.y = Math.max(max.y, box.maximumWorld.y);
+                max.z = Math.max(max.z, box.maximumWorld.z);
+                found = true;
+            } catch (error) {}
+        });
+
+        if (!found) return null;
+        return {
+            min: min,
+            max: max,
+            center: min.add(max).scale(0.5),
+            size: max.subtract(min)
+        };
+    }
+
+    function getArtworkFrameOrientationForBounds(bounds) {
+        if (!bounds || !bounds.size) return BABYLON.Vector3.Zero();
+        var size = bounds.size;
+        if (size.z <= size.x && size.z <= size.y) return BABYLON.Vector3.Zero();
+        if (size.y <= size.x && size.y <= size.z) return new BABYLON.Vector3(-Math.PI / 2, 0, 0);
+        return new BABYLON.Vector3(0, Math.PI / 2, 0);
+    }
+
+    function disposeArtworkFrameRuntime(artwork) {
+        if (!artwork || !artwork.metadata || !artwork.metadata.artworkFrameRuntime) return;
+        var runtime = artwork.metadata.artworkFrameRuntime;
+        artwork.metadata.artworkFrameRuntime = null;
+        try {
+            if (runtime.root && !(runtime.root.isDisposed && runtime.root.isDisposed())) {
+                disposeGalleryExhibitionOwnedNode(runtime.root, getGalleryNodeOwnerId(artwork) || getActiveGalleryExhibitionId(), "dispose-artwork-frame", true);
+            }
+        } catch (error) {
+            console.warn("Artwork frame runtime dispose warning:", error);
+        }
+        markGalleryObjectBoundsDirty(artwork);
+    }
+
+    function disposeArtworkFrameInstance(instance) {
+        var roots = instance && Array.isArray(instance.rootNodes) ? instance.rootNodes : [];
+        roots.forEach(function (node) {
+            try { if (node && node.dispose && !(node.isDisposed && node.isDisposed())) node.dispose(false, false); } catch (error) {}
+        });
+    }
+
+    async function getGalleryCachedArtworkFrameContainer(frameUrl) {
+        var key = String(frameUrl || "").trim();
+        if (!key || !BABYLON.SceneLoader.LoadAssetContainerAsync) return null;
+        if (!galleryArtworkFrameAssetContainerCache[key]) {
+            galleryArtworkFrameAssetContainerCache[key] = BABYLON.SceneLoader.LoadAssetContainerAsync("", key, scene)
+                .catch(function (error) {
+                    delete galleryArtworkFrameAssetContainerCache[key];
+                    throw error;
+                });
+        }
+        return galleryArtworkFrameAssetContainerCache[key];
+    }
+
+    function instantiateArtworkFrameContainer(container, artwork) {
+        if (!container || !container.instantiateModelsToScene) return null;
+        var prefix = (artwork && artwork.name ? artwork.name : "Artwork") + "_Frame_";
+        return container.instantiateModelsToScene(function (sourceName) {
+            return prefix + sourceName;
+        }, false);
+    }
+
+    function getArtworkFrameRuntimeDescriptorKey(frameState) {
+        var key = getArtworkFrameCatalogKey(frameState);
+        return key || String(getArtworkFramePublicUrl(frameState) || "").toLowerCase();
+    }
+
+    function applyArtworkFrameRuntimeDescriptor(orientationRoot, descriptor) {
+        if (!orientationRoot || !descriptor) return false;
+        orientationRoot.rotation.set(
+            Number(descriptor.rotationX) || 0,
+            Number(descriptor.rotationY) || 0,
+            Number(descriptor.rotationZ) || 0
+        );
+        orientationRoot.position.set(
+            Number(descriptor.positionX) || 0,
+            Number(descriptor.positionY) || 0,
+            Number(descriptor.positionZ) || 0
+        );
+        orientationRoot.computeWorldMatrix(true);
+        return true;
+    }
+
+    function configureArtworkFrameMeshesForLighting(meshes) {
+        var configuredMaterials = [];
+        (meshes || []).forEach(function (mesh) {
+            if (!mesh || !mesh.material) return;
+            mesh.metadata = mesh.metadata || {};
+            mesh.metadata.galleryLightBudgetRole = "artwork";
+            mesh.material.metadata = mesh.material.metadata || {};
+            mesh.material.metadata.galleryLightBudgetRoleOverride = "artwork";
+            if (configuredMaterials.indexOf(mesh.material) === -1) {
+                configuredMaterials.push(mesh.material);
+                configureMaterialForCommonLighting(mesh.material, mesh);
+            }
+        });
+    }
+
+    function syncArtworkFrameLocalLightMembership(artwork, previousFrameMeshes, reason) {
+        if (!artwork) return;
+        var previous = Array.isArray(previousFrameMeshes) ? previousFrameMeshes.slice() : [];
+        var runtime = artwork.metadata && artwork.metadata.artworkFrameRuntime
+            ? artwork.metadata.artworkFrameRuntime
+            : null;
+        var nextFrameMeshes = runtime && Array.isArray(runtime.meshes) ? runtime.meshes : [];
+        var imagePlane = artwork.metadata ? artwork.metadata.imagePlane : null;
+
+        localLightItems.forEach(function (item) {
+            if (!item || item.softDeleted || !item.light) return;
+            var current = Array.isArray(item.light.includedOnlyMeshes) ? item.light.includedOnlyMeshes.slice() : [];
+            var hadArtworkTarget = current.indexOf(artwork) !== -1 || (imagePlane && current.indexOf(imagePlane) !== -1);
+            var hadPreviousFrameTarget = previous.some(function (mesh) { return current.indexOf(mesh) !== -1; });
+            var next = current.filter(function (mesh) {
+                if (!mesh) return false;
+                if (previous.indexOf(mesh) !== -1) return false;
+                return !(
+                    mesh.metadata &&
+                    mesh.metadata.isArtworkFrameMesh &&
+                    mesh.metadata.parentArtworkName === artwork.name
+                );
+            });
+
+            if (hadArtworkTarget || hadPreviousFrameTarget) {
+                nextFrameMeshes.forEach(function (mesh) { addMeshUnique(next, mesh); });
+            }
+
+            setLocalLightIncludedMeshesIfChanged(item, next, reason || "artworkFrameIncremental");
+        });
+    }
+
+    function createArtworkFrameRuntimeFromInstance(artwork, frameState, instance, generation) {
+        if (!artwork || !instance) return null;
+        var root = new BABYLON.TransformNode(artwork.name + "_FrameRoot_" + generation, scene);
+        var scaleRoot = new BABYLON.TransformNode(artwork.name + "_FrameScale_" + generation, scene);
+        var facingRoot = new BABYLON.TransformNode(artwork.name + "_FrameFacing_" + generation, scene);
+        var orientationRoot = new BABYLON.TransformNode(artwork.name + "_FrameOrientation_" + generation, scene);
+        var frameOwnerId = getGalleryNodeOwnerId(artwork) || getActiveGalleryExhibitionId();
+        tagGalleryExhibitionNode(root, "artwork-frame-root", frameOwnerId);
+        tagGalleryExhibitionNode(scaleRoot, "artwork-frame-scale", frameOwnerId);
+        tagGalleryExhibitionNode(facingRoot, "artwork-frame-facing", frameOwnerId);
+        tagGalleryExhibitionNode(orientationRoot, "artwork-frame-orientation", frameOwnerId);
+        scaleRoot.parent = root;
+        facingRoot.parent = scaleRoot;
+        orientationRoot.parent = facingRoot;
+
+        var rootNodes = Array.isArray(instance.rootNodes) ? instance.rootNodes : [];
+        rootNodes.forEach(function (node) {
+            if (!node) return;
+            tagGalleryExhibitionNode(node, "artwork-frame-node", frameOwnerId);
+            if (node.getDescendants) {
+                try { node.getDescendants(false).forEach(function (child) { tagGalleryExhibitionNode(child, "artwork-frame-node", frameOwnerId); }); } catch (error) {}
+            }
+            node.parent = orientationRoot;
+        });
+
+        var meshes = [];
+        rootNodes.forEach(function (node) {
+            if (!node) return;
+            if (node.getClassName && /Mesh/.test(String(node.getClassName())) && meshes.indexOf(node) === -1) meshes.push(node);
+            if (node.getChildMeshes) {
+                try {
+                    node.getChildMeshes(false).forEach(function (mesh) {
+                        if (mesh && meshes.indexOf(mesh) === -1) meshes.push(mesh);
+                    });
+                } catch (error) {}
+            }
+        });
+        meshes = meshes.filter(function (mesh) {
+            return !!(mesh && mesh.name !== "__root__" && (!mesh.getTotalVertices || mesh.getTotalVertices() > 0));
+        });
+
+        meshes.forEach(function (mesh) {
+            mesh.metadata = mesh.metadata || {};
+            mesh.metadata.isArtworkFrameMesh = true;
+            mesh.metadata.parentArtworkName = artwork.name;
+            tagGalleryExhibitionNode(mesh, "artwork-frame-mesh", frameOwnerId);
+            mesh.isPickable = true;
+            mesh.checkCollisions = false;
+            mesh.receiveShadows = true;
+        });
+
+        configureArtworkFrameMeshesForLighting(meshes);
+
+        var descriptorKey = getArtworkFrameRuntimeDescriptorKey(frameState);
+        var descriptor = descriptorKey ? galleryArtworkFrameRuntimeDescriptorCache[descriptorKey] : null;
+        var outerWidth = 1;
+        var outerHeight = 1;
+        var outerDepth = 0.04;
+
+        if (descriptor) {
+            applyArtworkFrameRuntimeDescriptor(orientationRoot, descriptor);
+            outerWidth = descriptor.outerWidth;
+            outerHeight = descriptor.outerHeight;
+            outerDepth = descriptor.outerDepth;
+        } else {
+            var initialBounds = getArtworkFrameMeshBounds(meshes);
+            orientationRoot.rotation.copyFrom(getArtworkFrameOrientationForBounds(initialBounds));
+            orientationRoot.computeWorldMatrix(true);
+            var orientedBounds = getArtworkFrameMeshBounds(meshes);
+            if (orientedBounds) {
+                orientationRoot.position.subtractInPlace(orientedBounds.center);
+                orientationRoot.computeWorldMatrix(true);
+            }
+            var centeredBounds = getArtworkFrameMeshBounds(meshes) || orientedBounds || initialBounds;
+            outerWidth = centeredBounds && centeredBounds.size ? Math.max(0.0001, Math.abs(centeredBounds.size.x)) : 1;
+            outerHeight = centeredBounds && centeredBounds.size ? Math.max(0.0001, Math.abs(centeredBounds.size.y)) : 1;
+            outerDepth = centeredBounds && centeredBounds.size ? Math.max(0.0001, Math.abs(centeredBounds.size.z)) : 0.04;
+
+            descriptor = {
+                rotationX: orientationRoot.rotation.x,
+                rotationY: orientationRoot.rotation.y,
+                rotationZ: orientationRoot.rotation.z,
+                positionX: orientationRoot.position.x,
+                positionY: orientationRoot.position.y,
+                positionZ: orientationRoot.position.z,
+                outerWidth: outerWidth,
+                outerHeight: outerHeight,
+                outerDepth: outerDepth
+            };
+            if (descriptorKey) galleryArtworkFrameRuntimeDescriptorCache[descriptorKey] = descriptor;
+        }
+
+        // C6C5: the GLB front was facing the wall. Flip around local Y, not Z:
+        // local Z is the frame depth/normal, so Y=180 reverses front/back.
+        facingRoot.rotation.y = Math.PI;
+        facingRoot.computeWorldMatrix(true);
+        var calibration = getArtworkFrameCalibration(frameState);
+        var referenceWidth = Math.max(0.0001, outerWidth * calibration.innerWidthRatio);
+        var referenceHeight = Math.max(0.0001, outerHeight * calibration.innerHeightRatio);
+        var referenceDepth = outerDepth;
+
+        var runtime = {
+            root: root,
+            scaleRoot: scaleRoot,
+            facingRoot: facingRoot,
+            orientationRoot: orientationRoot,
+            rootNodes: rootNodes,
+            meshes: meshes,
+            instance: instance,
+            generation: generation,
+            frameState: Object.assign({}, frameState),
+            referenceWidth: referenceWidth,
+            referenceHeight: referenceHeight,
+            referenceDepth: referenceDepth,
+            outerWidth: outerWidth,
+            outerHeight: outerHeight,
+            outerDepth: outerDepth,
+            calibration: calibration,
+            zRotationRadians: calibration.zRotationRadians,
+            depthOverlapRatio: calibration.depthOverlapRatio
+        };
+        artwork.metadata = artwork.metadata || {};
+        artwork.metadata.artworkFrameRuntime = runtime;
+        syncArtworkFrameRuntime(artwork);
+        return runtime;
+    }
+
+    function syncArtworkFrameRuntime(artwork) {
+        if (!artwork || !artwork.metadata || !artwork.metadata.artworkFrameRuntime) return;
+        var runtime = artwork.metadata.artworkFrameRuntime;
+        if (!runtime.root || (runtime.root.isDisposed && runtime.root.isDisposed())) return;
+
+        try {
+            artwork.computeWorldMatrix(true);
+            var baseDimensions = getArtworkBaseDimensionsForCurrentImage(artwork);
+            var transformState = getArtworkTransformState(artwork);
+            var targetWidth = Math.max(0.0001, baseDimensions.width * transformState.scale);
+            var targetHeight = Math.max(0.0001, baseDimensions.height * transformState.scale);
+
+            runtime.scaleRoot.scaling.x = targetWidth / Math.max(0.0001, runtime.referenceWidth || 1);
+            runtime.scaleRoot.scaling.y = targetHeight / Math.max(0.0001, runtime.referenceHeight || 1);
+            runtime.scaleRoot.scaling.z = 1;
+
+            var normal = getArtworkVisualNormal(artwork);
+            var position = artwork.getAbsolutePosition ? artwork.getAbsolutePosition() : artwork.position;
+            var artworkDepthScale = artwork.scaling && isFinite(artwork.scaling.z) ? Math.abs(artwork.scaling.z) : 1;
+            var artworkDepthWorld = artworkDepth * artworkDepthScale;
+            var frameDepthWorld = Math.max(0.0001, runtime.referenceDepth || 0.04);
+            var overlapDepth = Math.min(frameDepthWorld, artworkDepthWorld) * BABYLON.Scalar.Clamp(Number(runtime.depthOverlapRatio) || 0, 0, 1);
+            var offset = (artworkDepthWorld * 0.5) + artworkImagePlaneSurfaceEpsilon + (frameDepthWorld * 0.5) + galleryArtworkFrameSurfaceEpsilon - overlapDepth;
+            offset = Math.max(galleryArtworkFrameSurfaceEpsilon, offset);
+
+            runtime.root.parent = null;
+            runtime.root.position.copyFrom(position.add(normal.scale(offset)));
+            runtime.root.rotationQuaternion = null;
+            runtime.root.rotation.copyFrom(artwork.rotation);
+            runtime.root.rotation.z += runtime.zRotationRadians || 0;
+            runtime.root.scaling.set(1, 1, 1);
+            runtime.root.computeWorldMatrix(true);
+            runtime.targetWidth = targetWidth;
+            runtime.targetHeight = targetHeight;
+        } catch (error) {
+            console.warn("Artwork frame sync warning:", error);
+        }
+    }
+
+    async function applyArtworkFrameState(artwork, frameState, options) {
+        options = options || {};
+        if (!artwork || (artwork.isDisposed && artwork.isDisposed())) return false;
+        artwork.metadata = artwork.metadata || {};
+        var normalizedState = normalizeArtworkFrameState(frameState);
+        var generation = nextArtworkFrameLoadGeneration(artwork);
+        var previousFrameMeshes = artwork.metadata.artworkFrameRuntime && Array.isArray(artwork.metadata.artworkFrameRuntime.meshes)
+            ? artwork.metadata.artworkFrameRuntime.meshes.slice()
+            : [];
+        disposeArtworkFrameRuntime(artwork);
+        artwork.metadata.artworkFrame = normalizedState;
+        artwork.metadata.artworkFrameLoading = false;
+
+        if (!normalizedState) {
+            markGalleryObjectBoundsDirty(artwork);
+            scheduleGalleryInspectRefreshForTarget(artwork, "artwork-frame-removed");
+            syncArtworkFrameLocalLightMembership(artwork, previousFrameMeshes, "artworkFrameRemoved");
+            if (!options.silent && options.markDirty !== false) markGalleryDraftDirty("artwork-frame-removed");
+            if (typeof updateArtworkFrameUi === "function") updateArtworkFrameUi();
+            return true;
+        }
+
+        var catalogKey = getArtworkFrameCatalogKey(normalizedState);
+        if (catalogKey) {
+            for (var catalogIndex = 0; catalogIndex < galleryArtworkFrameCatalog.length; catalogIndex++) {
+                var catalogEntry = galleryArtworkFrameCatalog[catalogIndex];
+                if (getArtworkFrameCatalogKey(catalogEntry) === catalogKey) {
+                    normalizedState.publicUrl = catalogEntry.publicUrl || normalizedState.publicUrl || "";
+                    break;
+                }
+            }
+        }
+
+        var frameUrl = getArtworkFramePublicUrl(normalizedState);
+        if (!frameUrl) {
+            if (!options.silent) notifyGalleryStatus("Nie udalo sie pobrac publicznego URL ramy.");
+            return false;
+        }
+
+        artwork.metadata.artworkFrameLoading = true;
+        if (typeof updateArtworkFrameUi === "function") updateArtworkFrameUi();
+
+        try {
+            var instance = null;
+            var container = await getGalleryCachedArtworkFrameContainer(frameUrl);
+            if (container) {
+                instance = instantiateArtworkFrameContainer(container, artwork);
+            } else {
+                var imported = await BABYLON.SceneLoader.ImportMeshAsync("", "", frameUrl, scene);
+                var importedNodes = (imported.transformNodes || []).concat(imported.meshes || []);
+                instance = {
+                    rootNodes: importedNodes.filter(function (node, index, array) {
+                        return !!(node && !node.parent && array.indexOf(node) === index);
+                    })
+                };
+            }
+
+            if (!artwork || (artwork.isDisposed && artwork.isDisposed()) || getArtworkFrameLoadGeneration(artwork) !== generation) {
+                disposeArtworkFrameInstance(instance);
+                return false;
+            }
+
+            var runtime = createArtworkFrameRuntimeFromInstance(artwork, normalizedState, instance, generation);
+            if (!runtime || !runtime.meshes.length) {
+                disposeArtworkFrameRuntime(artwork);
+                throw new Error("Frame GLB contains no renderable mesh.");
+            }
+
+            artwork.metadata.artworkFrameLoading = false;
+            syncArtworkFrameLocalLightMembership(artwork, previousFrameMeshes, "artworkFrameLoaded");
+            markGalleryObjectBoundsDirty(artwork);
+            scheduleGalleryInspectRefreshForTarget(artwork, "artwork-frame-loaded");
+            if (!options.silent && options.markDirty !== false) markGalleryDraftDirty("artwork-frame-changed");
+            if (!options.silent) notifyGalleryStatus("Frame: " + normalizedState.label + ". Save state to keep the change.");
+            if (typeof updateArtworkFrameUi === "function") updateArtworkFrameUi();
+            return true;
+        } catch (error) {
+            if (artwork && artwork.metadata && getArtworkFrameLoadGeneration(artwork) === generation) {
+                artwork.metadata.artworkFrameLoading = false;
+                syncArtworkFrameLocalLightMembership(artwork, previousFrameMeshes, "artworkFrameLoadFailed");
+            }
+            console.warn("Artwork frame load failed:", normalizedState, error);
+            if (!options.silent) notifyGalleryStatus("Nie udalo sie wczytac ramy GLB: " + normalizedState.label + ".");
+            if (typeof updateArtworkFrameUi === "function") updateArtworkFrameUi();
+            return false;
+        }
     }
 
     function getPublicArtworkUrlFromPath(imagePath, storageBucket) {
@@ -10406,13 +10977,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return !!(getOriginalAuthorPhotoUrlFromInfo(data) && !isGalleryAvifVariantComplete(normalized, "photo"));
     }
 
-    function getAuthorRecordsNeedingPhotoVariants() {
-        return artworkAuthors.filter(function (author) {
-            return authorPhotoStateNeedsVariants(author);
-        });
-    }
-
-    function syncAllArtworksForAuthor(author) {
+        function syncAllArtworksForAuthor(author) {
         if (!author || !author.id) {
             return;
         }
@@ -10683,6 +11248,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         imagePlane.metadata = imagePlane.metadata || {};
         imagePlane.metadata.isArtworkImagePlane = true;
         imagePlane.metadata.parentArtworkName = artwork.name;
+        tagGalleryExhibitionNode(imagePlane, "artwork-image", getGalleryNodeOwnerId(artwork) || getActiveGalleryExhibitionId());
 
         artwork.metadata.imagePlane = imagePlane;
         syncDetachedArtworkImagePlane(artwork);
@@ -10860,6 +11426,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         artwork.rotation.z = BABYLON.Tools.ToRadians(transformState.rotationDegrees);
 
         syncDetachedArtworkImagePlane(artwork);
+        syncArtworkFrameRuntime(artwork);
 
         artwork.computeWorldMatrix(true);
         markGalleryObjectBoundsDirty(artwork);
@@ -10909,29 +11476,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
     }
 
-    function changeSelectedArtworkTransform(deltaScaleX, deltaScaleY, deltaRotationDegrees) {
-        var artwork = getSingleSelectedArtworkForImageUi();
-
-        if (!artwork) {
-            notifyGalleryStatus("Zaznacz jeden obraz, aby zmienic skale lub rotacje.");
-            return;
-        }
-
-        var currentTransform = getArtworkTransformState(artwork);
-        var scaleDelta = 0;
-
-        if (deltaScaleX || deltaScaleY) {
-            scaleDelta = ((deltaScaleX || 0) + (deltaScaleY || 0)) * 0.5;
-        }
-
-        setSelectedArtworkTransform(
-            currentTransform.scale + scaleDelta,
-            currentTransform.rotationDegrees + (deltaRotationDegrees || 0),
-            true
-        );
-    }
-
-    function resetSelectedArtworkTransform() {
+        function resetSelectedArtworkTransform() {
         var artwork = getSingleSelectedArtworkForImageUi();
 
         if (!artwork) {
@@ -11059,7 +11604,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         return normalized;
     }
-
 
 
     // STAGE 12C39 - FOCUS CAMERA SAFE ADDITIVE CONTROLS
@@ -11199,15 +11743,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return isFinite(Number(fallbackY)) ? Number(fallbackY) : null;
     }
 
-    function getGalleryWalkCameraYAtPosition(position) {
-        // STAGE 12C42:
-        // Walking height is a stable baseline from the original scene camera, not a value
-        // derived from temporary focus/preview position. This prevents focus preview from
-        // making a too-low/too-high camera height become the new normal walking height.
-        return getGalleryDefaultWalkCameraY();
-    }
-
-    function getGalleryFocusCameraYLimits(position) {
+        function getGalleryFocusCameraYLimits(position) {
         var walkY = getGalleryDefaultWalkCameraY();
         var minY = walkY - 1.05;
         var maxY = walkY + 1.85;
@@ -11543,30 +12079,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return gallerySculptureCollisionDebugVisible;
     }
 
-    function getSculptureStableFocusDirection(slot) {
-        if (!slot) {
-            return new BABYLON.Vector3(0, 0, 1);
-        }
-
-        try {
-            slot.computeWorldMatrix && slot.computeWorldMatrix(true);
-
-            var baseDirection = BABYLON.Vector3.TransformNormal(
-                new BABYLON.Vector3(0, 0, 1),
-                slot.getWorldMatrix ? slot.getWorldMatrix() : BABYLON.Matrix.Identity()
-            );
-
-            baseDirection.y = 0;
-
-            if (baseDirection.lengthSquared() > 0.0001) {
-                return baseDirection.normalize();
-            }
-        } catch (directionError) {}
-
-        return new BABYLON.Vector3(0, 0, 1);
-    }
-
-    function getGalleryObjectFocusCameraState(object) {
+        function getGalleryObjectFocusCameraState(object) {
         var storedState = null;
 
         if (object && object.metadata) {
@@ -11604,7 +12117,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
 
-
     // STAGE 12C44 - dirty-only cached visible bounds for popup/focus and imported GLB meshes.
     // No short TTL: bounds are recomputed only when the owning gallery object marks them dirty.
     function cloneGalleryVisibleBounds(bounds) {
@@ -11634,12 +12146,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
     }
 
-    function markAllGalleryObjectBoundsDirty() {
-        artworks.forEach(markGalleryObjectBoundsDirty);
-        artSpheres.forEach(markGalleryObjectBoundsDirty);
-    }
-
-    function getCachedVisibleBoundsForGalleryObject(object, meshes) {
+        function getCachedVisibleBoundsForGalleryObject(object, meshes) {
         if (!object) {
             return getVisibleBoundsFromMeshes(meshes);
         }
@@ -11725,6 +12232,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             artwork.metadata.imagePlane.visibility !== 0
         ) {
             result.push(artwork.metadata.imagePlane);
+        }
+
+        if (artwork.metadata && artwork.metadata.artworkFrameRuntime && Array.isArray(artwork.metadata.artworkFrameRuntime.meshes)) {
+            artwork.metadata.artworkFrameRuntime.meshes.forEach(function (mesh) {
+                if (mesh && !(mesh.isDisposed && mesh.isDisposed()) && mesh.isVisible !== false && mesh.visibility !== 0) result.push(mesh);
+            });
         }
 
         result.push(artwork);
@@ -12157,6 +12670,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
 
         syncDetachedArtworkImagePlane(artwork);
+        syncArtworkFrameRuntime(artwork);
     }
 
     function cloneArtworkMaterialColor(color) {
@@ -12446,6 +12960,13 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                     return;
                 }
                 try {
+                    if (!isGalleryEntityOwnerActive(artwork)) {
+                        galleryExhibitionRuntime.staleOwnerCallbacksBlocked += 1;
+                        setGalleryOwnedEntityDisabled(imagePlane, "stale-artwork-texture-owner");
+                        if (artwork.metadata.imageMaterial !== imageMaterial && imagePlane.material !== imageMaterial) disposeArtworkImageMaterialInstance(imageMaterial);
+                        settleArtworkLoad(false, { reason: "inactive-owner-texture-loaded", streamingTier: normalizedState._galleryStreamingTier || null });
+                        return;
+                    }
                     if (textureOnlyUpgrade) {
                         recordArtworkTextureDimensionsWithoutGeometry(artwork, texture, normalizedState.fitMode || galleryArtworkDefaultFitMode);
                     } else {
@@ -12473,16 +12994,27 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                     artwork.metadata.galleryStreaming.residencyBytes = typeof estimateGalleryTextureBytes === "function" ? estimateGalleryTextureBytes(texture) : 0;
                     if (isGalleryKtx2Url(imageUrl)) galleryKtx2Runtime.successfulLoads += 1;
                     if (normalizedState._galleryFastStartPreferPreview) {
-                        scheduleGalleryFastStartFullArtworkUpgrade({
-                            key: artworkId,
-                            artworkId: artworkId,
-                            generation: loadGeneration,
-                            artwork: artwork,
-                            imageState: normalizedState,
-                            queuedAt: Date.now()
-                        });
+                        var previewWasDowngrade = !!normalizedState._galleryResidencyDowngrade || !!normalizedState._galleryNoAutoFullQueue;
+                        var previewInspectPriority = !!(galleryInspectRuntime && galleryInspectRuntime.target === artwork);
+                        if (previewWasDowngrade) {
+                            galleryArtworkResidencyRuntime.thrashPrevented += 1;
+                            recordGalleryArtworkResidencyEvent("preview-auto-full-suppressed", artwork, "downgrade-cooldown");
+                        } else if (previewInspectPriority) {
+                            scheduleGalleryFastStartFullArtworkUpgrade({
+                                key: artworkId,
+                                artworkId: artworkId,
+                                generation: loadGeneration,
+                                artwork: artwork,
+                                imageState: normalizedState,
+                                queuedAt: Date.now(),
+                                inspectPriority: true,
+                                priorityReason: "inspect-preview-ready"
+                            });
+                        }
                     }
-                    if (typeof scheduleGalleryArtworkResidencyMaintenance === "function") scheduleGalleryArtworkResidencyMaintenance("texture-loaded", 160, false);
+                    // Normal Preview textures do not automatically create a Full queue entry.
+                    // Residency maintenance selects only nearby/eligible targets after the viewer is idle.
+                    if (typeof scheduleGalleryArtworkResidencyMaintenance === "function") scheduleGalleryArtworkResidencyMaintenance("texture-loaded", 220, false);
                 } finally {
                     settleArtworkLoad(false, { reason: "texture-loaded", streamingTier: normalizedState._galleryStreamingTier || null, ktx2: isGalleryKtx2Url(imageUrl) });
                 }
@@ -12557,10 +13089,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         // Atomic swap: a previous valid image remains visible until the new generation loads.
         if (!previousMaterial) {
             imagePlane.material = imageMaterial;
-            imagePlane.setEnabled(true);
+            imagePlane.setEnabled(isGalleryEntityOwnerActive(artwork));
             artwork.metadata.imageMaterial = imageMaterial;
         } else {
-            imagePlane.setEnabled(true);
+            imagePlane.setEnabled(isGalleryEntityOwnerActive(artwork));
         }
         if (!textureOnlyUpgrade) {
             syncDetachedArtworkImagePlane(artwork);
@@ -12609,7 +13141,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             applyArtworkImageBaseMaterial(artwork);
             var imagePlane = getArtworkImagePlane(artwork);
             // Never hide an already loaded image while a newer generation waits in the queue.
-            if (artwork.metadata.imageMaterial) imagePlane.setEnabled(true);
+            if (artwork.metadata.imageMaterial) imagePlane.setEnabled(isGalleryEntityOwnerActive(artwork));
             syncDetachedArtworkImagePlane(artwork);
         } catch (baseMaterialError) {
             console.warn("Artwork image base material fallback warning:", baseMaterialError);
@@ -12901,6 +13433,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
     function markGalleryDraftDirty(reason) {
+        if (!galleryAdminWorkspaceMode) {
+            return false;
+        }
         if (!gallerySaveIntegrityRuntime.baselineReady || gallerySaveIntegrityRuntime.saveInFlight) {
             return false;
         }
@@ -13319,7 +13854,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                     var nested = await listGalleryStorageFilesRecursively(bucketName, path, depth + 1);
                     files = files.concat(nested);
                 } else if (entry.name) {
-                    files.push({ path: path, name: entry.name, id: entry.id || null, metadata: entry.metadata || null });
+                    files.push({ path: path, name: entry.name, id: entry.id || null, metadata: entry.metadata || null, updated_at: entry.updated_at || null, created_at: entry.created_at || null });
                 }
             }
             if (entries.length < limit) break;
@@ -13896,7 +14431,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
     function setGalleryPublishedStateBaseline(runtimeState, options) {
         options = options || {};
-        restoreGalleryPendingDraftUploads();
+        if (galleryAdminWorkspaceMode) {
+            restoreGalleryPendingDraftUploads();
+        }
         var comparableFingerprint = getGalleryStateIntegrityFingerprint(runtimeState || serializeGalleryState());
         var serverState = options.serverState || null;
 
@@ -13916,15 +14453,22 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         gallerySaveIntegrityRuntime.dirty = false;
         gallerySaveIntegrityRuntime.dirtyReason = options.reason || "published-baseline";
         gallerySaveIntegrityRuntime.dirtySince = 0;
-        reconcileGalleryPendingDraftUploads(serverState || runtimeState, {
-            queueUnreferenced: options.confirmed !== false,
-            reason: "baseline-orphan-draft-upload"
-        });
+        if (galleryAdminWorkspaceMode) {
+            reconcileGalleryPendingDraftUploads(serverState || runtimeState, {
+                queueUnreferenced: options.confirmed !== false,
+                reason: "baseline-orphan-draft-upload"
+            });
+        }
         dispatchGalleryDraftState(gallerySaveIntegrityRuntime.dirtyReason);
-        startGalleryDraftStateWatcher();
+        if (galleryAdminWorkspaceMode) {
+            startGalleryDraftStateWatcher();
+        }
     }
 
     function checkGalleryDraftStateNow(reason) {
+        if (!galleryAdminWorkspaceMode) {
+            return false;
+        }
         if (!gallerySaveIntegrityRuntime.baselineReady || gallerySaveIntegrityRuntime.saveInFlight || galleryFastStartRuntime.stateApplyActive) {
             return gallerySaveIntegrityRuntime.dirty;
         }
@@ -13944,6 +14488,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
     function startGalleryDraftStateWatcher() {
+        if (!galleryAdminWorkspaceMode) {
+            return;
+        }
         if (gallerySaveIntegrityRuntime.stateWatcherStarted) {
             return;
         }
@@ -13975,6 +14522,15 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
 
         scheduleNextCheck();
+    }
+
+
+    function stopGalleryDraftStateWatcher() {
+        if (gallerySaveIntegrityRuntime.stateCheckTimer) {
+            clearTimeout(gallerySaveIntegrityRuntime.stateCheckTimer);
+            gallerySaveIntegrityRuntime.stateCheckTimer = null;
+        }
+        gallerySaveIntegrityRuntime.stateWatcherStarted = false;
     }
 
     function persistGalleryPreviousStateBackup(previousState, metadata) {
@@ -14272,6 +14828,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         node.metadata = node.metadata || {};
         node.metadata.model3dOwnerSlotId = slotId;
         node.metadata.model3dSlotName = slot.name; // legacy/debug only
+        tagGalleryExhibitionNode(node, "sculpture-owned-node", slot.metadata.galleryOwnerId || getActiveGalleryExhibitionId());
         try { node._galleryModel3dOwnerSlot = slot; } catch (error) {}
         return node;
     }
@@ -14290,6 +14847,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             delete gallerySculptureCoreRuntime.colliderRegistry[currentId];
         }
         slot.metadata.model3dSlotId = slotId;
+        tagGalleryExhibitionNode(slot, "sculpture-slot", slot.metadata.galleryOwnerId || getActiveGalleryExhibitionId());
         gallerySculptureCoreRuntime.slotRegistry[slotId] = slot;
         try { slot._galleryModel3dOwnerSlot = slot; } catch (error) {}
 
@@ -14699,7 +15257,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     var galleryFloorCursorRing = null;
     var galleryFloorCursorRingMaterial = null;
     var galleryFloorCursorPulseStartedAt = 0;
-    var galleryFloorCursorPulseDurationMs = 520;
+    var galleryFloorCursorPulseDurationMs = 420;
     var galleryFloorCursorFramePending = false;
     var galleryFloorCursorLastEvent = null;
     var galleryFloorCursorHoverVisible = false;
@@ -14726,16 +15284,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         );
     }
 
-    function isGalleryDesktopDpadInputActive() {
-        return !!(
-            galleryDesktopDpadState.forward ||
-            galleryDesktopDpadState.backward ||
-            galleryDesktopDpadState.turnLeft ||
-            galleryDesktopDpadState.turnRight
-        );
-    }
-
-    var viewerMovementConfig = {
+        var viewerMovementConfig = {
         speed: 3.58,
         sprintMultiplier: 1.22,
         acceleration: 15.0,
@@ -14815,7 +15364,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             #berryboyViewerIntroCard {
                 width: min(760px, calc(100vw - 34px));
                 max-height: min(88vh, 760px);
-                overflow: auto;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
                 border-radius: 28px;
                 padding: 26px;
                 box-sizing: border-box;
@@ -14827,6 +15378,19 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 transform: translateY(10px) scale(0.985);
                 opacity: 0;
                 animation: berryboyIntroCardIn 540ms cubic-bezier(.19,1,.22,1) forwards;
+            }
+
+            .berryboyIntroScrollable {
+                min-height: 0;
+                overflow: auto;
+                overscroll-behavior: contain;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: thin;
+            }
+
+            .berryboyIntroFooter {
+                flex: 0 0 auto;
+                padding-top: 18px;
             }
 
             #berryboyViewerIntroCard h1 {
@@ -15020,7 +15584,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
             #berryboyIntroStart {
                 width: 100%;
-                margin-top: 18px;
+                margin-top: 0;
                 border: 0;
                 border-radius: 18px;
                 padding: 15px 18px;
@@ -15075,9 +15639,34 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             }
 
             @media (max-width: 720px) {
+                #berryboyViewerIntroOverlay {
+                    align-items: stretch;
+                    padding:
+                        max(10px, env(safe-area-inset-top))
+                        max(10px, env(safe-area-inset-right))
+                        max(10px, env(safe-area-inset-bottom))
+                        max(10px, env(safe-area-inset-left));
+                }
+
                 #berryboyViewerIntroCard {
-                    padding: 18px;
+                    align-self: center;
+                    width: min(100%, 760px);
+                    max-height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+                    padding: 18px 18px 14px;
                     border-radius: 22px;
+                }
+
+                .berryboyIntroScrollable {
+                    padding-right: 2px;
+                }
+
+                .berryboyIntroFooter {
+                    margin: 0 -2px -2px;
+                    padding: 12px 2px 2px;
+                    border-top: 1px solid rgba(255,255,255,0.09);
+                    background: linear-gradient(to bottom, rgba(18,18,18,0.12), rgba(18,18,18,0.72) 42%);
+                    backdrop-filter: blur(12px);
+                    -webkit-backdrop-filter: blur(12px);
                 }
 
                 .berryboyIntroGrid {
@@ -15203,6 +15792,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             viewerIntroOverlay.id = "berryboyViewerIntroOverlay";
             viewerIntroOverlay.innerHTML = `
                 <div id="berryboyViewerIntroCard" role="dialog" aria-modal="true" aria-label="Viewer controls">
+                    <div class="berryboyIntroScrollable">
                     <h1>Explore the gallery</h1>
 
                     <p class="berryboyDesktopOnly">Move through the space with WASD or left-click the floor. Choose how you want to rotate the camera.</p>
@@ -15266,8 +15856,11 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                             </button>
                         </div>
                     </div>
+                    </div>
 
-                    <button id="berryboyIntroStart" type="button">Start exploring</button>
+                    <div class="berryboyIntroFooter">
+                        <button id="berryboyIntroStart" type="button">Start exploring</button>
+                    </div>
                 </div>
             `;
 
@@ -15311,8 +15904,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     // STAGE 12C65A - SINGLE STARTUP GATE / BATCHED FINALIZATION
     // Critical shell and saved state open the intro; one gate then drains previews/models/Props and finalizes global systems once.
     var galleryAssetNames = ["floor", "wall", "props", "ceiling"];
-    var galleryCriticalAssetNames = ["floor", "wall", "ceiling"];
-    var galleryOptionalAssetNames = ["props"];
+    var galleryCriticalAssetNames = ["floor", "wall", "props", "ceiling"];
+    var galleryOptionalAssetNames = [];
     var assetsToLoad = galleryCriticalAssetNames.length;
     var assetsLoaded = 0;
     var galleryWebStateLoadedOnce = false;
@@ -15323,7 +15916,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     var galleryStartupWatchdogMs = 120000;
     var galleryStartupFinalizeDebug = {
         stage: "12C65E",
-        startupOrder: "critical-shell_then_state_then_current-zone-critical_then_interaction-ready_then_nearby_then_deferred",
+        startupOrder: "hard-space-shell_then_state_then_all-assigned-preview_then_space-visual-warmup_then_interaction-ready_then_models-full-background",
         stateLoadFinishedAt: null,
         artworkTextureWait: null,
         finalLightStartedAt: null,
@@ -15394,7 +15987,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     };
 
 
-
     // STAGE 12C65E — GALLERY ZONES / CRITICAL → NEARBY → DEFERRED
     // Zones are derived from floor segment bounds and quantized when a gallery contains many tiles.
     // The current zone is critical, directly adjacent zones are nearby, everything else stays deferred.
@@ -15429,6 +16021,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         criticalArtworkFinished: 0,
         criticalModelStarted: 0,
         criticalModelFinished: 0,
+        criticalModelFastLaneStarted: 0,
+        criticalModelFastLaneFinished: 0,
+        lastCriticalModelFastLaneAt: 0,
+        lastCriticalModelFastLaneSlot: null,
         nearbyArtworkStarted: 0,
         nearbyModelStarted: 0,
         deferredArtworkLoadsAvoided: 0,
@@ -15502,20 +16098,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
     }
 
-    function mergeGalleryStreamingBounds(target, next) {
-        if (!target) return Object.assign({}, next);
-        target.minX = Math.min(target.minX, next.minX);
-        target.maxX = Math.max(target.maxX, next.maxX);
-        target.minZ = Math.min(target.minZ, next.minZ);
-        target.maxZ = Math.max(target.maxZ, next.maxZ);
-        target.minY = Math.min(target.minY, next.minY);
-        target.maxY = Math.max(target.maxY, next.maxY);
-        target.centerX = (target.minX + target.maxX) * 0.5;
-        target.centerZ = (target.minZ + target.maxZ) * 0.5;
-        return target;
-    }
-
-    
+        
     function rebuildGalleryStreamingZones(reason) {
         var zones = {};
         var cellSize = Math.max(8, Number(galleryZoneStreamingRuntime.gridCellSize) || 12);
@@ -15709,11 +16292,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return queue.splice(index, 1)[0];
     }
 
-    function isGalleryStreamingZoneActive(zoneId) {
-        return !!zoneId && galleryZoneStreamingRuntime.activeZoneIds.indexOf(zoneId) !== -1;
-    }
-
-    function refreshGalleryCurrentStreamingZone(reason, force) {
+        function refreshGalleryCurrentStreamingZone(reason, force) {
         if (!galleryZoneStreamingRuntime.enabled || !camera || !camera.position) return false;
         if (!galleryZoneStreamingRuntime.zonesReady) rebuildGalleryStreamingZones(reason || "current-zone");
         var now = Date.now();
@@ -15862,39 +16441,26 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return scene && scene.frustumPlanes ? scene.frustumPlanes : (scene && scene._frustumPlanes ? scene._frustumPlanes : null);
     }
 
-    function isGalleryPropProtectedByView(mesh) {
-        if (!mesh || !camera) return false;
-        try {
-            var planes = getGalleryActiveCameraFrustumPlanes();
-            if (mesh.isInFrustum && planes) return !!mesh.isInFrustum(planes);
-        } catch (error) {}
-        try {
-            var position = mesh.getAbsolutePosition ? mesh.getAbsolutePosition() : mesh.position;
-            return !!(position && camera.position && BABYLON.Vector3.Distance(position, camera.position) < 26);
-        } catch (distanceError) {}
-        return false;
-    }
-    function updateGalleryPropZoneActivation() {
+        function updateGalleryPropZoneActivation() {
+        // C6C8C12: Props are part of the physical Space shell, not streamed Exhibition content.
+        // They stay resident/enabled after the critical import so a camera turn can never reveal
+        // a late prop pop-in. Heavy user sculpture/model slots remain background-streamed separately.
         var now = Date.now();
-        var profile = getGalleryMobileQualityProfileDefinition(galleryDeviceProfile.currentQualityProfile);
-        var alwaysVisible = !!(profile.streaming && profile.streaming.propsAlwaysVisible);
         (propMeshes || []).forEach(function (mesh) {
             if (!mesh || mesh.name === "__root__") return;
             configureGalleryPropStreamingLod(mesh);
-            var zoneId = getGalleryStreamingZoneIdForObject(mesh);
-            var protectedByView = isGalleryPropProtectedByView(mesh);
-            if (protectedByView) mesh.metadata.galleryLastVisibleAt = now;
-            var visibleGrace = now - Number(mesh.metadata.galleryLastVisibleAt || 0) < 2800;
-            var active = !galleryDeviceProfile.mobile || alwaysVisible || isGalleryStreamingZoneActive(zoneId) || protectedByView || visibleGrace;
-            if (mesh.setEnabled && mesh.isEnabled && mesh.isEnabled() !== active) mesh.setEnabled(active);
+            mesh.metadata = mesh.metadata || {};
+            mesh.metadata.gallerySpaceAlwaysResident = true;
+            mesh.metadata.galleryLastVisibleAt = now;
+            if (mesh.setEnabled && (!mesh.isEnabled || !mesh.isEnabled())) mesh.setEnabled(true);
         });
     }
 
     function maintainGalleryStreamingMemoryBudget(reason) {
-        if (!galleryDeviceProfile.mobile || !galleryZoneStreamingRuntime.started) return;
+        if (!galleryZoneStreamingRuntime.started) return;
         var now = Date.now();
 
-        // C6C2: every assigned frame stays visible as Preview; Full 2048 residency is bounded.
+        // C6C8C: every assigned artwork stays visible as Preview; Full residency is proximity-bound on every device.
         (artworks || []).forEach(function (artwork) {
             if (!artwork || !artwork.metadata || !artwork.metadata.artworkImage || isArtworkDeleted(artwork)) return;
             ensureArtworkIdentity(artwork);
@@ -15903,6 +16469,13 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             if (artwork.metadata.imagePlane && artwork.metadata.imageMaterial) artwork.metadata.imagePlane.setEnabled(true);
         });
         enforceGalleryArtworkResidencyBudget(reason || "streaming-memory-budget", false);
+
+        // Heavy model disposal remains a mobile-memory concern. Desktop still benefits from
+        // the artwork egress guard above, but keeps its existing sculpture residency behavior.
+        if (!galleryDeviceProfile.mobile) {
+            galleryZoneStreamingRuntime.lastReason = reason || "desktop-artwork-egress-guard";
+            return;
+        }
 
         var residentModels = [];
         (artSpheres || []).forEach(function (slot) {
@@ -15937,6 +16510,211 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         galleryZoneStreamingRuntime.lastReason = reason || "memory-budget-tiered-artwork-models";
     }
 
+    // C6C8C10/C6C8C11 — STARTUP CRITICAL PATH / GUARANTEED PREVIEW FILL / BACKGROUND HYDRATION BUDGET
+    function isGalleryBackgroundHydrationMotionActive() {
+        if (isDraggingArtwork || isDraggingSphere) return true;
+        if (desktopViewerMiddleLookActive || mobileLookActive) return true;
+        if (mobileJoystickActive || mobileCanvasMoveActive) return true;
+        if (editMoveKeys && (editMoveKeys.w || editMoveKeys.a || editMoveKeys.s || editMoveKeys.d || editMoveKeys.space)) return true;
+        if (viewerMoveKeys && (viewerMoveKeys.w || viewerMoveKeys.a || viewerMoveKeys.s || viewerMoveKeys.d)) return true;
+        if (viewerMovementVelocity && viewerMovementVelocity.length && viewerMovementVelocity.length() > 0.035) return true;
+        if (typeof isGalleryInspectCameraTransitionActive === "function" && isGalleryInspectCameraTransitionActive()) return true;
+        if (galleryInspectRuntime && galleryInspectRuntime.opening) return true;
+        return false;
+    }
+
+    function getGalleryBackgroundHydrationIdleAgeMs() {
+        var last = Number(galleryFastStartRuntime.lastViewerActivityAt) || 0;
+        return last > 0 ? Math.max(0, Date.now() - last) : Number.POSITIVE_INFINITY;
+    }
+
+    function getGalleryBackgroundHydrationPauseReason(kind) {
+        kind = String(kind || "artwork");
+        if (!galleryExhibitionRuntime.foregroundReady || !galleryFastStartRuntime.interactionReady) return "foreground-not-ready";
+        if (typeof document !== "undefined" && document.hidden) return "document-hidden";
+        if (galleryExhibitionRuntime.switching || galleryExhibitionRuntime.hydrationActive) return "exhibition-transition";
+        if (isGalleryBackgroundHydrationMotionActive()) return "viewer-moving";
+        var idleAge = getGalleryBackgroundHydrationIdleAgeMs();
+        var requiredIdle = kind === "model" ? 2800 : 650;
+        if (idleAge < requiredIdle) return kind === "model" ? "model-idle-budget" : "artwork-idle-budget";
+        return "";
+    }
+
+    function recordGalleryBackgroundHydrationPause(reason) {
+        var runtime = galleryExhibitionRuntime.backgroundHydration;
+        runtime.lastPauseReason = reason || "paused";
+        if (reason === "foreground-not-ready" || reason === "exhibition-transition") runtime.foregroundPauses += 1;
+        else runtime.motionPauses += 1;
+    }
+
+    function countGalleryForegroundArtworkQueue() {
+        var count = 0;
+        (galleryFastStartRuntime.deferredArtworkLoads || []).forEach(function (entry) {
+            if (!entry || !entry.foregroundCritical || !isGalleryArtworkQueueEntryCurrent(entry)) return;
+            refreshGalleryStreamingEntryClassification(entry, "artwork");
+            count += 1;
+        });
+        return count;
+    }
+
+    function takeGalleryForegroundArtworkEntry() {
+        sortGalleryStreamingQueue(galleryFastStartRuntime.deferredArtworkLoads, "artwork");
+        var index = galleryFastStartRuntime.deferredArtworkLoads.findIndex(function (entry) {
+            return !!(entry && entry.foregroundCritical && isGalleryArtworkQueueEntryCurrent(entry));
+        });
+        return index >= 0 ? galleryFastStartRuntime.deferredArtworkLoads.splice(index, 1)[0] : null;
+    }
+
+    function getGalleryActiveArtworkPreviewPresenceSnapshot() {
+        var required = 0;
+        var ready = 0;
+        var loading = 0;
+        var missing = [];
+        (artworks || []).forEach(function (artwork) {
+            if (!artwork || !artwork.metadata || isArtworkDeleted(artwork) || !isGalleryEntityOwnerActive(artwork)) return;
+            var imageState = artwork.metadata.artworkImage;
+            if (!imageState || !getArtworkImageUrlFromState(imageState)) return;
+            required += 1;
+            var stream = artwork.metadata.galleryStreaming = artwork.metadata.galleryStreaming || {};
+            var imagePlane = artwork.metadata.imagePlane || null;
+            var materialReady = !!(artwork.metadata.imageMaterial && imagePlane && imagePlane.material === artwork.metadata.imageMaterial);
+            var planeReady = materialReady && (!imagePlane.isEnabled || imagePlane.isEnabled());
+            if (planeReady) {
+                ready += 1;
+                return;
+            }
+            if (stream.loading) {
+                loading += 1;
+                return;
+            }
+            missing.push(ensureArtworkIdentity(artwork));
+        });
+        return {
+            required: required,
+            ready: ready,
+            loading: loading,
+            missing: missing.length,
+            missingIds: missing
+        };
+    }
+
+    function queueGalleryMissingRequiredPreviews(reason) {
+        var queued = 0;
+        (artworks || []).forEach(function (artwork) {
+            if (!artwork || !artwork.metadata || isArtworkDeleted(artwork) || !isGalleryEntityOwnerActive(artwork)) return;
+            var imageState = artwork.metadata.artworkImage;
+            if (!imageState || !getArtworkImageUrlFromState(imageState)) return;
+            var stream = artwork.metadata.galleryStreaming = artwork.metadata.galleryStreaming || {};
+            var imagePlane = artwork.metadata.imagePlane || null;
+            var materialReady = !!(artwork.metadata.imageMaterial && imagePlane && imagePlane.material === artwork.metadata.imageMaterial);
+            if (materialReady || stream.loading) return;
+            var artworkId = ensureArtworkIdentity(artwork);
+            var hasCurrentQueueEntry = (galleryFastStartRuntime.deferredArtworkLoads || []).some(function (entry) {
+                return !!(entry && entry.artworkId === artworkId && isGalleryArtworkQueueEntryCurrent(entry));
+            });
+            if (stream.queued && !hasCurrentQueueEntry) stream.queued = false;
+            if (hasCurrentQueueEntry) return;
+            if (queueArtworkForGalleryStreaming(artwork, reason || "required-preview-fill")) queued += 1;
+        });
+        return queued;
+    }
+
+    function prepareGalleryForegroundArtworkBudget(reason) {
+        var criticalPath = galleryExhibitionRuntime.startupCriticalPath;
+        var contextKey = getActiveGalleryExhibitionId() + ":" + String(Number(galleryExhibitionRuntime.transitionEpoch) || 0);
+        queueGalleryMissingRequiredPreviews(reason || "required-preview-fill");
+        var queue = galleryFastStartRuntime.deferredArtworkLoads || [];
+        sortGalleryStreamingQueue(queue, "artwork");
+        var selected = 0;
+
+        // C6C8C11: every assigned Preview is foreground-critical. The queue still uses
+        // bounded texture concurrency, but no assigned artwork may remain gray after Ready.
+        queue.forEach(function (entry) {
+            if (!entry || !isGalleryArtworkQueueEntryCurrent(entry)) return;
+            refreshGalleryStreamingEntryClassification(entry, "artwork");
+            entry.foregroundCritical = true;
+            entry.foregroundReason = reason || "guaranteed-preview-fill";
+            selected += 1;
+        });
+
+        var presence = getGalleryActiveArtworkPreviewPresenceSnapshot();
+        criticalPath.foregroundArtworkSelected = selected;
+        criticalPath.foregroundArtworkLoaded = 0;
+        criticalPath.requiredPreviewCount = presence.required;
+        criticalPath.readyPreviewCount = presence.ready;
+        criticalPath.missingPreviewCount = presence.missing + presence.loading;
+        criticalPath.foregroundBudgetKey = contextKey;
+        return selected;
+    }
+
+    // C6C8C20 — CURRENT-ZONE MODEL FAST LANE
+    // Once the gallery is genuinely interaction-ready, a sculpture/model that belongs to
+    // the camera's current streaming zone must not wait for the generic motion-aware
+    // background idle budget. Nearby/deferred models intentionally keep the old policy.
+    function getGalleryCriticalModelFastLanePauseReason() {
+        if (!galleryExhibitionRuntime.foregroundReady || !galleryFastStartRuntime.interactionReady) return "foreground-not-ready";
+        if (typeof document !== "undefined" && document.hidden) return "document-hidden";
+        if (galleryExhibitionRuntime.switching || galleryExhibitionRuntime.hydrationActive) return "exhibition-transition";
+        return "";
+    }
+
+    function tryStartGalleryCriticalModelFastLane(reason) {
+        if (!galleryZoneStreamingRuntime.started || galleryZoneStreamingRuntime.streamPumpActive) return false;
+        if (galleryFastStartRuntime.modelLoadActiveCount > 0) return false;
+        if (getGalleryCriticalModelFastLanePauseReason()) return false;
+
+        refreshGalleryCurrentStreamingZone(reason || "critical-model-fast-lane", true);
+        var modelEntry = takeGalleryStreamingQueueEntry(galleryFastStartRuntime.deferredModelLoads, "slot", ["critical"]);
+        if (!modelEntry || !modelEntry.slot || !modelEntry.modelState) return false;
+
+        galleryZoneStreamingRuntime.streamPumpActive = true;
+        galleryFastStartRuntime.backgroundDrainActive = true;
+        galleryFastStartRuntime.modelLoadActiveCount += 1;
+
+        var budgetRuntime = galleryExhibitionRuntime.backgroundHydration;
+        budgetRuntime.slices += 1;
+        budgetRuntime.modelStarts += 1;
+        budgetRuntime.lastStartedAt = Date.now();
+        budgetRuntime.lastReason = reason || "critical-model-fast-lane";
+
+        galleryZoneStreamingRuntime.criticalModelStarted += 1;
+        galleryZoneStreamingRuntime.criticalModelFastLaneStarted += 1;
+        galleryZoneStreamingRuntime.lastCriticalModelFastLaneAt = Date.now();
+        galleryZoneStreamingRuntime.lastCriticalModelFastLaneSlot = modelEntry.slotId || modelEntry.key || (modelEntry.slot && modelEntry.slot.name) || null;
+
+        var immediateState = cloneGalleryFastStartState(modelEntry.modelState);
+        immediateState._galleryFastStartForceImmediate = true;
+        immediateState._galleryStreamingTier = "critical";
+        modelEntry.slot.metadata = modelEntry.slot.metadata || {};
+        modelEntry.slot.metadata.galleryStreaming = modelEntry.slot.metadata.galleryStreaming || {};
+        modelEntry.slot.metadata.galleryStreaming.loading = true;
+        modelEntry.slot.metadata.galleryStreaming.queued = false;
+        modelEntry.slot.metadata.galleryStreaming.fastLane = "current-zone";
+
+        var sliceStartedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+        Promise.resolve(applyModel3dStateToSlot(modelEntry.slot, immediateState))
+            .catch(function (error) { console.warn("C6C8C20 critical model fast-lane warning:", error); })
+            .finally(function () {
+                galleryFastStartRuntime.modelLoadActiveCount = Math.max(0, galleryFastStartRuntime.modelLoadActiveCount - 1);
+                if (modelEntry.slot && modelEntry.slot.metadata && modelEntry.slot.metadata.galleryStreaming) {
+                    modelEntry.slot.metadata.galleryStreaming.loading = false;
+                }
+                galleryZoneStreamingRuntime.criticalModelFinished += 1;
+                galleryZoneStreamingRuntime.criticalModelFastLaneFinished += 1;
+                galleryZoneStreamingRuntime.streamPumpActive = false;
+                galleryFastStartRuntime.backgroundDrainActive = false;
+                var finishedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+                budgetRuntime.lastSliceMs = Math.round(Math.max(0, finishedAt - sliceStartedAt) * 10) / 10;
+                budgetRuntime.lastFinishedAt = Date.now();
+                maintainGalleryStreamingMemoryBudget("critical-model-fast-lane-finished");
+                yieldGalleryForegroundFrame(0).then(function () {
+                    scheduleGalleryZoneStreamingPump("critical-model-fast-lane-next", 90);
+                    scheduleGalleryFastStartFullArtworkDrainWhenIdle("critical-model-fast-lane-full-artwork", 220);
+                });
+            });
+        return true;
+    }
+
     function scheduleGalleryZoneStreamingPump(reason, delayMs) {
         if (!galleryZoneStreamingRuntime.started || galleryZoneStreamingRuntime.streamPumpScheduled) return;
         galleryZoneStreamingRuntime.streamPumpScheduled = true;
@@ -15948,20 +16726,70 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
     function pumpGalleryZoneStreamingQueues(reason) {
         if (!galleryZoneStreamingRuntime.started || galleryZoneStreamingRuntime.streamPumpActive) return;
+
+        // C6C8C20: current-zone sculpture/model is visible scene content, not an idle-only task.
+        // Give it one fast-lane start before the generic motion-aware background budget.
+        if (tryStartGalleryCriticalModelFastLane(reason || "zone-pump")) return;
+
+        var foregroundPause = getGalleryBackgroundHydrationPauseReason("artwork");
+        if (foregroundPause) {
+            recordGalleryBackgroundHydrationPause(foregroundPause);
+            scheduleGalleryZoneStreamingPump("background-budget-" + foregroundPause, 220);
+            return;
+        }
+
         refreshGalleryCurrentStreamingZone(reason || "stream-pump", true);
         galleryZoneStreamingRuntime.streamPumpActive = true;
         galleryFastStartRuntime.backgroundDrainActive = true;
-
-        var artworkConcurrency = Math.max(1, Math.min(3, Number(galleryDeviceProfile.previewTextureConcurrency) || 2));
-        var modelConcurrency = Math.max(1, Number(galleryFastStartRuntime.modelLoadConcurrency) || 1);
-        var artworkStarted = 0;
+        var sliceStartedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+        var budgetRuntime = galleryExhibitionRuntime.backgroundHydration;
+        budgetRuntime.slices += 1;
+        budgetRuntime.lastStartedAt = Date.now();
+        budgetRuntime.lastReason = reason || "background-slice";
         var pumpFinished = false;
-        var pendingTextures = Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length;
 
-        while (artworkStarted < artworkConcurrency && pendingTextures < artworkConcurrency) {
-            var artworkEntry = takeGalleryStreamingQueueEntry(galleryFastStartRuntime.deferredArtworkLoads, "artwork", ["critical", "nearby", "deferred"]);
-            if (!artworkEntry) break;
-            if (!isGalleryArtworkQueueEntryCurrent(artworkEntry)) continue;
+        function hasEligibleArtwork() {
+            return (galleryFastStartRuntime.deferredArtworkLoads || []).some(function (entry) {
+                if (!entry || !isGalleryArtworkQueueEntryCurrent(entry)) return false;
+                var tier = refreshGalleryStreamingEntryClassification(entry, "artwork");
+                return tier === "critical" || tier === "nearby";
+            });
+        }
+
+        function hasEligibleModel() {
+            return (galleryFastStartRuntime.deferredModelLoads || []).some(function (entry) {
+                if (!entry) return false;
+                var tier = refreshGalleryStreamingEntryClassification(entry, "slot");
+                return tier === "critical" || tier === "nearby";
+            });
+        }
+
+        function finishSlice(nextDelay) {
+            if (pumpFinished) return;
+            pumpFinished = true;
+            galleryZoneStreamingRuntime.streamPumpActive = false;
+            galleryFastStartRuntime.backgroundDrainActive = false;
+            var finishedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+            budgetRuntime.lastSliceMs = Math.round(Math.max(0, finishedAt - sliceStartedAt) * 10) / 10;
+            budgetRuntime.lastFinishedAt = Date.now();
+            galleryFastStartRuntime.modelDrainComplete = !hasEligibleModel() && galleryFastStartRuntime.modelLoadActiveCount === 0;
+            maintainGalleryStreamingMemoryBudget(reason || "background-budget-slice-finished");
+            if (hasEligibleArtwork() || hasEligibleModel()) scheduleGalleryZoneStreamingPump("background-budget-next-slice", Math.max(120, Number(nextDelay) || 160));
+            scheduleGalleryFastStartFullArtworkDrainWhenIdle("C6C8C10-full-artwork-background", 220);
+        }
+
+        function waitForStartedArtwork() {
+            var pending = Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length;
+            if (pending > 0) {
+                setTimeout(waitForStartedArtwork, 45);
+                return;
+            }
+            // One decode/upload per slice. Give the browser a paint before considering a model.
+            yieldGalleryForegroundFrame(0).then(function () { finishSlice(150); });
+        }
+
+        var artworkEntry = takeGalleryStreamingQueueEntry(galleryFastStartRuntime.deferredArtworkLoads, "artwork", ["critical", "nearby"]);
+        if (artworkEntry && isGalleryArtworkQueueEntryCurrent(artworkEntry)) {
             var previewState = cloneGalleryFastStartState(artworkEntry.imageState);
             previewState._galleryFastStartForceImmediate = true;
             previewState._galleryFastStartPreferPreview = hasGalleryArtworkPreviewVariant(previewState);
@@ -15969,65 +16797,52 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             artworkEntry.artwork.metadata.galleryStreaming = artworkEntry.artwork.metadata.galleryStreaming || {};
             artworkEntry.artwork.metadata.galleryStreaming.loading = true;
             artworkEntry.artwork.metadata.galleryStreaming.queued = false;
-            applyArtworkImageStateSafely(artworkEntry.artwork, previewState, "12C66C6A artwork priority " + artworkEntry.tier);
+            budgetRuntime.artworkStarts += 1;
             if (artworkEntry.tier === "nearby") galleryZoneStreamingRuntime.nearbyArtworkStarted += 1;
-            artworkStarted += 1;
-            pendingTextures = Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length;
+            applyArtworkImageStateSafely(artworkEntry.artwork, previewState, "C6C8C10 budget artwork " + artworkEntry.tier);
+            waitForStartedArtwork();
+            return;
         }
 
-        function finishPump() {
-            if (pumpFinished) return;
-            pumpFinished = true;
-            galleryZoneStreamingRuntime.streamPumpActive = false;
-            galleryFastStartRuntime.backgroundDrainActive = false;
-            maintainGalleryStreamingMemoryBudget(reason || "zone-pump-finished");
-            if (galleryFastStartRuntime.deferredArtworkLoads.length || countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "critical") + countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "nearby")) {
-                scheduleGalleryZoneStreamingPump("priority-queue-remaining", 120);
-            }
-            scheduleGalleryFastStartFullArtworkDrainWhenIdle("12C66C6A-full-artwork-background", 120);
+        var modelPause = getGalleryBackgroundHydrationPauseReason("model");
+        if (modelPause) {
+            recordGalleryBackgroundHydrationPause(modelPause);
+            finishSlice(300);
+            return;
         }
 
-        function pumpModels() {
-            function startModelEntry(modelEntry) {
+        // Heavy GLB parsing is non-preemptible in Babylon. Start at most one model after a
+        // longer idle window, then wait for it to settle before scheduling another slice.
+        if (galleryFastStartRuntime.modelLoadActiveCount === 0) {
+            var modelEntry = takeGalleryStreamingQueueEntry(galleryFastStartRuntime.deferredModelLoads, "slot", ["critical", "nearby"]);
+            if (modelEntry) {
                 galleryFastStartRuntime.modelLoadActiveCount += 1;
+                budgetRuntime.modelStarts += 1;
                 var immediateState = cloneGalleryFastStartState(modelEntry.modelState);
                 immediateState._galleryFastStartForceImmediate = true;
                 immediateState._galleryStreamingTier = modelEntry.tier;
                 modelEntry.slot.metadata.galleryStreaming = modelEntry.slot.metadata.galleryStreaming || {};
                 modelEntry.slot.metadata.galleryStreaming.loading = true;
+                if (modelEntry.tier === "nearby") galleryZoneStreamingRuntime.nearbyModelStarted += 1;
                 Promise.resolve(applyModel3dStateToSlot(modelEntry.slot, immediateState))
-                    .catch(function (error) { console.warn("12C65E zone model warning:", error); })
+                    .catch(function (error) { console.warn("C6C8C10 background model warning:", error); })
                     .finally(function () {
                         galleryFastStartRuntime.modelLoadActiveCount = Math.max(0, galleryFastStartRuntime.modelLoadActiveCount - 1);
                         if (modelEntry.slot && modelEntry.slot.metadata && modelEntry.slot.metadata.galleryStreaming) modelEntry.slot.metadata.galleryStreaming.loading = false;
-                        pumpModels();
+                        yieldGalleryForegroundFrame(0).then(function () { finishSlice(260); });
                     });
-                if (modelEntry.tier === "nearby") galleryZoneStreamingRuntime.nearbyModelStarted += 1;
+                return;
             }
-            while (galleryFastStartRuntime.modelLoadActiveCount < modelConcurrency) {
-                var modelEntry = takeGalleryStreamingQueueEntry(galleryFastStartRuntime.deferredModelLoads, "slot", ["critical", "nearby"]);
-                if (!modelEntry) break;
-                startModelEntry(modelEntry);
-            }
-            var remainingActive = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "critical") + countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "nearby");
-            if (remainingActive === 0 && galleryFastStartRuntime.modelLoadActiveCount === 0) finishPump();
         }
 
-        function waitForArtworkTextures() {
-            var pending = Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length;
-            if (pending > 0) { setTimeout(waitForArtworkTextures, 70); return; }
-            pumpModels();
-            var remainingActive = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "critical") + countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "nearby");
-            if (remainingActive === 0 && galleryFastStartRuntime.modelLoadActiveCount === 0) finishPump();
-        }
-        waitForArtworkTextures();
+        finishSlice(180);
     }
 
     function startGalleryZoneStreamingRuntime(reason) {
         if (galleryZoneStreamingRuntime.started) return;
         galleryZoneStreamingRuntime.started = true;
         refreshGalleryStreamingBudgetsFromQuality(galleryDeviceProfile.currentQualityProfile, "streaming-start");
-        releaseGalleryStartupDeferredOptionalAssetImports("12C65E-interaction-ready-nearby-stream");
+        releaseGalleryStartupDeferredOptionalAssetImports("C6C8C12-post-ready-future-optionals");
         rebuildGalleryStreamingZones(reason || "streaming-start");
         refreshGalleryCurrentStreamingZone(reason || "streaming-start", true);
         (artworks || []).forEach(function (artwork) { getGalleryStreamingZoneIdForObject(artwork); });
@@ -16066,11 +16881,52 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 artworks: { critical: artworkCritical, nearby: artworkNearby, deferred: artworkDeferred, fullUpgrade: galleryFastStartRuntime.deferredFullArtworkLoads.length },
                 models: { critical: modelCritical, nearby: modelNearby, deferred: modelDeferred }
             },
-            artworkPolicy: "preview-always-visible-tiered-full-residency",
+            artworkPolicy: "preview-first-proximity-full-cache-backed",
             artworkResidency: getGalleryArtworkResidencyMemorySnapshot(),
             artworkCore: Object.assign({}, galleryArtworkCoreRuntime, { registrySize: Object.keys(galleryArtworkCoreRuntime.registry).length, registry: undefined }),
             ktx2: galleryKtx2Runtime
         })));
+    }
+
+    function getGalleryAssetDeliveryDebug() {
+        var residency = getGalleryArtworkResidencyMemorySnapshot();
+        return {
+            stage: galleryArtworkEgressPolicy.stage,
+            schema: galleryArtworkEgressPolicy.schema,
+            adminWorkspace: !!galleryAdminWorkspaceMode,
+            device: isGalleryDeviceProfileMobile() ? "mobile" : "desktop",
+            fullDistance: isGalleryDeviceProfileMobile() ? galleryArtworkEgressPolicy.mobileFullDistance : galleryArtworkEgressPolicy.desktopFullDistance,
+            fullBudget: getGalleryArtworkFullResidencyBudget(),
+            hardFullLimit: getGalleryArtworkFullResidencyHardLimit(),
+            desiredFullIds: galleryArtworkResidencyRuntime.desiredFullOrder.slice(),
+            queuedPreview: galleryFastStartRuntime.deferredArtworkLoads.length,
+            queuedFull: galleryFastStartRuntime.deferredFullArtworkLoads.length,
+            queuedModels: galleryFastStartRuntime.deferredModelLoads.length,
+            activeModelLoads: galleryFastStartRuntime.modelLoadActiveCount,
+            previewPending: Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length,
+            residency: residency,
+            exhibitionResidency: {
+                parked: Object.keys(galleryExhibitionRuntime.layerResidency || {}).length,
+                hits: galleryExhibitionRuntime.residentLayerHits,
+                misses: galleryExhibitionRuntime.residentLayerMisses,
+                evictions: galleryExhibitionRuntime.residentLayerEvictions,
+                maxParked: galleryExhibitionRuntime.maxParkedLayers,
+                lastAction: galleryExhibitionRuntime.lastResidentLayerAction,
+                lastId: galleryExhibitionRuntime.lastResidentLayerId
+            },
+            lastTransition: galleryExhibitionRuntime.lastModeTransition,
+            textureStability: {
+                fullUpgrades: galleryArtworkResidencyRuntime.fullPromotions,
+                downgrades: galleryArtworkResidencyRuntime.previewDowngrades,
+                blockedWhileMoving: galleryArtworkResidencyRuntime.blockedWhileMoving,
+                thrashPrevented: galleryArtworkResidencyRuntime.thrashPrevented,
+                workspaceModeNoRebalance: galleryArtworkResidencyRuntime.workspaceModeNoRebalanceCount,
+                idleBeforeFullMs: galleryArtworkEgressPolicy.idleBeforeFullMs,
+                reentryCooldownMs: galleryArtworkEgressPolicy.fullReentryCooldownMs,
+                downgradeCooldownMs: galleryArtworkEgressPolicy.downgradeCooldownMs
+            },
+            policy: "stable-preview-idle-full-no-thrash + exhibition-layer-residency"
+        };
     }
 
     globalThis.BerryboyArtGalleryStreaming = {
@@ -16205,6 +17061,16 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     function scheduleGalleryFastStartFullArtworkUpgrade(entry) {
         if (!entry || !entry.artwork || !entry.imageState || !isGalleryArtworkQueueEntryCurrent(entry)) return;
         if (!hasGalleryArtworkPreviewVariant(entry.imageState)) return;
+        var stream = entry.artwork.metadata.galleryStreaming = entry.artwork.metadata.galleryStreaming || {};
+        var inspectPriority = !!entry.inspectPriority || !!(galleryInspectRuntime && galleryInspectRuntime.target === entry.artwork);
+        if (!inspectPriority && !isGalleryArtworkFullResidencyDesired(entry.artwork)) {
+            galleryArtworkResidencyRuntime.preventedFullLoads += 1;
+            return;
+        }
+        if (!inspectPriority && Number(stream.fullReentryBlockedUntil || 0) > Date.now()) {
+            galleryArtworkResidencyRuntime.thrashPrevented += 1;
+            return;
+        }
         var artworkId = entry.artworkId || ensureArtworkIdentity(entry.artwork);
         var generation = Number(entry.generation) || getArtworkTextureLoadGeneration(entry.artwork);
         var existingIndex = galleryFastStartRuntime.deferredFullArtworkLoads.findIndex(function (queuedEntry) {
@@ -16225,89 +17091,74 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     
     function drainGalleryFastStartBackgroundQueue(reason) {
         if (!galleryFastStartRuntime.viewerReady || galleryFastStartRuntime.backgroundDrainActive) return;
-        rebuildGalleryStreamingZones(reason || "critical-startup-drain");
-        refreshGalleryCurrentStreamingZone(reason || "critical-startup-drain", true);
+        rebuildGalleryStreamingZones(reason || "foreground-startup-drain");
+        refreshGalleryCurrentStreamingZone(reason || "foreground-startup-drain", true);
+        prepareGalleryForegroundArtworkBudget(reason || "foreground-startup-drain");
         galleryFastStartRuntime.backgroundDrainActive = true;
         galleryFastStartRuntime.artworkPreviewDrainComplete = false;
-        galleryFastStartRuntime.modelDrainComplete = false;
         galleryFastStartRuntime.startupBatchHydrationActive = true;
         galleryZoneStreamingRuntime.criticalDrainComplete = false;
         var drainFinished = false;
 
-        function finishCriticalDrain() {
+        function finishForegroundDrain() {
             if (drainFinished) return;
             drainFinished = true;
             galleryFastStartRuntime.artworkPreviewDrainComplete = true;
-            galleryFastStartRuntime.modelDrainComplete = true;
             galleryFastStartRuntime.startupBatchHydrationActive = false;
             galleryFastStartRuntime.backgroundDrainActive = false;
             galleryZoneStreamingRuntime.criticalDrainComplete = true;
-            galleryZoneStreamingRuntime.deferredArtworkLoadsAvoided = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredArtworkLoads, "artwork", "deferred");
-            galleryZoneStreamingRuntime.deferredModelLoadsAvoided = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "deferred");
+            galleryZoneStreamingRuntime.deferredArtworkLoadsAvoided = galleryFastStartRuntime.deferredArtworkLoads.length;
+            galleryZoneStreamingRuntime.deferredModelLoadsAvoided = galleryFastStartRuntime.deferredModelLoads.length;
         }
 
-        function startCriticalModelEntry(modelEntry) {
-            galleryFastStartRuntime.modelLoadActiveCount += 1;
-            galleryZoneStreamingRuntime.criticalModelStarted += 1;
-            var immediateState = cloneGalleryFastStartState(modelEntry.modelState);
-            immediateState._galleryFastStartForceImmediate = true;
-            immediateState._galleryStreamingTier = "critical";
-            Promise.resolve(applyModel3dStateToSlot(modelEntry.slot, immediateState))
-                .catch(function (error) { console.warn("12C65E critical model warning:", error); })
-                .finally(function () {
-                    galleryFastStartRuntime.modelLoadActiveCount = Math.max(0, galleryFastStartRuntime.modelLoadActiveCount - 1);
-                    galleryZoneStreamingRuntime.criticalModelFinished += 1;
-                    pumpCriticalModels();
-                });
-        }
-
-        function pumpCriticalModels() {
-            var concurrency = Math.max(1, Number(galleryFastStartRuntime.modelLoadConcurrency) || 1);
-            while (galleryFastStartRuntime.modelLoadActiveCount < concurrency) {
-                var modelEntry = takeGalleryStreamingQueueEntry(galleryFastStartRuntime.deferredModelLoads, "slot", ["critical"]);
-                if (!modelEntry) break;
-                startCriticalModelEntry(modelEntry);
-            }
-            if (countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "critical") === 0 && galleryFastStartRuntime.modelLoadActiveCount === 0) {
-                finishCriticalDrain();
-            }
-        }
-
-        function waitForCriticalArtworkThenModels() {
-            var criticalPendingTextures = getGalleryCriticalPendingTextureCount();
-            var criticalQueue = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredArtworkLoads, "artwork", "critical");
-            if (criticalQueue > 0 || criticalPendingTextures > 0) {
-                setTimeout(function () {
-                    pumpCriticalArtwork();
-                    waitForCriticalArtworkThenModels();
-                }, 55);
-                return;
-            }
-            galleryFastStartRuntime.artworkPreviewDrainComplete = true;
-            pumpCriticalModels();
-        }
-
-        function pumpCriticalArtwork() {
-            var launchLimit = getGalleryFastStartPreviewTextureConcurrency();
-            var pendingTextures = Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length;
+        function pumpForegroundArtwork() {
+            var launchLimit = Math.max(1, Math.min(6, getGalleryFastStartPreviewTextureConcurrency()));
+            var pendingTextures = getGalleryCriticalPendingTextureCount();
             while (pendingTextures < launchLimit) {
-                var artworkEntry = takeGalleryStreamingQueueEntry(galleryFastStartRuntime.deferredArtworkLoads, "artwork", ["critical"]);
+                var artworkEntry = takeGalleryForegroundArtworkEntry();
                 if (!artworkEntry) break;
-                if (!isGalleryArtworkQueueEntryCurrent(artworkEntry)) continue;
                 var previewState = cloneGalleryFastStartState(artworkEntry.imageState);
                 previewState._galleryFastStartForceImmediate = true;
                 previewState._galleryFastStartPreferPreview = hasGalleryArtworkPreviewVariant(previewState);
                 previewState._galleryStreamingTier = "critical";
                 galleryZoneStreamingRuntime.criticalArtworkStarted += 1;
-                applyArtworkImageStateSafely(artworkEntry.artwork, previewState, "12C65E critical artwork preview");
-                pendingTextures = Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length;
+                galleryExhibitionRuntime.startupCriticalPath.foregroundArtworkLoaded += 1;
+                applyArtworkImageStateSafely(artworkEntry.artwork, previewState, "C6C8C11 guaranteed artwork preview");
+                pendingTextures = getGalleryCriticalPendingTextureCount();
             }
         }
 
-        runGalleryFastStartIdleTask(function () {
-            pumpCriticalArtwork();
-            waitForCriticalArtworkThenModels();
-        }, 120);
+        function waitForForegroundArtwork() {
+            var pendingTextures = getGalleryCriticalPendingTextureCount();
+            var foregroundQueue = countGalleryForegroundArtworkQueue();
+            if (foregroundQueue > 0 || pendingTextures > 0) {
+                setTimeout(function () {
+                    pumpForegroundArtwork();
+                    waitForForegroundArtwork();
+                }, 45);
+                return;
+            }
+            finishForegroundDrain();
+        }
+
+        // Required Preview fill is foreground work, not idle/background work.
+        // Give the loader one paint, then start immediately with bounded concurrency.
+        yieldGalleryForegroundFrame(0).then(function () {
+            pumpForegroundArtwork();
+            waitForForegroundArtwork();
+        });
+    }
+
+    function isGalleryViewerTextureStreamingMotionBlocked() {
+        if (isDraggingArtwork || isDraggingSphere) return true;
+        if (desktopViewerMiddleLookActive || mobileLookActive) return true;
+        if (mobileJoystickActive || mobileCanvasMoveActive) return true;
+        if (editMoveKeys && (editMoveKeys.w || editMoveKeys.a || editMoveKeys.s || editMoveKeys.d || editMoveKeys.space)) return true;
+        if (viewerMovementVelocity && viewerMovementVelocity.length && viewerMovementVelocity.length() > 0.035) return true;
+        if (viewerMoveKeys && (viewerMoveKeys.w || viewerMoveKeys.a || viewerMoveKeys.s || viewerMoveKeys.d)) return true;
+        var idleDelay = Math.max(1200, Number(galleryArtworkEgressPolicy.idleBeforeFullMs) || galleryFastStartRuntime.fullArtworkIdleDelayMs || 1800);
+        if (Date.now() - (galleryFastStartRuntime.lastViewerActivityAt || 0) < idleDelay) return true;
+        return false;
     }
 
     function isGalleryViewerBusyForFullArtworkUpgrade() {
@@ -16317,14 +17168,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         if (typeof document !== "undefined" && document.hidden) return true;
         if (typeof isGalleryInspectCameraTransitionActive === "function" && isGalleryInspectCameraTransitionActive()) return true;
         if (galleryInspectRuntime && galleryInspectRuntime.opening) return true;
-        if (isDraggingArtwork || isDraggingSphere) return true;
-        if (desktopViewerMiddleLookActive || mobileLookActive) return true;
-        if (mobileJoystickActive || mobileCanvasMoveActive) return true;
-        if (editMoveKeys && (editMoveKeys.w || editMoveKeys.a || editMoveKeys.s || editMoveKeys.d || editMoveKeys.space)) return true;
-        if (viewerMovementVelocity && viewerMovementVelocity.length && viewerMovementVelocity.length() > 0.035) return true;
-        if (viewerMoveKeys && (viewerMoveKeys.w || viewerMoveKeys.a || viewerMoveKeys.s || viewerMoveKeys.d)) return true;
-        if (Date.now() - (galleryFastStartRuntime.lastViewerActivityAt || 0) < galleryFastStartRuntime.fullArtworkIdleDelayMs) return true;
-        return false;
+        return isGalleryViewerTextureStreamingMotionBlocked();
     }
 
     function isGalleryArtworkEntryVisibleForPriority(entry) {
@@ -16343,15 +17187,13 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
     function canGalleryPriorityFullArtworkBypassMovement(entry) {
-        if (!entry || !isGalleryArtworkEntryVisibleForPriority(entry)) return false;
-        if (entry.tier !== "critical" && !entry.inspectPriority) return false;
+        // C6C8C8: only explicit Inspect may bypass the normal idle gate. Merely being
+        // visible/critical is not allowed to start a large AVIF decode while walking.
+        if (!entry || !entry.inspectPriority) return false;
         if (typeof document !== "undefined" && document.hidden) return false;
         if (typeof isGalleryInspectCameraTransitionActive === "function" && isGalleryInspectCameraTransitionActive()) return false;
         if (galleryInspectRuntime && galleryInspectRuntime.opening) return false;
         if (isDraggingArtwork || isDraggingSphere || desktopViewerMiddleLookActive || mobileLookActive) return false;
-        var now = Date.now();
-        if (now - Number(entry.queuedAt || now) < galleryFastStartRuntime.priorityFullUpgradeMinimumAgeMs && !entry.inspectPriority) return false;
-        if (now - Number(galleryFastStartRuntime.lastPriorityFullUpgradeAt || 0) < galleryFastStartRuntime.priorityFullUpgradeCooldownMs) return false;
         return true;
     }
 
@@ -16389,7 +17231,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             return Number(a.queuedAt || 0) - Number(b.queuedAt || 0);
         });
         var entryIndex = galleryFastStartRuntime.deferredFullArtworkLoads.findIndex(function (candidate) {
-            return !isGalleryDeviceProfileMobile() || isGalleryArtworkFullResidencyDesired(candidate.artwork);
+            return isGalleryArtworkFullResidencyDesired(candidate.artwork);
         });
         if (entryIndex < 0) {
             galleryArtworkResidencyRuntime.preventedFullLoads += galleryFastStartRuntime.deferredFullArtworkLoads.length ? 1 : 0;
@@ -16397,18 +17239,37 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
         var entry = galleryFastStartRuntime.deferredFullArtworkLoads[entryIndex];
         if (!entry) return;
-        if (isGalleryDeviceProfileMobile()) {
-            var residencyMemory = getGalleryArtworkResidencyMemorySnapshot();
-            var alreadyFull = entry.artwork && entry.artwork.metadata && entry.artwork.metadata.galleryStreaming && entry.artwork.metadata.galleryStreaming.textureState === "full";
-            if (!alreadyFull && residencyMemory.full >= residencyMemory.effectiveBudget) {
-                enforceGalleryArtworkResidencyBudget("full-capacity", true);
-                scheduleGalleryFastStartFullArtworkDrainWhenIdle("full-wait-for-preview-downgrade", 260);
-                return;
-            }
+        var previewPopulationPending = galleryFastStartRuntime.deferredArtworkLoads.some(function (queuedEntry) {
+            if (!isGalleryArtworkQueueEntryCurrent(queuedEntry)) return false;
+            var queuedTier = refreshGalleryStreamingEntryClassification(queuedEntry, "artwork");
+            return queuedTier === "critical" || queuedTier === "nearby";
+        }) || Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length > 0;
+        if (previewPopulationPending && !entry.inspectPriority) {
+            scheduleGalleryFastStartFullArtworkDrainWhenIdle("preview-population-first", 220);
+            return;
         }
+        var residencyMemory = getGalleryArtworkResidencyMemorySnapshot();
+        var alreadyFull = entry.artwork && entry.artwork.metadata && entry.artwork.metadata.galleryStreaming && entry.artwork.metadata.galleryStreaming.textureState === "full";
+        if (!alreadyFull && residencyMemory.full >= residencyMemory.hardLimit && !entry.inspectPriority) {
+            enforceGalleryArtworkResidencyBudget("full-hard-capacity", true);
+            scheduleGalleryFastStartFullArtworkDrainWhenIdle("full-wait-for-hard-capacity", 600);
+            return;
+        }
+        // Inspect is an explicit quality request. It may temporarily exceed the soft/hard
+        // background residency ceiling; normal idle maintenance trims old Full textures later.
         var priorityOverride = canGalleryPriorityFullArtworkBypassMovement(entry);
-        if (galleryFastStartRuntime.backgroundDrainActive || (isGalleryViewerBusyForFullArtworkUpgrade() && !priorityOverride)) {
-            scheduleGalleryFastStartFullArtworkDrainWhenIdle(reason || "full-artwork-wait-for-queue", priorityOverride ? 100 : 180);
+        var viewerBusy = isGalleryViewerBusyForFullArtworkUpgrade();
+        if (galleryFastStartRuntime.backgroundDrainActive || (viewerBusy && !priorityOverride)) {
+            if (viewerBusy && !priorityOverride && entry.artwork && entry.artwork.metadata) {
+                var stream = entry.artwork.metadata.galleryStreaming = entry.artwork.metadata.galleryStreaming || {};
+                var now = Date.now();
+                if (now - Number(stream.lastFullBlockedAt || 0) > 750) {
+                    stream.lastFullBlockedAt = now;
+                    galleryArtworkResidencyRuntime.blockedWhileMoving += 1;
+                    recordGalleryArtworkResidencyEvent("full-blocked-until-idle", entry.artwork, reason || "viewer-active");
+                }
+            }
+            scheduleGalleryFastStartFullArtworkDrainWhenIdle(reason || "full-artwork-wait-for-idle", priorityOverride ? 100 : 260);
             return;
         }
         galleryFastStartRuntime.deferredFullArtworkLoads.splice(entryIndex, 1);
@@ -16424,11 +17285,16 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         fullState._galleryArtworkOnLoadSettled = function (result) {
             galleryFastStartRuntime.backgroundDrainActive = false;
             if (!result || !result.failed) {
+                var stream = entry.artwork && entry.artwork.metadata ? (entry.artwork.metadata.galleryStreaming = entry.artwork.metadata.galleryStreaming || {}) : null;
+                if (stream) {
+                    stream.lastPromotedAt = Date.now();
+                    stream.fullReentryBlockedUntil = 0;
+                }
                 galleryArtworkResidencyRuntime.fullPromotions += 1;
                 recordGalleryArtworkResidencyEvent("preview-to-full-complete", entry.artwork, reason || "full-artwork-upgrade");
             }
-            enforceGalleryArtworkResidencyBudget("full-load-settled", true);
-            scheduleGalleryFastStartFullArtworkDrainWhenIdle(reason || "full-artwork-upgrade", 140);
+            enforceGalleryArtworkResidencyBudget("full-load-settled", false);
+            scheduleGalleryFastStartFullArtworkDrainWhenIdle(reason || "full-artwork-upgrade", 320);
         };
         runGalleryFastStartIdleTask(function () {
             if (!isGalleryArtworkQueueEntryCurrent(entry)) {
@@ -16544,7 +17410,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     function waitForGalleryStartupPostStateSettle(reason) {
         galleryStartupFinalizeDebug.stateLoadFinishedAt = Date.now();
         galleryStartupFinalizeDebug.artworkTextureWait = {
-            reason: reason || "12C65E-current-zone-streaming-gate",
+            reason: reason || "C6C8C11-guaranteed-preview-gate",
             status: "waiting-for-visible-content",
             elapsedMs: 0,
             pendingCount: Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length
@@ -16552,7 +17418,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         updateGalleryLoaderStatus(
             "Preparing gallery...",
-            "Saved state is ready. The current gallery zone is prepared first; nearby and deferred assets stream after entry."
+            "Saved state is ready. Every assigned artwork Preview is being prepared before entry; Full textures and models stay in the background."
         );
 
         return Promise.resolve(galleryStartupFinalizeDebug.artworkTextureWait);
@@ -16564,70 +17430,149 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     var galleryStartupStatePreloadPromise = null;
     var galleryStartupStatePreloadResult = null;
 
-    async function fetchGalleryStartupStateSnapshotFromSupabase() {
-        var client = window.gallerySupabase;
-
-        if (!client) {
-            return {
-                ok: false,
-                status: "no-client",
-                noClient: true,
-                state: null
-            };
-        }
-
-        var response = await client
-            .from("gallery_state")
-            .select("state, updated_at")
-            .eq("id", "main")
-            .order("updated_at", {
-                ascending: false,
-                nullsFirst: false
-            })
-            .limit(10);
-
-        if (response.error) {
-            console.warn(response.error);
-            return {
-                ok: false,
-                status: "error",
-                errorMessage: response.error.message || String(response.error),
-                state: null
-            };
-        }
-
-        var rows = Array.isArray(response.data)
-            ? response.data
-            : (response.data ? [response.data] : []);
-
-        var row = rows.find(function (candidate) {
-            return !!(
-                candidate &&
-                candidate.state &&
-                candidate.state.localLights &&
-                Array.isArray(candidate.state.localLights.lights)
-            );
-        }) || rows[0];
-
-        if (
-            row &&
-            row.state &&
-            Object.keys(row.state).length > 0
-        ) {
-            return {
-                ok: true,
-                status: "state-ready",
-                state: row.state,
-                updatedAt: row.updated_at || null,
-                lightCount: getStateLightCount(row.state)
-            };
-        }
-
+    function normalizeGalleryExhibitionRecord(record) {
+        if (!record || typeof record !== "object") return null;
+        var id = normalizeGalleryRuntimeId(record.id, "");
+        if (!id) return null;
         return {
-            ok: true,
-            status: "empty",
-            state: null
+            id: id,
+            name: String(record.name || (id === "main" ? "Main Exhibition" : id)).trim(),
+            slug: String(record.slug || id).trim(),
+            description: String(record.description || ""),
+            cover_path: record.cover_path || null,
+            is_published: record.is_published !== false,
+            sort_order: Number(record.sort_order) || 0,
+            storage_prefix: String(record.storage_prefix || (id === "main" ? "main" : "exhibitions/" + id)).replace(/^\/+|\/+$/g, ""),
+            space_id: normalizeGalleryRuntimeId(record.space_id, galleryActiveSpaceId),
+            created_at: record.created_at || null,
+            updated_at: record.updated_at || null
         };
+    }
+
+    function getGalleryFallbackMainExhibition() {
+        return normalizeGalleryExhibitionRecord({
+            id: "main",
+            name: "Main Exhibition",
+            slug: "main",
+            description: "",
+            cover_path: null,
+            is_published: true,
+            sort_order: 0,
+            storage_prefix: "main",
+            space_id: galleryActiveSpaceId
+        });
+    }
+
+    async function loadGalleryExhibitionCatalog(force) {
+        if (galleryExhibitionRuntime.catalogLoaded && !force) return galleryExhibitionRuntime.catalog.slice();
+        if (galleryExhibitionRuntime.catalogLoading && !force) return galleryExhibitionRuntime.catalogLoading;
+        var client = window.gallerySupabase;
+        if (!client) {
+            galleryExhibitionRuntime.catalog = [getGalleryFallbackMainExhibition()];
+            galleryExhibitionRuntime.catalogLoaded = true;
+            return galleryExhibitionRuntime.catalog.slice();
+        }
+        galleryExhibitionRuntime.catalogLoading = (async function () {
+            var response = await client.from("gallery_exhibitions")
+                .select("id, name, slug, description, cover_path, is_published, sort_order, storage_prefix, space_id, created_at, updated_at")
+                .order("sort_order", { ascending: true })
+                .order("created_at", { ascending: true });
+            if (response.error) {
+                galleryExhibitionRuntime.lastError = response.error.message || String(response.error);
+                console.warn("Gallery exhibition catalog unavailable. Run the C6C7/C6C8 SQL migration.", response.error);
+                if (getActiveGalleryExhibitionId() === "main") {
+                    galleryExhibitionRuntime.catalog = [getGalleryFallbackMainExhibition()];
+                    galleryExhibitionRuntime.catalogLoaded = true;
+                    return galleryExhibitionRuntime.catalog.slice();
+                }
+                throw response.error;
+            }
+            var rows = Array.isArray(response.data) ? response.data : [];
+            galleryExhibitionRuntime.catalog = rows.map(normalizeGalleryExhibitionRecord).filter(Boolean);
+            galleryExhibitionRuntime.catalogLoaded = true;
+            galleryExhibitionRuntime.lastError = "";
+            return galleryExhibitionRuntime.catalog.slice();
+        })().finally(function () { galleryExhibitionRuntime.catalogLoading = null; });
+        return galleryExhibitionRuntime.catalogLoading;
+    }
+
+    async function resolveGalleryExhibitionMetadata(client, exhibitionId) {
+        exhibitionId = normalizeGalleryRuntimeId(exhibitionId, "main");
+        if (!client) {
+            if (exhibitionId === "main") return getGalleryFallbackMainExhibition();
+            throw new Error("Supabase is required to resolve exhibition " + exhibitionId + ".");
+        }
+        var response = await client.from("gallery_exhibitions")
+            .select("id, name, slug, description, cover_path, is_published, sort_order, storage_prefix, space_id, created_at, updated_at")
+            .eq("id", exhibitionId).limit(1);
+        if (response.error) {
+            if (exhibitionId === "main") {
+                console.warn("gallery_exhibitions metadata unavailable; using legacy main fallback until migration is applied.", response.error);
+                return getGalleryFallbackMainExhibition();
+            }
+            throw response.error;
+        }
+        var rows = Array.isArray(response.data) ? response.data : [];
+        var exhibition = normalizeGalleryExhibitionRecord(rows[0]);
+        if (!exhibition) {
+            throw new Error("Exhibition not found or not published: " + exhibitionId);
+        }
+        if (galleryPublicViewerOnly && exhibition.is_published === false) {
+            throw new Error("Exhibition is not published: " + exhibitionId);
+        }
+        return exhibition;
+    }
+
+    async function fetchGalleryStateRowForExhibition(client, exhibitionId) {
+        exhibitionId = normalizeGalleryRuntimeId(exhibitionId, "main");
+        var response = await client.from("gallery_state").select("id, state, updated_at")
+            .eq("id", exhibitionId).limit(1);
+        if (response.error) throw response.error;
+        var rows = Array.isArray(response.data) ? response.data : [];
+        return rows[0] || null;
+    }
+
+    async function fetchGalleryStartupStateSnapshotFromSupabase() {
+        var handoff = runtimeOptions && runtimeOptions.initialExhibitionSnapshot;
+        if (handoff && typeof handoff === "object") {
+            var handoffExhibition = normalizeGalleryExhibitionRecord(handoff.exhibition);
+            var handoffHasState = !!(handoff.state && typeof handoff.state === "object");
+            var handoffState = handoffHasState ? handoff.state : null;
+            var handoffAge = Date.now() - Number(handoff.createdAt || 0);
+            if (handoffExhibition && handoffExhibition.id === galleryRequestedExhibitionId && handoffHasState && handoffAge >= 0 && handoffAge <= 120000) {
+                setActiveGalleryExhibitionContext(handoffExhibition, { persistCurrentQueues: false });
+                cacheGalleryExhibitionState(handoffExhibition, handoffState, { updatedAt: handoff.updatedAt || null, rowExists: handoff.rowExists !== false, source: "viewer-admin-handoff" });
+                return {
+                    ok: true,
+                    status: "session-handoff",
+                    exhibition: handoffExhibition,
+                    state: handoffState,
+                    updatedAt: handoff.updatedAt || null,
+                    rowExists: handoff.rowExists !== false,
+                    lightCount: handoffState ? getStateLightCount(handoffState) : 0,
+                    sessionHandoff: true
+                };
+            }
+        }
+        var client = window.gallerySupabase;
+        if (!client) {
+            setActiveGalleryExhibitionContext(getGalleryFallbackMainExhibition(), { persistCurrentQueues: false });
+            return { ok: false, status: "no-client", noClient: true, exhibition: galleryExhibitionRuntime.active, state: null, rowExists: false };
+        }
+        try {
+            var exhibition = await resolveGalleryExhibitionMetadata(client, galleryRequestedExhibitionId);
+            setActiveGalleryExhibitionContext(exhibition, { persistCurrentQueues: false });
+            var row = await fetchGalleryStateRowForExhibition(client, exhibition.id);
+            var state = row && row.state && typeof row.state === "object" ? row.state : null;
+            cacheGalleryExhibitionState(exhibition, state, { updatedAt: row ? row.updated_at || null : null, rowExists: !!row, source: "startup-supabase" });
+            if (state && Object.keys(state).length > 0) {
+                return { ok: true, status: "state-ready", exhibition: exhibition, state: state, updatedAt: row.updated_at || null, rowExists: true, lightCount: getStateLightCount(state) };
+            }
+            return { ok: true, status: "empty", exhibition: exhibition, state: null, updatedAt: row ? row.updated_at || null : null, rowExists: !!row };
+        } catch (error) {
+            console.warn("Startup exhibition/state preload failed:", error);
+            return { ok: false, status: "error", errorMessage: error && error.message ? error.message : String(error), exhibition: null, state: null, rowExists: false };
+        }
     }
 
     function beginGalleryStartupStatePreload(reason) {
@@ -16676,7 +17621,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return galleryStartupStatePreloadPromise;
     }
 
-    function applyGalleryStartupStatePreloadResult(result, reason) {
+    async function applyGalleryStartupStatePreloadResult(result, reason) {
         result = result || galleryStartupStatePreloadResult || {
             ok: false,
             status: "missing-result",
@@ -16708,7 +17653,11 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             }
 
             if (result.state) {
+                await yieldGalleryForegroundFrame(0);
+                resetGalleryRuntimeToBlankExhibition();
+                await yieldGalleryForegroundFrame(0);
                 var applyResult = tryApplyGalleryStateSafely(result.state);
+                await yieldGalleryForegroundFrame(0);
 
                 if (!applyResult.ok) {
                     notifyGalleryStatus("Nie udalo sie wczytac zapisanego stanu galerii.");
@@ -16727,7 +17676,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 return true;
             }
 
-            notifyGalleryStatus("Brak zapisanego stanu. Uzywam ukladu startowego.");
+            if (getActiveGalleryExhibitionId() !== "main") {
+                resetGalleryRuntimeToBlankExhibition();
+                notifyGalleryStatus("Ta wystawa nie ma jeszcze zapisanego stanu. Uzywam pustej wystawy w aktywnej przestrzeni.");
+            } else {
+                notifyGalleryStatus("Brak zapisanego stanu. Uzywam ukladu startowego.");
+            }
             galleryStartupFinalizeDebug.stateApplyStatus = "empty";
             return false;
         } catch (error) {
@@ -16747,7 +17701,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                         serverState: result && result.state ? result.state : null,
                         revision: getGalleryStateRevision(result && result.state ? result.state : null),
                         confirmed: !!(result && result.ok),
-                        serverRowExists: !!(result && result.state),
+                        serverRowExists: !!(result && result.rowExists),
                         reason: "startup-state-baseline"
                     });
                 } catch (baselineError) {
@@ -16909,6 +17863,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             refreshAllLocalSpotShadows(true);
             requestAllLocalSpotShadowRefresh(true);
             updateLocalLightsUi();
+            scheduleGalleryDeferredTourAfterHydration(reason || "startup-batch-finalized");
 
             galleryStartupFinalizeDebug.finalLightMode = needsFallback
                 ? "12C65A-single-batch-fallback-retarget"
@@ -16938,44 +17893,424 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
     }
 
-    
+
+    // C6C8C9 — TRUE FOREGROUND READINESS / SPACE GPU WARMUP
+    var galleryForegroundLongTaskObserver = null;
+
+    function installGalleryForegroundLongTaskObserver() {
+        if (galleryForegroundLongTaskObserver || typeof PerformanceObserver === "undefined") return false;
+        try {
+            galleryForegroundLongTaskObserver = new PerformanceObserver(function (list) {
+                (list.getEntries() || []).forEach(function (entry) {
+                    var duration = Number(entry && entry.duration) || 0;
+                    galleryExhibitionRuntime.longTaskCount += 1;
+                    galleryExhibitionRuntime.longTaskDurationMs += duration;
+                    galleryExhibitionRuntime.lastLongTaskDurationMs = duration;
+                    galleryExhibitionRuntime.lastLongTaskAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+                });
+            });
+            galleryForegroundLongTaskObserver.observe({ entryTypes: ["longtask"] });
+            return true;
+        } catch (error) {
+            galleryForegroundLongTaskObserver = null;
+            return false;
+        }
+    }
+
+    function yieldGalleryForegroundFrame(delayMs) {
+        galleryExhibitionRuntime.cooperativeYields += 1;
+        return new Promise(function (resolve) {
+            var afterDelay = function () {
+                if (typeof requestAnimationFrame === "function") requestAnimationFrame(function () { resolve(); });
+                else resolve();
+            };
+            if (delayMs && delayMs > 0) setTimeout(afterDelay, delayMs);
+            else if (typeof requestAnimationFrame === "function") requestAnimationFrame(function () { setTimeout(resolve, 0); });
+            else setTimeout(resolve, 0);
+        });
+    }
+
+    // C6C8C12 — HARD SPACE VISUAL READY
+    // Cache the exact mesh+material+visual revision, not merely the material object.
+    // Shared wall materials can require a different compiled effect for another Wall_segment_*
+    // (mesh attributes / light defines / shadows), so every visual Space mesh must be warmed once.
+    var gallerySpaceGpuWarmMeshCache = typeof WeakMap !== "undefined" ? new WeakMap() : null;
+
+    function getGallerySpaceGpuWarmupRevision(mesh, material) {
+        var materialId = material && (material.uniqueId != null ? material.uniqueId : material.id || material.name || "material");
+        return [
+            materialId,
+            Number(galleryGeometryVersion) || 0,
+            Number(gallerySurfaceVersion) || 0,
+            Number(localLightTargetCacheVersion) || 0,
+            scene && scene.lights ? scene.lights.length : 0,
+            mesh && mesh.receiveShadows ? 1 : 0
+        ].join("|");
+    }
+
+    function isGallerySpaceGpuWarmMeshCached(mesh, material, revision) {
+        if (!gallerySpaceGpuWarmMeshCache || !mesh) return false;
+        var cached = gallerySpaceGpuWarmMeshCache.get(mesh);
+        return !!(cached && cached.material === material && cached.revision === revision);
+    }
+
+    function setGallerySpaceGpuWarmMeshCached(mesh, material, revision) {
+        if (!gallerySpaceGpuWarmMeshCache || !mesh) return;
+        gallerySpaceGpuWarmMeshCache.set(mesh, { material: material, revision: revision, warmedAt: Date.now() });
+    }
+
+    function getGallerySpaceGpuWarmupPairs() {
+        var pairs = [];
+        [
+            { kind: "wall", meshes: wallMeshes },
+            { kind: "floor", meshes: floorMeshes },
+            { kind: "ceiling", meshes: ceilingMeshes },
+            { kind: "prop", meshes: propMeshes }
+        ].forEach(function (entry) {
+            (entry.meshes || []).forEach(function (mesh) {
+                if (!mesh || mesh.name === "__root__" || (mesh.isDisposed && mesh.isDisposed()) || !mesh.material) return;
+                var material = mesh.material;
+                var revision = getGallerySpaceGpuWarmupRevision(mesh, material);
+                pairs.push({
+                    kind: entry.kind,
+                    mesh: mesh,
+                    material: material,
+                    revision: revision,
+                    cached: isGallerySpaceGpuWarmMeshCached(mesh, material, revision)
+                });
+            });
+        });
+        return pairs;
+    }
+
+    async function compileGallerySpaceGpuWarmupPair(pair) {
+        if (!pair || !pair.mesh || !pair.material) return { compiled: false, failed: false, skipped: true, kind: pair && pair.kind };
+        if (pair.cached) return { compiled: false, failed: false, skipped: true, kind: pair.kind };
+        try {
+            if (pair.mesh.setEnabled && pair.mesh.isEnabled && !pair.mesh.isEnabled()) pair.mesh.setEnabled(true);
+            if (pair.mesh.computeWorldMatrix) pair.mesh.computeWorldMatrix(true);
+
+            var compileState = "ready";
+            if (typeof pair.material.forceCompilationAsync === "function") {
+                compileState = await Promise.race([
+                    Promise.resolve(pair.material.forceCompilationAsync(pair.mesh, { useInstances: false })).then(function () { return "ready"; }),
+                    new Promise(function (resolve) { setTimeout(function () { resolve("timeout"); }, 2200); })
+                ]);
+                if (compileState === "timeout") {
+                    return { compiled: false, failed: true, timeout: true, skipped: false, kind: pair.kind, mesh: pair.mesh.name };
+                }
+            }
+
+            var verified = true;
+            if (typeof pair.material.isReady === "function") {
+                try { verified = !!pair.material.isReady(pair.mesh, false); } catch (readyError) { verified = false; }
+            }
+            if (!verified) {
+                return { compiled: false, failed: true, verificationFailed: true, skipped: false, kind: pair.kind, mesh: pair.mesh.name };
+            }
+
+            setGallerySpaceGpuWarmMeshCached(pair.mesh, pair.material, pair.revision);
+            pair.mesh.metadata = pair.mesh.metadata || {};
+            pair.mesh.metadata.gallerySpaceVisualWarm = true;
+            pair.mesh.metadata.gallerySpaceVisualWarmAt = Date.now();
+            pair.mesh.metadata.gallerySpaceVisualWarmRevision = pair.revision;
+            return { compiled: true, failed: false, skipped: false, kind: pair.kind, mesh: pair.mesh.name };
+        } catch (error) {
+            console.warn("C6C8C12 Space GPU warmup warning:", pair.mesh && pair.mesh.name, error);
+            return { compiled: false, failed: true, skipped: false, kind: pair.kind, mesh: pair.mesh && pair.mesh.name };
+        }
+    }
+
+    async function runGallerySpaceGpuWarmup(reason) {
+        var startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+        var pairs = getGallerySpaceGpuWarmupPairs();
+        var compiled = 0;
+        var skipped = 0;
+        var failed = 0;
+        var batches = 0;
+        var byKind = { wall: 0, floor: 0, ceiling: 0, prop: 0 };
+        var failedPairs = [];
+        // Keep compilation cooperative. All wall segments are included, but work is spread across frames.
+        var batchSize = galleryDeviceProfile.mobile ? 2 : 5;
+        galleryExhibitionRuntime.spaceGpuWarmup.runs += 1;
+        galleryExhibitionRuntime.spaceGpuWarmup.lastReason = reason || "hard-space-visual-ready";
+
+        async function compileBatchList(list) {
+            for (var i = 0; i < list.length; i += batchSize) {
+                await yieldGalleryForegroundFrame(0);
+                var results = await Promise.all(list.slice(i, i + batchSize).map(compileGallerySpaceGpuWarmupPair));
+                batches += 1;
+                results.forEach(function (result, resultIndex) {
+                    var original = list[i + resultIndex];
+                    if (result.compiled) {
+                        compiled += 1;
+                        if (result.kind && byKind[result.kind] != null) byKind[result.kind] += 1;
+                    } else if (result.failed) {
+                        failed += 1;
+                        if (original) failedPairs.push(original);
+                    } else skipped += 1;
+                });
+            }
+        }
+
+        await compileBatchList(pairs);
+
+        // One explicit retry after another painted frame. A transient first-use compile must not
+        // become a visible hole, but a genuinely broken shader should block Ready with diagnostics.
+        if (failedPairs.length) {
+            var retryPairs = failedPairs.slice();
+            failedPairs.length = 0;
+            failed = 0;
+            await yieldGalleryForegroundFrame(80);
+            await compileBatchList(retryPairs);
+        }
+
+        var finishedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+        galleryExhibitionRuntime.spaceGpuWarmup.compiled += compiled;
+        galleryExhibitionRuntime.spaceGpuWarmup.skipped += skipped;
+        galleryExhibitionRuntime.spaceGpuWarmup.failed += failed;
+        galleryExhibitionRuntime.spaceGpuWarmup.batches += batches;
+        galleryExhibitionRuntime.spaceGpuWarmup.lastMs = Math.round(Math.max(0, finishedAt - startedAt) * 10) / 10;
+        galleryExhibitionRuntime.spaceGpuWarmup.lastAt = Date.now();
+        galleryExhibitionRuntime.spaceGpuWarmup.lastTotal = pairs.length;
+        galleryExhibitionRuntime.spaceGpuWarmup.lastByKind = byKind;
+        galleryExhibitionRuntime.spaceGpuWarmup.lastFailedMeshes = failedPairs.map(function (pair) { return pair && pair.mesh ? pair.mesh.name : "unknown"; });
+        galleryExhibitionRuntime.spaceGpuWarmup.lastOk = failedPairs.length === 0;
+        return {
+            ok: failedPairs.length === 0,
+            compiled: compiled,
+            skipped: skipped,
+            failed: failedPairs.length,
+            failedMeshes: galleryExhibitionRuntime.spaceGpuWarmup.lastFailedMeshes.slice(),
+            byKind: byKind,
+            batches: batches,
+            total: pairs.length,
+            ms: galleryExhibitionRuntime.spaceGpuWarmup.lastMs
+        };
+    }
+
+    function getGalleryForegroundPendingSnapshot() {
+        var previewPresence = getGalleryActiveArtworkPreviewPresenceSnapshot();
+        galleryExhibitionRuntime.startupCriticalPath.requiredPreviewCount = previewPresence.required;
+        galleryExhibitionRuntime.startupCriticalPath.readyPreviewCount = previewPresence.ready;
+        galleryExhibitionRuntime.startupCriticalPath.missingPreviewCount = previewPresence.missing + previewPresence.loading;
+        return {
+            hydrationActive: !!galleryExhibitionRuntime.hydrationActive,
+            switching: !!galleryExhibitionRuntime.switching,
+            foregroundArtworkQueue: countGalleryForegroundArtworkQueue(),
+            criticalTextures: getGalleryCriticalPendingTextureCount(),
+            visibleTextures: Object.keys(galleryStartupVisibleTextureDebug.pending || {}).length,
+            requiredPreviews: previewPresence.required,
+            readyPreviews: previewPresence.ready,
+            loadingPreviews: previewPresence.loading,
+            missingPreviews: previewPresence.missing,
+            backgroundArtworkQueue: galleryFastStartRuntime.deferredArtworkLoads.length,
+            backgroundModelQueue: galleryFastStartRuntime.deferredModelLoads.length,
+            backgroundModelActive: Number(galleryFastStartRuntime.modelLoadActiveCount) || 0
+        };
+    }
+
+    function isGalleryForegroundPending(snapshot) {
+        snapshot = snapshot || getGalleryForegroundPendingSnapshot();
+        return !!(
+            snapshot.hydrationActive ||
+            snapshot.switching ||
+            snapshot.foregroundArtworkQueue > 0 ||
+            snapshot.criticalTextures > 0 ||
+            snapshot.visibleTextures > 0 ||
+            snapshot.loadingPreviews > 0 ||
+            snapshot.missingPreviews > 0 ||
+            snapshot.readyPreviews < snapshot.requiredPreviews
+        );
+    }
+
+    async function waitForGalleryForegroundQuietFrames(maxWaitMs) {
+        maxWaitMs = Math.max(600, Number(maxWaitMs) || 3600);
+        var startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+        var previous = startedAt;
+        var stable = 0;
+        var frames = 0;
+        var maxFrameMs = 0;
+        while (true) {
+            await new Promise(function (resolve) {
+                if (typeof requestAnimationFrame === "function") requestAnimationFrame(resolve);
+                else setTimeout(function () { resolve(typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()); }, 16);
+            });
+            var now = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+            var frameMs = Math.max(0, now - previous);
+            previous = now;
+            frames += 1;
+            maxFrameMs = Math.max(maxFrameMs, frameMs);
+            var recentLongTask = galleryExhibitionRuntime.lastLongTaskAt && (now - galleryExhibitionRuntime.lastLongTaskAt < 260);
+            if (frameMs <= 42 && !recentLongTask) stable += 1; else stable = 0;
+            if (stable >= 6) return { stable: true, frames: frames, maxFrameMs: maxFrameMs, ms: Math.round((now - startedAt) * 10) / 10 };
+            if (now - startedAt >= maxWaitMs) return { stable: false, timedOut: true, frames: frames, maxFrameMs: maxFrameMs, ms: Math.round((now - startedAt) * 10) / 10 };
+        }
+    }
+
+    function markGalleryForegroundNotReady(reason) {
+        galleryExhibitionRuntime.foregroundReady = false;
+        galleryExhibitionRuntime.foregroundReadyReason = reason || "transition";
+        galleryExhibitionRuntime.foregroundReadyAt = 0;
+        galleryExhibitionRuntime.foregroundReadyToken += 1;
+        galleryExhibitionRuntime.foregroundReadyPromise = null;
+    }
+
+    function waitForGalleryForegroundReady(reason, options) {
+        options = options || {};
+        var activeId = getActiveGalleryExhibitionId();
+        if (galleryExhibitionRuntime.foregroundReady && !galleryExhibitionRuntime.hydrationActive && !galleryExhibitionRuntime.switching) {
+            return Promise.resolve(galleryExhibitionRuntime.foregroundReadinessLast || { ok: true, cached: true, reason: reason || "already-ready" });
+        }
+        if (galleryExhibitionRuntime.foregroundReadyPromise) return galleryExhibitionRuntime.foregroundReadyPromise;
+        installGalleryForegroundLongTaskObserver();
+        var token = galleryExhibitionRuntime.foregroundReadyToken + 1;
+        galleryExhibitionRuntime.foregroundReadyToken = token;
+        var startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+        galleryExhibitionRuntime.foregroundReadyPromise = (async function () {
+            sweepGalleryInactiveExhibitionOwners(activeId, "foreground-ready-start");
+            prepareGalleryForegroundArtworkBudget(reason || "foreground-ready");
+            if (!galleryFastStartRuntime.backgroundDrainActive && countGalleryForegroundArtworkQueue() > 0) {
+                drainGalleryFastStartBackgroundQueue("C6C8C11-guaranteed-preview-prime");
+            }
+            await yieldGalleryForegroundFrame(0);
+            var warmup = await runGallerySpaceGpuWarmup(reason || "C6C8C12-hard-space-visual-ready");
+            if (!warmup || warmup.ok !== true) {
+                var failedSpaceMeshes = warmup && warmup.failedMeshes ? warmup.failedMeshes.join(", ") : "unknown";
+                var spaceWarmupError = new Error("Space visual warmup failed for: " + failedSpaceMeshes);
+                galleryExhibitionRuntime.lastError = spaceWarmupError.message;
+                updateGalleryLoaderStatus("Preparing gallery walls and Space props...", spaceWarmupError.message);
+                throw spaceWarmupError;
+            }
+            var pendingStartedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+            var pendingTimeoutMs = Math.max(1200, Number(options.pendingTimeoutMs) || 7000);
+            var snapshot = getGalleryForegroundPendingSnapshot();
+            while (isGalleryForegroundPending(snapshot)) {
+                if (!galleryFastStartRuntime.backgroundDrainActive && (snapshot.foregroundArtworkQueue > 0 || snapshot.missingPreviews > 0)) {
+                    if (snapshot.missingPreviews > 0) prepareGalleryForegroundArtworkBudget(reason || "foreground-ready-requeue");
+                    drainGalleryFastStartBackgroundQueue("C6C8C11-guaranteed-preview-ready");
+                }
+                var now = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+                if (now - pendingStartedAt >= pendingTimeoutMs) break;
+                await yieldGalleryForegroundFrame(45);
+                sweepGalleryInactiveExhibitionOwners(activeId, "foreground-ready-poll");
+                snapshot = getGalleryForegroundPendingSnapshot();
+            }
+
+            // C6C8C11 hard presence contract: normal transition timeout may never expose
+            // an assigned artwork as a gray placeholder. Give Preview delivery a dedicated
+            // retry window; a real broken asset becomes an explicit readiness error.
+            var previewRetryStartedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+            var requiredPreviewTimeoutMs = Math.max(5000, Number(options.requiredPreviewTimeoutMs) || 15000);
+            while (snapshot.readyPreviews < snapshot.requiredPreviews || snapshot.loadingPreviews > 0 || snapshot.missingPreviews > 0) {
+                prepareGalleryForegroundArtworkBudget(reason || "required-preview-hard-gate");
+                if (!galleryFastStartRuntime.backgroundDrainActive && countGalleryForegroundArtworkQueue() > 0) {
+                    drainGalleryFastStartBackgroundQueue("C6C8C11-required-preview-hard-gate");
+                }
+                await yieldGalleryForegroundFrame(55);
+                sweepGalleryInactiveExhibitionOwners(activeId, "required-preview-hard-gate");
+                snapshot = getGalleryForegroundPendingSnapshot();
+                var previewNow = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+                if (previewNow - previewRetryStartedAt >= requiredPreviewTimeoutMs) break;
+            }
+            if (snapshot.readyPreviews < snapshot.requiredPreviews || snapshot.loadingPreviews > 0 || snapshot.missingPreviews > 0) {
+                var previewError = new Error("Artwork Preview readiness failed: " + snapshot.readyPreviews + "/" + snapshot.requiredPreviews + " ready, " + snapshot.missingPreviews + " missing.");
+                galleryExhibitionRuntime.lastError = previewError.message;
+                updateGalleryLoaderStatus("Artwork previews are not ready.", previewError.message);
+                throw previewError;
+            }
+
+            sweepGalleryInactiveExhibitionOwners(activeId, "foreground-ready-final-sweep");
+            var quietTimeoutMs = Math.max(2400, Number(options.quietTimeoutMs) || 5200);
+            var quiet = await waitForGalleryForegroundQuietFrames(quietTimeoutMs);
+            if (!quiet.stable) {
+                await yieldGalleryForegroundFrame(120);
+                var quietRetry = await waitForGalleryForegroundQuietFrames(Math.max(1800, Math.min(5200, quietTimeoutMs)));
+                quiet = {
+                    stable: !!quietRetry.stable,
+                    retried: true,
+                    first: quiet,
+                    second: quietRetry,
+                    frames: Number(quiet.frames || 0) + Number(quietRetry.frames || 0),
+                    maxFrameMs: Math.max(Number(quiet.maxFrameMs || 0), Number(quietRetry.maxFrameMs || 0)),
+                    ms: Number(quiet.ms || 0) + Number(quietRetry.ms || 0)
+                };
+            }
+            var finishedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+            var totalForegroundMs = Math.round(Math.max(0, finishedAt - startedAt) * 10) / 10;
+            galleryExhibitionRuntime.startupCriticalPath.lastForegroundReadyMs = totalForegroundMs;
+            galleryExhibitionRuntime.startupCriticalPath.lastForegroundReadyReason = reason || "foreground-ready";
+            galleryExhibitionRuntime.startupCriticalPath.lastReadyAt = Date.now();
+            if (!galleryExhibitionRuntime.startupCriticalPath.initialInteractiveReadyMs && String(reason || "").indexOf("startup") !== -1) {
+                galleryExhibitionRuntime.startupCriticalPath.initialInteractiveReadyMs = Math.max(0, Date.now() - galleryFastStartRuntime.startedAt);
+            }
+            var result = {
+                ok: true, reason: reason || "foreground-ready", exhibitionId: activeId, warmup: warmup, pending: snapshot, quiet: quiet,
+                timedOutPending: isGalleryForegroundPending(snapshot),
+                totalMs: totalForegroundMs,
+                criticalPath: cloneGalleryJson(galleryExhibitionRuntime.startupCriticalPath),
+                backgroundHydration: cloneGalleryJson(galleryExhibitionRuntime.backgroundHydration),
+                longTasks: galleryExhibitionRuntime.longTaskCount, longTaskDurationMs: Math.round(galleryExhibitionRuntime.longTaskDurationMs * 10) / 10,
+                ownerSweep: galleryExhibitionRuntime.ownerSweepLast
+            };
+            if (token === galleryExhibitionRuntime.foregroundReadyToken) {
+                galleryExhibitionRuntime.foregroundReady = true;
+                galleryExhibitionRuntime.foregroundReadyReason = result.reason;
+                galleryExhibitionRuntime.foregroundReadyAt = Date.now();
+                galleryExhibitionRuntime.foregroundReadinessLast = result;
+                try { window.dispatchEvent(new CustomEvent("gallery-foreground-ready", { detail: cloneGalleryJson(result) })); } catch (error) {}
+            }
+            return result;
+        })().finally(function () {
+            if (token === galleryExhibitionRuntime.foregroundReadyToken) galleryExhibitionRuntime.foregroundReadyPromise = null;
+        });
+        return galleryExhibitionRuntime.foregroundReadyPromise;
+    }
+
     function getGalleryInteractionReadinessSnapshot() {
         var pendingTextures = Object.keys(galleryStartupArtworkTextureDebug.pending || {}).length;
         var pendingCriticalTextures = getGalleryCriticalPendingTextureCount();
         var pendingVisibleTextures = Object.keys(galleryStartupVisibleTextureDebug.pending || {}).length;
-        var criticalArtworkQueue = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredArtworkLoads, "artwork", "critical");
-        var criticalModelQueue = countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "critical");
+        var foregroundArtworkQueue = countGalleryForegroundArtworkQueue();
+        var previewPresence = getGalleryActiveArtworkPreviewPresenceSnapshot();
         var snapshot = {
             stateApplied: !!galleryFastStartRuntime.stateApplied,
-            artworkQueue: criticalArtworkQueue,
+            artworkQueue: foregroundArtworkQueue,
             artworkQueueTotal: galleryFastStartRuntime.deferredArtworkLoads.length,
             artworkPreviewDrainComplete: !!galleryFastStartRuntime.artworkPreviewDrainComplete,
-            modelQueue: criticalModelQueue,
-            modelQueueTotal: galleryFastStartRuntime.deferredModelLoads.length,
+            requiredPreviews: previewPresence.required,
+            readyPreviews: previewPresence.ready,
+            loadingPreviews: previewPresence.loading,
+            missingPreviews: previewPresence.missing,
+            modelQueue: galleryFastStartRuntime.deferredModelLoads.length,
             modelActive: galleryFastStartRuntime.modelLoadActiveCount,
             modelDrainComplete: !!galleryFastStartRuntime.modelDrainComplete,
             queueBusy: !!galleryFastStartRuntime.backgroundDrainActive,
             pendingTextures: pendingCriticalTextures,
             pendingTexturesTotal: pendingTextures,
             pendingVisibleTextures: pendingVisibleTextures,
-            propsSettled: true,
+            propsSettled: !!galleryAssetLoadDebug.loaded.props && !galleryAssetLoadDebug.failed.props && getGalleryAssetMeshCount("props") > 0,
             propsLoaded: !!galleryAssetLoadDebug.loaded.props,
             propsFailed: !!galleryAssetLoadDebug.failed.props,
             criticalZoneId: galleryZoneStreamingRuntime.currentZoneId,
             activeZoneIds: galleryZoneStreamingRuntime.activeZoneIds.slice(),
             criticalDrainComplete: !!galleryZoneStreamingRuntime.criticalDrainComplete,
             finalizationComplete: !!galleryFastStartRuntime.interactionFinalizationComplete,
-            warmupComplete: !!galleryFastStartRuntime.interactionWarmupComplete
+            warmupComplete: !!galleryFastStartRuntime.interactionWarmupComplete,
+            backgroundHydration: cloneGalleryJson(galleryExhibitionRuntime.backgroundHydration)
         };
+        // C6C8C11: every assigned artwork must already have Preview (or Full) before Ready.
+        // Models remain background work and do not block interaction.
         snapshot.heavyReady = !!(
             snapshot.stateApplied &&
             snapshot.artworkQueue === 0 &&
             snapshot.artworkPreviewDrainComplete &&
-            snapshot.modelQueue === 0 &&
-            snapshot.modelActive === 0 &&
-            snapshot.modelDrainComplete &&
             snapshot.pendingTextures === 0 &&
             snapshot.pendingVisibleTextures === 0 &&
+            snapshot.requiredPreviews === snapshot.readyPreviews &&
+            snapshot.loadingPreviews === 0 &&
+            snapshot.missingPreviews === 0 &&
+            snapshot.propsSettled &&
             snapshot.criticalDrainComplete
         );
         snapshot.ready = !!(snapshot.heavyReady && snapshot.finalizationComplete && snapshot.warmupComplete);
@@ -17044,11 +18379,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         if (!snapshot.stateApplied) blockers.push("state");
         if (snapshot.artworkQueue > 0) blockers.push("criticalArtworkQueue:" + snapshot.artworkQueue);
         if (!snapshot.artworkPreviewDrainComplete) blockers.push("criticalArtworkPreviews");
-        if (snapshot.pendingTextures > 0) blockers.push("criticalArtworkTextures:" + snapshot.pendingTextures);
-        if (snapshot.modelQueue > 0) blockers.push("criticalModelQueue:" + snapshot.modelQueue);
-        if (snapshot.modelActive > 0) blockers.push("criticalModelActive:" + snapshot.modelActive);
-        if (!snapshot.modelDrainComplete) blockers.push("criticalModels");
+        if (snapshot.pendingTextures > 0) blockers.push("foregroundArtworkTextures:" + snapshot.pendingTextures);
         if (snapshot.pendingVisibleTextures > 0) blockers.push("visibleTextures:" + snapshot.pendingVisibleTextures);
+        if (snapshot.readyPreviews < snapshot.requiredPreviews) blockers.push("requiredPreviews:" + snapshot.readyPreviews + "/" + snapshot.requiredPreviews);
+        if (snapshot.loadingPreviews > 0) blockers.push("loadingPreviews:" + snapshot.loadingPreviews);
+        if (snapshot.missingPreviews > 0) blockers.push("missingPreviews:" + snapshot.missingPreviews);
+        if (!snapshot.propsSettled) blockers.push("props");
         if (!snapshot.criticalDrainComplete) blockers.push("criticalZoneDrain");
         return blockers;
     }
@@ -17062,10 +18398,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         galleryFastStartRuntime.interactionFinalizationComplete = false;
         galleryFastStartRuntime.interactionFinalizationResult = null;
         galleryFastStartRuntime.interactionWarmupComplete = false;
-        setGalleryInteractionReady(false, reason || "12C65E-current-zone-critical-gate");
+        setGalleryInteractionReady(false, reason || "C6C8C12-hard-space-visual-ready-gate");
 
-        // Optional static Props stay deferred until the current-zone critical gate is complete.
-        drainGalleryFastStartBackgroundQueue("12C65E-current-zone-critical");
+        // C6C8C12: the complete static Space shell (including Props) and assigned artwork Preview are foreground-critical. Models remain background work.
+        drainGalleryFastStartBackgroundQueue("C6C8C12-hard-space-visual-ready-gate");
 
         if (galleryFastStartRuntime.interactionGateWatchdogTimer) {
             clearTimeout(galleryFastStartRuntime.interactionGateWatchdogTimer);
@@ -17089,10 +18425,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             updateViewerIntroInteractionState();
 
             if (!galleryFastStartRuntime.backgroundDrainActive && (
-                countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredArtworkLoads, "artwork", "critical") > 0 ||
-                countGalleryStreamingQueueTier(galleryFastStartRuntime.deferredModelLoads, "slot", "critical") > 0
+                countGalleryForegroundArtworkQueue() > 0
             )) {
-                drainGalleryFastStartBackgroundQueue("12C65E-critical-startup-gate-resume");
+                drainGalleryFastStartBackgroundQueue("C6C8C11-guaranteed-preview-startup-resume");
             }
 
             if (!snapshot.heavyReady) {
@@ -17101,11 +18436,17 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             }
 
             if (!galleryFastStartRuntime.interactionFinalizationComplete) {
-                galleryFastStartRuntime.interactionFinalizationResult = runGalleryFastStartFinalizationNow("12C65E-current-zone-batch-finalization");
+                galleryFastStartRuntime.interactionFinalizationResult = runGalleryFastStartFinalizationNow("C6C8C11-preview-batch-finalization");
                 galleryFastStartRuntime.interactionFinalizationComplete = true;
             }
 
-            waitForGalleryStableInteractionFrames().then(function (result) {
+            markGalleryForegroundNotReady("startup-interaction-gate");
+            waitForGalleryForegroundReady("startup-interaction-gate", { pendingTimeoutMs: 9000, quietTimeoutMs: 4200 }).then(function (foregroundResult) {
+                return waitForGalleryStableInteractionFrames().then(function (result) {
+                    result.foreground = foregroundResult;
+                    return result;
+                });
+            }).then(function (result) {
                 galleryFastStartRuntime.interactionWarmupResult = result;
                 galleryFastStartRuntime.interactionWarmupComplete = true;
                 galleryFastStartRuntime.interactionGateLastSnapshot = getGalleryInteractionReadinessSnapshot();
@@ -17113,9 +18454,14 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                     clearTimeout(galleryFastStartRuntime.interactionGateWatchdogTimer);
                     galleryFastStartRuntime.interactionGateWatchdogTimer = null;
                 }
-                setGalleryInteractionReady(true, "12C65E-current-zone-critical-ready");
-                startGalleryZoneStreamingRuntime("12C65E-interaction-ready");
-                scheduleGalleryFastStartFullArtworkDrainWhenIdle("12C65E-current-zone-full-textures", 600);
+                setGalleryInteractionReady(true, "C6C8C12-hard-space-visual-ready");
+                startGalleryZoneStreamingRuntime("C6C8C12-interaction-ready");
+                scheduleGalleryFastStartFullArtworkDrainWhenIdle("C6C8C11-current-zone-full-textures", 900);
+            }).catch(function (error) {
+                galleryExhibitionRuntime.lastError = error && error.message ? error.message : String(error || "foreground readiness failed");
+                galleryFastStartRuntime.interactionGateActive = false;
+                updateGalleryLoaderStatus("Gallery is waiting for artwork previews.", galleryExhibitionRuntime.lastError);
+                console.error("C6C8C11 foreground readiness error:", error);
             });
         }
 
@@ -17138,7 +18484,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         galleryFastStartRuntime.viewerReady = true;
         galleryFastStartRuntime.viewerReadyAt = Date.now();
         galleryFastStartRuntime.interactionReady = false;
-        galleryStartupFinalizeDebug.finalLightMode = "12C65E-current-zone-streaming-gate";
+        galleryStartupFinalizeDebug.finalLightMode = "C6C8C12-hard-space-visual-ready-gate";
 
         // The page-level startup gate remains visible until the real interaction-ready signal.
         // The original instructional popup is shown by the public bootstrap only after that signal.
@@ -17173,6 +18519,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             return;
         }
 
+        captureGallerySpaceBaseline();
         galleryWebStateLoadedOnce = true;
 
         if (galleryStartupWatchdogTimer) {
@@ -17294,7 +18641,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     };
 
 
-
     // STAGE 12C65A - LOCAL STARTUP ASSET RETRY
     // Retry logic is scoped to the four startup GLBs. Babylon.SceneLoader.ImportMesh is never monkey-patched.
     var galleryAssetAttemptTimeoutMs = 0;
@@ -17365,7 +18711,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     function updateGalleryRetryLoaderStatus(assetName, attempt, maxAttempts, status) {
         updateGalleryLoaderStatus(
             "Loading " + (assetName || "asset") + " " + attempt + " / " + maxAttempts + "...",
-            status || "Retry-safe startup import. Critical assets are walls, floor and ceiling."
+            status || "Retry-safe startup import. Critical Space assets are walls, floor, ceiling and props."
         );
     }
 
@@ -17502,7 +18848,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     // Pliki obrazow trzymamy w Supabase Storage, a w gallery_state zapisujemy tylko path/url.
     var galleryArtworkUploadEnabled = true;
     var galleryArtworkStorageBucket = "gallery-artworks";
-    var galleryArtworkStoragePrefix = "main";
+    // galleryArtworkStoragePrefix is owned by the active Exhibition context (declared at createScene start).
     var galleryArtworkDefaultFitMode = "contain";
     var galleryArtworkImageBaseMaterial = null;
 
@@ -17550,43 +18896,120 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return tabId;
     }
 
-    var gallerySaveIntegrityRuntime = {
-        stage: "12C66C6A",
-        schema: "gallery-save-integrity.v3",
-        sessionId: "gallery-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10),
-        tabId: createGalleryEditorPageInstanceId(),
-        activeTabsStorageKey: "berryboy_gallery_active_editor_tabs_v1",
-        heartbeatIntervalMs: 4000,
-        heartbeatStaleMs: 2 * 60 * 1000,
-        backgroundTabGraceMs: 24 * 60 * 60 * 1000,
-        foreignDraftGraceMs: 24 * 60 * 60 * 1000,
-        heartbeatTimer: null,
-        resolvedCleanupKeys: {},
-        resolvedDraftUploadKeys: {},
-        publishedRevision: 0,
-        publishedStateFingerprint: "",
-        publishedServerStateFingerprint: "",
-        publishedStateSnapshot: null,
-        publishedServerRowExists: false,
-        publishedStateConfirmed: false,
-        baselineReady: false,
-        dirty: false,
-        dirtyReason: "startup",
-        dirtySince: 0,
-        lastStateCheckAt: 0,
-        stateCheckTimer: null,
-        stateCheckIntervalMs: 5000,
-        stateWatcherStarted: false,
-        saveInFlight: false,
-        pendingStorageDeletes: [],
-        pendingDraftUploads: [],
-        cleanupFailures: [],
-        remoteBackupId: "main_previous",
-        localBackupStorageKey: "berryboy_gallery_previous_state_backup_v1",
-        pendingCleanupStorageKey: "berryboy_gallery_pending_storage_cleanup_v1",
-        pendingDraftUploadStorageKey: "berryboy_gallery_pending_draft_uploads_v1",
-        latestSaveResult: null
-    };
+    // STAGE 12C66C6C8C1: Save/Exhibition runtime objects are initialized at createScene start,
+    // before beginGalleryStartupStatePreload(), to eliminate synchronous handoff races.
+
+    function cacheGalleryExhibitionState(exhibition, state, options) {
+        options = options || {};
+        var normalized = normalizeGalleryExhibitionRecord(exhibition);
+        if (!normalized || !normalized.id) return null;
+        var entry = {
+            exhibition: Object.assign({}, normalized),
+            state: state && typeof state === "object" ? cloneGalleryJson(state) : null,
+            updatedAt: options.updatedAt || null,
+            rowExists: options.rowExists !== false,
+            cachedAt: Date.now(),
+            source: options.source || "runtime"
+        };
+        galleryExhibitionRuntime.stateCache[normalized.id] = entry;
+        return entry;
+    }
+
+    function getCachedGalleryExhibitionState(exhibitionId) {
+        exhibitionId = normalizeGalleryRuntimeId(exhibitionId, "main");
+        var entry = galleryExhibitionRuntime.stateCache[exhibitionId] || null;
+        if (entry) galleryExhibitionRuntime.stateCacheHits += 1;
+        else galleryExhibitionRuntime.stateCacheMisses += 1;
+        return entry;
+    }
+
+    function invalidateCachedGalleryExhibitionState(exhibitionId) {
+        exhibitionId = normalizeGalleryRuntimeId(exhibitionId, "main");
+        delete galleryExhibitionRuntime.stateCache[exhibitionId];
+        return true;
+    }
+
+    function getActiveGalleryExhibitionId() {
+        return normalizeGalleryRuntimeId(galleryExhibitionRuntime.activeId || galleryActiveExhibitionId, "main");
+    }
+
+    function getGalleryExhibitionBackupId(exhibitionId) {
+        return normalizeGalleryRuntimeId(exhibitionId, "main") + "__previous";
+    }
+
+    function getGalleryExhibitionStoragePrefix(exhibition) {
+        if (exhibition && exhibition.storage_prefix) {
+            return String(exhibition.storage_prefix).replace(/^\/+|\/+$/g, "");
+        }
+        var exhibitionId = normalizeGalleryRuntimeId(exhibition && exhibition.id ? exhibition.id : getActiveGalleryExhibitionId(), "main");
+        return exhibitionId === "main" ? "main" : "exhibitions/" + exhibitionId;
+    }
+
+    function updateGalleryExhibitionScopedRuntimeKeys(exhibitionId) {
+        exhibitionId = normalizeGalleryRuntimeId(exhibitionId, "main");
+        var suffix = exhibitionId.replace(/[^a-zA-Z0-9_-]+/g, "-");
+        gallerySaveIntegrityRuntime.remoteBackupId = getGalleryExhibitionBackupId(exhibitionId);
+        gallerySaveIntegrityRuntime.localBackupStorageKey = "berryboy_gallery_previous_state_backup_" + suffix + "_v1";
+        gallerySaveIntegrityRuntime.pendingCleanupStorageKey = "berryboy_gallery_pending_storage_cleanup_" + suffix + "_v1";
+        gallerySaveIntegrityRuntime.pendingDraftUploadStorageKey = "berryboy_gallery_pending_draft_uploads_" + suffix + "_v1";
+    }
+
+    function setActiveGalleryExhibitionContext(exhibition, options) {
+        options = options || {};
+        var nextId = normalizeGalleryRuntimeId(exhibition && exhibition.id, galleryExhibitionRuntime.defaultExhibitionId);
+        var normalized = Object.assign({
+            id: nextId,
+            name: nextId === "main" ? "Main Exhibition" : nextId,
+            slug: nextId,
+            description: "",
+            cover_path: null,
+            is_published: nextId === "main",
+            sort_order: 0,
+            storage_prefix: nextId === "main" ? "main" : "exhibitions/" + nextId,
+            space_id: galleryActiveSpaceId
+        }, exhibition || {}, { id: nextId });
+
+        if (normalizeGalleryRuntimeId(normalized.space_id, galleryActiveSpaceId) !== galleryActiveSpaceId) {
+            throw new Error("This build supports only Space " + galleryActiveSpaceId + "; exhibition " + nextId + " points to " + normalized.space_id + ".");
+        }
+
+        if (options.persistCurrentQueues !== false && gallerySaveIntegrityRuntime.baselineReady) {
+            try { persistGalleryPendingStorageCleanupQueue(); } catch (error) {}
+            try { persistGalleryPendingDraftUploads(); } catch (error) {}
+        }
+
+        galleryExhibitionRuntime.activeId = nextId;
+        galleryExhibitionRuntime.active = normalized;
+        galleryActiveExhibitionId = nextId;
+        galleryArtworkStoragePrefix = getGalleryExhibitionStoragePrefix(normalized);
+        updateGalleryExhibitionScopedRuntimeKeys(nextId);
+        // The active context flips before target hydration. Immediately isolate every other owner
+        // so no detached Main/Test node can remain visible during the transition.
+        sweepGalleryInactiveExhibitionOwners(nextId, "active-context-change");
+
+        if (options.restoreQueues) {
+            gallerySaveIntegrityRuntime.pendingStorageDeletes = [];
+            gallerySaveIntegrityRuntime.pendingDraftUploads = [];
+            gallerySaveIntegrityRuntime.cleanupFailures = [];
+            restoreGalleryPendingStorageCleanupQueue();
+            restoreGalleryPendingDraftUploads();
+        }
+
+        globalThis.BerryboyGalleryActiveExhibition = Object.assign({}, normalized);
+        try {
+            window.dispatchEvent(new CustomEvent("gallery-exhibition-context-change", {
+                detail: {
+                    exhibition: Object.assign({}, normalized),
+                    exhibitionId: nextId,
+                    spaceId: galleryActiveSpaceId,
+                    storagePrefix: galleryArtworkStoragePrefix
+                }
+            }));
+        } catch (error) {}
+        return normalized;
+    }
+
+    updateGalleryExhibitionScopedRuntimeKeys(galleryActiveExhibitionId);
 
 
     function getGalleryQueueEntryKey(entry) {
@@ -17640,8 +19063,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         var now = Date.now();
         var registry = pruneGalleryActiveEditorTabs(readGalleryActiveEditorTabs(), now);
 
-        // Public Viewer tabs do not own editor drafts and must not pollute the active-editor registry.
-        if (!editorAuthenticated) {
+        // Only an active Admin Workspace owns editor drafts. A logged-in public Viewer
+        // is still a Viewer and must never pollute the active-editor registry.
+        if (!editorAuthenticated || !galleryAdminWorkspaceMode) {
             delete registry[gallerySaveIntegrityRuntime.tabId];
             writeGalleryActiveEditorTabs(registry);
             return registry;
@@ -17668,7 +19092,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
 
         if (tabId === gallerySaveIntegrityRuntime.tabId) {
-            return true;
+            return !!(galleryAdminWorkspaceMode && editorAuthenticated);
         }
 
         var entry = readGalleryActiveEditorTabs()[tabId];
@@ -17713,6 +19137,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
     function startGalleryEditorTabHeartbeat() {
+        if (!galleryAdminWorkspaceMode || !editorAuthenticated) {
+            stopGalleryEditorTabHeartbeat(true);
+            return false;
+        }
         touchGalleryEditorTabHeartbeat();
 
         if (!gallerySaveIntegrityRuntime.heartbeatTimer) {
@@ -17721,6 +19149,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 gallerySaveIntegrityRuntime.heartbeatIntervalMs
             );
         }
+        return true;
     }
 
     startGalleryEditorTabHeartbeat();
@@ -18595,7 +20024,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
 
 
-
         .gallery-lighting-value.is-mixed {
             min-width: 56px;
             padding: 3px 7px;
@@ -18710,7 +20138,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
 
 
-
         .gallery-local-helper-note {
             margin: 10px 0 0;
             color: #6c6c6c;
@@ -18769,7 +20196,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         .gallery-lighting-back-button:active {
             transform: translateY(1px);
         }
-
 
 
         .gallery-lighting-mode-tabs {
@@ -19328,6 +20754,17 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             color: #6c6c6c;
             font-size: 12px;
             line-height: 1.35;
+        }
+
+        .gallery-artwork-frame-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .gallery-artwork-frame-grid .gallery-editor-action-button {
+            min-height: 38px;
         }
 
 
@@ -20677,7 +22114,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 display: block !important;
                 min-height: 94px !important;
                 max-height: inherit !important;
-                padding: 14px 114px 14px 58px !important;
+                padding: 14px 16px 14px 58px !important;
                 border-radius: 23px !important;
                 overflow: visible !important;
             }
@@ -20735,15 +22172,15 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             #galleryInspectNavigation {
                 position: absolute !important;
                 left: auto !important;
-                right: 12px !important;
-                top: 50% !important;
+                right: 8px !important;
+                top: calc(0px - (var(--gallery-inspect-navigation-size) * 0.46)) !important;
                 bottom: auto !important;
                 width: auto !important;
                 height: var(--gallery-inspect-navigation-size) !important;
                 display: flex !important;
                 align-items: center !important;
-                gap: 7px !important;
-                transform: translateY(-50%) !important;
+                gap: 6px !important;
+                transform: none !important;
                 opacity: 0;
                 visibility: hidden;
             }
@@ -20765,10 +22202,13 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 display: grid !important;
                 place-items: center !important;
                 border-radius: 50% !important;
-                background: rgba(255, 255, 255, 0.075) !important;
+                background: rgba(16, 21, 20, 0.68) !important;
+                border-color: rgba(255, 255, 255, 0.20) !important;
                 box-shadow:
                     inset 0 1px 0 rgba(255, 255, 255, 0.10),
-                    0 8px 18px rgba(0, 0, 0, 0.18) !important;
+                    0 6px 16px rgba(0, 0, 0, 0.16) !important;
+                backdrop-filter: blur(14px) saturate(1.04) !important;
+                -webkit-backdrop-filter: blur(14px) saturate(1.04) !important;
                 transform: none !important;
             }
 
@@ -20819,7 +22259,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
             #galleryArtworkInfoPopup .gallery-artwork-info-popup-inner {
                 min-height: 88px !important;
-                padding: 12px 100px 12px 54px !important;
+                padding: 12px 14px 12px 54px !important;
                 border-radius: 21px !important;
             }
 
@@ -20828,8 +22268,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             }
 
             #galleryInspectNavigation {
-                right: 10px !important;
-                gap: 6px !important;
+                right: 7px !important;
+                gap: 5px !important;
             }
         }
 
@@ -20972,7 +22412,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
 
 
-
     `;
 
     document.head.appendChild(editorStyle);
@@ -21023,6 +22462,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     selectionSectionData.section.appendChild(selectedArtworkStatus);
     selectionSectionData.section.appendChild(selectedArtworkCountStatus);
     editorScroll.appendChild(selectionSectionData.section);
+
+    // Stage 12C66C6C7C8B: exhibition catalog/metadata management lives in admin.html.
+    // The in-scene panel is intentionally limited to editing the active exhibition content.
 
     var artworkManageSectionData = createEditorSection("ARTWORKS / SCULPTURES");
     var artworkManageActions = document.createElement("div");
@@ -21159,6 +22601,87 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     artworkImageSectionData.section.appendChild(artworkImageActions);
     artworkImageSectionData.section.appendChild(artworkImageNote);
     editorScroll.appendChild(artworkImageSectionData.section);
+
+    var artworkFrameSectionData = createEditorSection("FRAME");
+    artworkFrameSectionData.section.classList.add("gallery-artwork-frame-section", "is-hidden");
+
+    var artworkFrameStatus = document.createElement("div");
+    artworkFrameStatus.className = "gallery-artwork-image-status";
+    artworkFrameStatus.innerHTML = "Frame: <strong>None</strong>";
+
+    var artworkFrameGrid = document.createElement("div");
+    artworkFrameGrid.className = "gallery-artwork-frame-grid";
+
+    var artworkFrameNote = document.createElement("p");
+    artworkFrameNote.className = "gallery-artwork-image-note";
+    artworkFrameNote.innerText = "Shared GLB variants are read from gallery-artworks/main/frames. The frame follows the selected artwork size and aspect ratio, using its inner opening as the fit reference.";
+
+    artworkFrameSectionData.section.appendChild(artworkFrameStatus);
+    artworkFrameSectionData.section.appendChild(artworkFrameGrid);
+    artworkFrameSectionData.section.appendChild(artworkFrameNote);
+    editorScroll.appendChild(artworkFrameSectionData.section);
+
+    function renderArtworkFrameCatalogUi() {
+        if (!artworkFrameGrid) return;
+        artworkFrameGrid.innerHTML = "";
+        var artwork = getSingleSelectedArtworkForImageUi();
+        var currentState = getArtworkFrameState(artwork);
+
+        function appendFrameButton(label, frameState) {
+            var button = document.createElement("button");
+            button.type = "button";
+            button.className = "gallery-editor-action-button";
+            button.innerText = label;
+            var isSelected = !frameState
+                ? !currentState
+                : !!(currentState && currentState.storagePath === frameState.storagePath);
+            if (isSelected) button.classList.add("is-primary");
+            button.disabled = !artwork || !!(artwork && artwork.metadata && artwork.metadata.artworkFrameLoading);
+            button.onclick = function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                var selected = getSingleSelectedArtworkForImageUi();
+                if (!selected) return;
+                applyArtworkFrameState(selected, frameState, { silent: false, markDirty: true });
+            };
+            artworkFrameGrid.appendChild(button);
+        }
+
+        appendFrameButton("NONE", null);
+        galleryArtworkFrameCatalog.forEach(function (frameState) {
+            appendFrameButton(frameState.label, frameState);
+        });
+    }
+
+    function updateArtworkFrameUi() {
+        if (!artworkFrameSectionData || !artworkFrameSectionData.section) return;
+        var artwork = getSingleSelectedArtworkForImageUi();
+        var frameState = getArtworkFrameState(artwork);
+        var loading = !!(artwork && artwork.metadata && artwork.metadata.artworkFrameLoading);
+        artworkFrameSectionData.section.classList.toggle("is-hidden", !editMode || !artwork);
+
+        if (!artwork) {
+            artworkFrameStatus.innerHTML = "Frame: <strong>None</strong>";
+            renderArtworkFrameCatalogUi();
+            return;
+        }
+
+        if (loading) artworkFrameStatus.innerHTML = "Frame: <strong>Loading...</strong>";
+        else if (frameState) artworkFrameStatus.innerHTML = "Frame: <strong>" + frameState.label + "</strong>";
+        else artworkFrameStatus.innerHTML = "Frame: <strong>None</strong>";
+
+        renderArtworkFrameCatalogUi();
+
+        if (!galleryArtworkFrameCatalogLoaded && !galleryArtworkFrameCatalogLoading) {
+            artworkFrameStatus.innerHTML += " <span style=\"opacity:.7\">(reading Storage)</span>";
+            loadGalleryArtworkFrameCatalog(false)
+                .then(function () { updateArtworkFrameUi(); })
+                .catch(function (error) {
+                    console.warn("Artwork frame catalog load failed:", error);
+                    artworkFrameStatus.innerHTML = "Frame library: <strong>Storage read failed</strong>";
+                });
+        }
+    }
 
 
     async function scanGalleryManagedMediaStorage() {
@@ -24312,17 +25835,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         );
     }
 
-    function getSavedLocalLightStateById(localLightState, lightId) {
-        if (!localLightState || !Array.isArray(localLightState.lights)) {
-            return null;
-        }
-
-        return localLightState.lights.find(function (state) {
-            return state && state.id === lightId;
-        }) || null;
-    }
-
-    function getGalleryMeshBySavedTargetName(meshName) {
+        function getGalleryMeshBySavedTargetName(meshName) {
         if (!meshName) {
             return null;
         }
@@ -24660,7 +26173,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         sanitizeLocalLightGroups();
     }
 
-    function restoreLocalLightState(localLightState) {
+    function restoreLocalLightState(localLightState, options) {
+        options = options || {};
         if (!localLightState || !Array.isArray(localLightState.lights)) {
             return;
         }
@@ -24712,13 +26226,13 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             clearLocalLightSelection();
             applyVisualReflectionSettings(readVisualSettingsFromScene());
 
-            if (!galleryFastStartRuntime.stateApplyActive) {
+            if (!galleryFastStartRuntime.stateApplyActive && !options.deferGlobalRefresh) {
                 refreshAllCommonLocalLightTargets();
                 scheduleLoadTimeLocalLightRetarget("restoreLocalLightState", localLightLoadTimeRetargetDelayMs);
                 refreshAllLocalSpotShadows();
             }
 
-            updateLocalLightsUi();
+            if (!options.deferGlobalRefresh) updateLocalLightsUi();
         } finally {
             localLightStateRestoring = false;
         }
@@ -24848,7 +26362,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
     function scheduleLocalLightParameterFinalCommit(item, reason, delayMs) {
-        if (!item || item.softDeleted || !item.light) {
+        if (!item || item.softDeleted || item.exhibitionLayerParked || !item.light || (item.exhibitionId && !isGalleryExhibitionOwnerActive(item.exhibitionId))) {
             return;
         }
 
@@ -24864,7 +26378,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         item._localLightParameterFinalCommitTimer = setTimeout(function () {
             item._localLightParameterFinalCommitTimer = null;
 
-            if (!item || item.softDeleted || !item.light) {
+            if (!item || item.softDeleted || item.exhibitionLayerParked || !item.light || !isGalleryExhibitionOwnerActive(item.exhibitionId || getActiveGalleryExhibitionId())) {
                 return;
             }
 
@@ -25693,7 +27207,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         if (item.helperMeshes && item.helperMeshes.length) {
             item.helperMeshes.forEach(function (helperMesh) {
-                if (helperMesh && helperMesh.dispose) {
+                if (helperMesh && helperMesh.dispose && canGalleryExhibitionMutateNode(helperMesh, "dispose-local-light-helper", item.exhibitionId || getActiveGalleryExhibitionId())) {
                     helperMesh.dispose();
                 }
             });
@@ -25702,7 +27216,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         item.helperMeshes = [];
 
         if (item.helperMesh) {
-            item.helperMesh.dispose();
+            if (canGalleryExhibitionMutateNode(item.helperMesh, "dispose-local-light-helper", item.exhibitionId || getActiveGalleryExhibitionId())) item.helperMesh.dispose();
             item.helperMesh = null;
         }
     }
@@ -26101,6 +27615,11 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         if (item.rootNode && item.rootNode.setEnabled) {
             item.rootNode.setEnabled(true);
         }
+        item.exhibitionId = normalizeGalleryRuntimeId(getActiveGalleryExhibitionId(), "main");
+        item.exhibitionLayerParked = false;
+        tagGalleryExhibitionNode(item.markerMesh, "local-light-marker", item.exhibitionId);
+        if (item.rootNode) tagGalleryExhibitionNode(item.rootNode, "local-light-root", item.exhibitionId);
+        try { if (item.light) tagGalleryExhibitionLight(item.light, "local-light", item.exhibitionId); } catch (error) {}
 
         localLightItems.push(item);
 
@@ -26125,6 +27644,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         if (!object || !object.dispose) {
             return;
         }
+        var expectedOwnerId = object.metadata && object.metadata.galleryOwnerId ? object.metadata.galleryOwnerId : getActiveGalleryExhibitionId();
+        if (!canGalleryExhibitionMutateNode(object, "clean-disabled-local-light-" + (label || "object"), expectedOwnerId)) return;
 
         try {
             object.dispose();
@@ -26200,6 +27721,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         if (!item) {
             return;
         }
+        cancelGalleryLocalLightDeferredWork(item);
+        var itemOwnerId = item.exhibitionId || getActiveGalleryExhibitionId();
+        if (item.rootNode && !canGalleryExhibitionMutateNode(item.rootNode, "dispose-local-light-root", itemOwnerId)) return;
+        if (item.markerMesh && !canGalleryExhibitionMutateNode(item.markerMesh, "dispose-local-light-marker", itemOwnerId)) return;
 
         if (
             localLightHighlightLayer &&
@@ -26511,6 +28036,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         mesh.metadata = mesh.metadata || {};
         mesh.metadata.localLightHelperFor = item.id;
         mesh.metadata.localLightHelperTag = tag;
+        tagGalleryExhibitionNode(mesh, "local-light-helper", item.exhibitionId || getActiveGalleryExhibitionId());
 
         if (canReuse) {
             localLightTargetDebugStats.helperReused += 1;
@@ -26736,7 +28262,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
     function updateLocalLightHelper(item) {
-        if (!item) {
+        if (!item || item.exhibitionLayerParked || (item.exhibitionId && !isGalleryExhibitionOwnerActive(item.exhibitionId))) {
             return;
         }
 
@@ -26772,7 +28298,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
     function scheduleLocalLightHelperUpdateDuringDrag(item, finalUpdate) {
-        if (!item || item.softDeleted) {
+        if (!item || item.softDeleted || item.exhibitionLayerParked || (item.exhibitionId && !isGalleryExhibitionOwnerActive(item.exhibitionId))) {
             return;
         }
 
@@ -26807,7 +28333,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             localLightGizmoPreviewHelperPending = false;
             localLightGizmoPreviewHelperItem = null;
 
-            if (!helperItem || helperItem.softDeleted) {
+            if (!helperItem || helperItem.softDeleted || helperItem.exhibitionLayerParked || (helperItem.exhibitionId && !isGalleryExhibitionOwnerActive(helperItem.exhibitionId))) {
                 return;
             }
 
@@ -27142,7 +28668,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     var localLightSpawnShadowDelayMs = 700;
 
     function scheduleDeferredLocalLightSpawnSetup(item, reason) {
-        if (!item || item.softDeleted) {
+        if (!item || item.softDeleted || item.exhibitionLayerParked || (item.exhibitionId && !isGalleryExhibitionOwnerActive(item.exhibitionId))) {
             return;
         }
 
@@ -27176,7 +28702,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             // The new lamp keeps its minimal safe target set until the user finishes positioning it,
             // then dragEnd performs exactly one atomic target commit.
             queue.forEach(function (queuedItem) {
-                if (!queuedItem || queuedItem.softDeleted || !queuedItem.light) {
+                if (!queuedItem || queuedItem.softDeleted || queuedItem.exhibitionLayerParked || !queuedItem.light || !isGalleryExhibitionOwnerActive(queuedItem.exhibitionId || getActiveGalleryExhibitionId())) {
                     return;
                 }
 
@@ -27233,7 +28759,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             userEnabled: options.light && options.light.isEnabled
                 ? !!options.light.isEnabled()
                 : true,
-            userIntensity: options.light ? Number(options.light.intensity) || 0 : 0
+            userIntensity: options.light ? Number(options.light.intensity) || 0 : 0,
+            exhibitionId: normalizeGalleryRuntimeId(options.exhibitionId || getActiveGalleryExhibitionId(), "main"),
+            exhibitionLayerParked: false
         };
 
         // STAGE 12C51: PointLight is spherical, so it should include the nearby ceiling by default.
@@ -27246,6 +28774,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         options.markerMesh.renderOutline = false;
         options.markerMesh.metadata = options.markerMesh.metadata || {};
         options.markerMesh.metadata.localLightId = id;
+        tagGalleryExhibitionNode(options.markerMesh, "local-light-marker", item.exhibitionId);
+        if (item.rootNode) tagGalleryExhibitionNode(item.rootNode, "local-light-root", item.exhibitionId);
+        try { if (item.light) tagGalleryExhibitionLight(item.light, "local-light", item.exhibitionId); } catch (error) {}
 
         localLightItems.push(item);
 
@@ -27586,27 +29117,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
     }
 
-    function readSavedLightingState() {
-        try {
-            var rawData = localStorage.getItem(lightingStateStorageKey);
-
-            if (!rawData) {
-                return null;
-            }
-
-            var parsedData = JSON.parse(rawData);
-
-            if (!parsedData || typeof parsedData !== "object") {
-                return null;
-            }
-
-            return parsedData;
-        } catch (error) {
-            return null;
-        }
-    }
-
-    function syncLightingControls(settings) {
+        function syncLightingControls(settings) {
         lightingControlRefs.environmentIntensity.setValue(settings.environmentIntensity);
         lightingControlRefs.environmentRotation.setValue(settings.environmentRotation);
 
@@ -28679,7 +30190,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     visualLightingContent.appendChild(visualActionsSection);
 
 
-
     lightingScroll.appendChild(lightingModeTabs);
 
     var lightingBackButton = document.createElement("button");
@@ -28780,6 +30290,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     [
         artworkManageSectionData,
         artworkImageSectionData,
+        artworkFrameSectionData,
         imageOptimizationSectionData,
         model3dSectionData,
         sculptureInfoSectionData,
@@ -29553,7 +31064,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return true;
     }
 
-    function applyWallColorMaterialToSegment(wallMesh, material) {
+    function applyWallColorMaterialToSegment(wallMesh, material, options) {
+        options = options || {};
         if (!wallMesh || !material || !isPaintableWallSegmentMesh(wallMesh)) {
             return false;
         }
@@ -29581,10 +31093,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         wallMesh.metadata.wallSegmentPaintMode = "baseColorOnly";
 
         configureMeshMaterialForMainShadows(wallMesh);
-        scheduleCommonLightingMaterialSupport("wallPaintSegment");
-        markGallerySurfaceDirty("wallSegmentPainted");
-        markGalleryDraftDirty("wall-segment-painted");
-        updateEditHelpStatus();
+        if (!options.runtimeRestore) {
+            scheduleCommonLightingMaterialSupport("wallPaintSegment");
+            markGallerySurfaceDirty("wallSegmentPainted");
+            markGalleryDraftDirty("wall-segment-painted");
+            updateEditHelpStatus();
+        }
 
         return true;
     }
@@ -29779,7 +31293,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         viewerPlaceholderVisibilityDebug.localLightMeshesHidden = hiddenCount;
     }
-
 
 
     function hasLoadedModel3dRuntime(slot) {
@@ -30034,6 +31547,182 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
 
+    // C6C8C14 — ZERO-WORK PUBLIC RETURN
+    // Workspace mode changes reuse the live Scene. The clean Admin→Public click path
+    // must never recalculate sculpture bounds/collision proxies or rebuild editor UI.
+    // Only presentation flags that are actually different between Edit and Viewer are
+    // changed synchronously; defensive repairs run later in small idle chunks.
+    var galleryWorkspacePublicRepairHandle = null;
+    var galleryWorkspacePublicRepairQueue = [];
+
+    function clearGalleryEditSelectionFastForWorkspaceReturn() {
+        selectedArtworks.slice().forEach(function (artwork) {
+            if (!artwork) return;
+            try { if (artwork.disableEdgesRendering) artwork.disableEdgesRendering(); } catch (error) {}
+            try { hideArtworkSelectionGlow(artwork); } catch (error) {}
+        });
+        selectedArtworks = [];
+        primaryArtwork = null;
+        referenceArtwork = null;
+        activeArtwork = null;
+        selectedArtwork = null;
+        isDraggingArtwork = false;
+
+        selectedSculptures.slice().forEach(function (slot) {
+            try { clearModel3dSlotSelectionGlow(slot); } catch (error) {}
+        });
+        setSculptureSelectionState([], null, null);
+        isDraggingSphere = false;
+
+        selectedLocalLights.slice().forEach(function (item) {
+            if (item) item.selected = false;
+        });
+        selectedLocalLights = [];
+        selectedWallMaterial = null;
+
+        clearEditMoveKeys();
+        dragMoved = false;
+        lastArtworkClickTime = 0;
+        lastArtworkClickMesh = null;
+        lastSculptureClickTime = 0;
+        lastSculptureClickSlot = null;
+        if (artworkAlignPanel) artworkAlignPanel.style.display = "none";
+    }
+
+    function enableExistingSculptureCollisionProxyForViewer(slot) {
+        if (!slot || !slot.metadata || !viewerCollisionTargets.sculptures) return false;
+        var proxy = slot.metadata.sculptureCollisionProxy;
+        if (!proxy || (proxy.isDisposed && proxy.isDisposed())) return false;
+        try {
+            proxy.setEnabled(true);
+            proxy.isVisible = true;
+            proxy.visibility = gallerySculptureCollisionDebugVisible ? 0.32 : 0;
+            proxy.isPickable = false;
+            proxy.checkCollisions = false;
+            var slotId = normalizeModel3dSlotId(slot.metadata.model3dSlotId);
+            if (slotId && gallerySculptureCoreRuntime.colliderRegistry[slotId]) {
+                gallerySculptureCoreRuntime.colliderRegistry[slotId].active = true;
+            }
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function applyGalleryViewerPresentationFastPath() {
+        var hiddenArtworkPlaceholders = 0;
+        var hiddenLightHelpers = 0;
+        var reusedSculptureProxies = 0;
+        var missingSculptureProxies = [];
+
+        var active = typeof getActiveArtworks === "function" ? getActiveArtworks() : artworks;
+        active.forEach(function (artwork) {
+            if (!artwork) return;
+            var hasImage = hasArtworkViewerImage(artwork);
+            if (!hasImage || isArtworkDeleted(artwork)) {
+                hiddenArtworkPlaceholders += setEditorOnlyMeshVisible(artwork, false, false) ? 1 : 0;
+            } else {
+                // The artwork mesh/image are already resident and visible in Edit Mode.
+                // Avoid touching textures/materials here; only keep viewer picking valid.
+                artwork.isPickable = true;
+                if (artwork.metadata && artwork.metadata.imagePlane) {
+                    var imagePlane = artwork.metadata.imagePlane;
+                    if (imagePlane && !(imagePlane.isDisposed && imagePlane.isDisposed())) {
+                        imagePlane.isPickable = true;
+                    }
+                }
+            }
+        });
+
+        localLightItems.forEach(function (item) {
+            if (!item) return;
+            hiddenLightHelpers += setLocalLightEditorMeshVisibility(item.markerMesh, false);
+            hiddenLightHelpers += setLocalLightEditorMeshVisibility(item.helperMesh, false);
+            hiddenLightHelpers += setLocalLightEditorMeshVisibility(item.targetMesh, false);
+            hiddenLightHelpers += setLocalLightEditorMeshVisibility(item.rootNode, false);
+            if (item.helperMeshes && item.helperMeshes.length) {
+                item.helperMeshes.forEach(function (mesh) {
+                    hiddenLightHelpers += setLocalLightEditorMeshVisibility(mesh, false);
+                });
+            }
+        });
+
+        artSpheres.forEach(function (slot) {
+            if (!slot || !slot.metadata) return;
+            var placeholder = getModel3dSlotPlaceholderMesh(slot);
+            if (placeholder && !(placeholder.isDisposed && placeholder.isDisposed())) {
+                setEditorOnlyMeshVisible(placeholder, false, false);
+            }
+            if (enableExistingSculptureCollisionProxyForViewer(slot)) {
+                reusedSculptureProxies += 1;
+            } else if ((slot.metadata.model3d || hasLoadedModel3dRuntime(slot)) && viewerCollisionTargets.sculptures) {
+                missingSculptureProxies.push(slot);
+            }
+        });
+
+        viewerPlaceholderVisibilityDebug.mode = "viewer";
+        viewerPlaceholderVisibilityDebug.emptyArtworksHidden = hiddenArtworkPlaceholders;
+        viewerPlaceholderVisibilityDebug.localLightMeshesHidden = hiddenLightHelpers;
+        viewerPlaceholderVisibilityDebug.zeroWorkPublicReturn = true;
+        viewerPlaceholderVisibilityDebug.reusedSculptureProxies = reusedSculptureProxies;
+        viewerPlaceholderVisibilityDebug.deferredSculptureProxyRepairs = missingSculptureProxies.length;
+
+        return {
+            hiddenArtworkPlaceholders: hiddenArtworkPlaceholders,
+            hiddenLightHelpers: hiddenLightHelpers,
+            reusedSculptureProxies: reusedSculptureProxies,
+            missingSculptureProxies: missingSculptureProxies
+        };
+    }
+
+    function scheduleGalleryWorkspacePublicReturnDeferredRepair(slots, reason) {
+        galleryWorkspacePublicRepairQueue = (slots || []).filter(function (slot) {
+            return !!slot && artSpheres.indexOf(slot) !== -1;
+        });
+
+        if (galleryWorkspacePublicRepairHandle !== null) return;
+
+        var runNext = function (deadline) {
+            galleryWorkspacePublicRepairHandle = null;
+            if (galleryAdminWorkspaceMode || editMode) {
+                galleryWorkspacePublicRepairQueue = [];
+                return;
+            }
+
+            var budget = 1;
+            if (deadline && typeof deadline.timeRemaining === "function") {
+                budget = Math.max(1, Math.min(2, Math.floor(deadline.timeRemaining() / 4)));
+            }
+
+            while (budget > 0 && galleryWorkspacePublicRepairQueue.length) {
+                var slot = galleryWorkspacePublicRepairQueue.shift();
+                try {
+                    if (slot && !(slot.isDisposed && slot.isDisposed())) refreshSculptureCollisionProxy(slot);
+                } catch (error) {
+                    console.warn("C6C8C14 deferred sculpture proxy repair warning:", error);
+                }
+                budget -= 1;
+            }
+
+            if (galleryWorkspacePublicRepairQueue.length) {
+                if (typeof requestIdleCallback === "function") {
+                    galleryWorkspacePublicRepairHandle = requestIdleCallback(runNext, { timeout: 1400 });
+                } else {
+                    galleryWorkspacePublicRepairHandle = setTimeout(function () { runNext(null); }, 60);
+                }
+            }
+        };
+
+        if (galleryWorkspacePublicRepairQueue.length) {
+            if (typeof requestIdleCallback === "function") {
+                galleryWorkspacePublicRepairHandle = requestIdleCallback(runNext, { timeout: 1400 });
+            } else {
+                galleryWorkspacePublicRepairHandle = setTimeout(function () { runNext(null); }, 60);
+            }
+        }
+    }
+
+
     function updateViewerModePlaceholderVisibility() {
         viewerPlaceholderVisibilityDebug.mode = editMode ? "edit" : "viewer";
 
@@ -30047,6 +31736,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
 
     function hasGalleryUnsavedChanges() {
+        // C6C8C15: a draft remains a draft while the Admin shell is hidden in
+        // same-runtime Public Preview. Do not pretend it is clean merely because
+        // galleryAdminWorkspaceMode is temporarily false.
+        if (!galleryAdminWorkspaceMode && !galleryAdminDraftPreviewActive) {
+            return false;
+        }
         return !!(
             gallerySaveIntegrityRuntime &&
             gallerySaveIntegrityRuntime.baselineReady &&
@@ -30066,10 +31761,262 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         );
     }
 
+    function createGalleryNavigationHandoff() {
+        var exhibition = galleryExhibitionRuntime.active ? Object.assign({}, galleryExhibitionRuntime.active) : getGalleryFallbackMainExhibition();
+        var exhibitionId = normalizeGalleryRuntimeId(exhibition && exhibition.id, getActiveGalleryExhibitionId());
+        var cachedPublished = getCachedGalleryExhibitionState(exhibitionId);
+        var publishedSnapshot = cachedPublished && cachedPublished.state && typeof cachedPublished.state === "object"
+            ? cloneGalleryJson(cachedPublished.state)
+            : (gallerySaveIntegrityRuntime.publishedStateSnapshot ? cloneGalleryJson(gallerySaveIntegrityRuntime.publishedStateSnapshot) : null);
+        var handoffState = (galleryAdminWorkspaceMode || galleryAdminDraftPreviewActive) && hasGalleryUnsavedChanges()
+            ? serializeGalleryState()
+            : (publishedSnapshot || serializeGalleryState());
+        var payload = {
+            stage: "12C66C6C8C12",
+            schema: "exhibition-navigation-handoff.v1",
+            createdAt: Date.now(),
+            exhibition: exhibition,
+            state: handoffState,
+            updatedAt: cachedPublished ? cachedPublished.updatedAt || null : null,
+            rowExists: cachedPublished ? cachedPublished.rowExists !== false : (gallerySaveIntegrityRuntime ? gallerySaveIntegrityRuntime.publishedServerRowExists !== false : true),
+            source: galleryAdminWorkspaceMode ? "admin" : (galleryAdminDraftPreviewActive ? "admin-draft-preview" : "public-viewer"),
+            spaceId: galleryActiveSpaceId
+        };
+        try {
+            sessionStorage.setItem("exhibition_platform_handoff_" + exhibitionId, JSON.stringify(payload));
+            return payload;
+        } catch (error) {
+            console.warn("Navigation handoff storage warning:", error);
+            return null;
+        }
+    }
+
+    function openGalleryAdminWorkspaceForActiveExhibition() {
+        var exhibitionId = getActiveGalleryExhibitionId();
+        if (typeof window.ExhibitionPlatformOpenAdminWorkspace === "function") {
+            try {
+                window.ExhibitionPlatformOpenAdminWorkspace(exhibitionId || "main");
+                return false;
+            } catch (inlineError) {
+                console.warn("Inline Admin Workspace warning:", inlineError);
+            }
+        }
+
+        var targetUrl = "./admin.html?exhibition=" + encodeURIComponent(exhibitionId || "main");
+        createGalleryNavigationHandoff();
+        try {
+            window.location.href = targetUrl;
+        } catch (error) {
+            console.warn("Admin Workspace navigation warning:", error);
+        }
+        return false;
+    }
+
+    function discardGalleryUnsavedChanges(reason) {
+        if (!hasGalleryUnsavedChanges()) return true;
+        var publishedSnapshot = gallerySaveIntegrityRuntime.publishedStateSnapshot
+            ? cloneGalleryStateForIntegrity(gallerySaveIntegrityRuntime.publishedStateSnapshot)
+            : null;
+        if (!publishedSnapshot) return false;
+        applyGalleryState(publishedSnapshot);
+        setGalleryPublishedStateBaseline(publishedSnapshot, {
+            serverState: publishedSnapshot,
+            serverRowExists: gallerySaveIntegrityRuntime.publishedServerRowExists,
+            revision: gallerySaveIntegrityRuntime.publishedRevision,
+            confirmed: true,
+            reason: reason || "admin-discard"
+        });
+        return true;
+    }
+
+    var galleryWorkspaceModeAuditHandle = null;
+    var galleryWorkspaceModeAuditToken = 0;
+
+    function scheduleGalleryWorkspaceModeBackgroundAudit(reason) {
+        galleryWorkspaceModeAuditToken += 1;
+        var token = galleryWorkspaceModeAuditToken;
+        galleryExhibitionRuntime.workspaceModeAuditPending = true;
+
+        if (galleryWorkspaceModeAuditHandle !== null) {
+            try {
+                if (typeof cancelIdleCallback === "function") cancelIdleCallback(galleryWorkspaceModeAuditHandle);
+                else clearTimeout(galleryWorkspaceModeAuditHandle);
+            } catch (error) {}
+            galleryWorkspaceModeAuditHandle = null;
+        }
+
+        var runAudit = function () {
+            galleryWorkspaceModeAuditHandle = null;
+            if (token !== galleryWorkspaceModeAuditToken) return;
+            var startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+            var result = {
+                ok: true,
+                reason: reason || "workspace-mode-background-audit",
+                exhibitionId: getActiveGalleryExhibitionId(),
+                at: Date.now(),
+                durationMs: 0
+            };
+            try {
+                sweepGalleryInactiveExhibitionOwners(getActiveGalleryExhibitionId(), "workspace-mode-idle-orphan-sweep");
+                verifyGalleryCanonicalSpaceIntegrity("workspace-mode-idle-space-integrity");
+                galleryExhibitionRuntime.workspaceModeAuditRuns += 1;
+            } catch (error) {
+                galleryExhibitionRuntime.workspaceModeAuditRuns += 1;
+                galleryExhibitionRuntime.workspaceModeAuditFailures += 1;
+                galleryExhibitionRuntime.lastError = error && error.message ? error.message : String(error);
+                result.ok = false;
+                result.error = galleryExhibitionRuntime.lastError;
+                console.error("C6C8C13 workspace background audit warning:", error);
+            } finally {
+                var finishedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+                result.durationMs = Math.round(Math.max(0, finishedAt - startedAt) * 10) / 10;
+                galleryExhibitionRuntime.workspaceModeAuditPending = false;
+                galleryExhibitionRuntime.workspaceModeAuditLast = result;
+            }
+        };
+
+        if (typeof requestIdleCallback === "function") {
+            galleryWorkspaceModeAuditHandle = requestIdleCallback(runAudit, { timeout: 1800 });
+        } else {
+            galleryWorkspaceModeAuditHandle = setTimeout(runAudit, 320);
+        }
+    }
+
+    function setGallerySameRuntimeModeState(targetEditMode, reason) {
+        // C6C8C14: a clean Admin ↔ Public transition is a presentation switch only.
+        // Public return performs no scene-wide visual refresh, no sculpture bounds scan
+        // and no collision-proxy rebuild on the click path.
+        var startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+        var previousEditMode = !!editMode;
+        editMode = !!targetEditMode;
+        if (document.body) document.body.classList.toggle("gallery-edit-mode-active", editMode);
+        configureCameraPointerButtons();
+        resetViewerWASDMovementRuntime(true);
+        closeGalleryInspect(reason || "same-runtime-mode-transition");
+
+        var presentationResult = null;
+        var selectionStartedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+
+        if (editMode) {
+            // Public→Admin is already fast enough and can keep the complete editor refresh.
+            clearEditSelection();
+            setEditorUiVisible(true);
+            setMobileViewerUiVisible(false);
+            if (mobileViewerEnabled) attachGalleryCameraControl();
+            updateEditHelpStatus();
+            updateAlignmentPanel();
+            refreshGalleryExhibitTourOrderBadges();
+            updateGalleryTourOrderUi();
+        } else {
+            // Admin→Public: clear only logical selection state and selected glows.
+            // Do not rebuild hidden editor panels that are about to disappear.
+            clearGalleryEditSelectionFastForWorkspaceReturn();
+            restoreCameraToDefaultViewerWalkHeight("sameRuntimePublicReturn");
+            setEditorUiVisible(false);
+            presentationResult = applyGalleryViewerPresentationFastPath();
+            if (mobileViewerEnabled) {
+                camera.detachControl(canvas);
+                setMobileViewerUiVisible(true);
+            }
+            // Only genuinely missing proxies are repaired later, one at a time.
+            scheduleGalleryWorkspacePublicReturnDeferredRepair(
+                presentationResult ? presentationResult.missingSculptureProxies : [],
+                reason || "same-runtime-public-return"
+            );
+        }
+
+        var selectionFinishedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+        galleryExhibitionRuntime.workspaceModeFastPathCount += 1;
+        scheduleGalleryWorkspaceModeBackgroundAudit(reason || "same-runtime-ui-only");
+        var finishedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+        var persistentDraftPreview = !editMode && reason === "persistent-draft-public-preview";
+        galleryExhibitionRuntime.lastModeTransition = {
+            type: "workspace-mode",
+            from: previousEditMode ? "admin" : "public",
+            to: editMode ? "admin" : "public",
+            mode: editMode ? "instant-workspace-ui-only" : (persistentDraftPreview ? "persistent-draft-public-preview" : "zero-work-public-return"),
+            draftPreserved: persistentDraftPreview,
+            residentHit: true,
+            foregroundPreserved: true,
+            auditDeferred: true,
+            collisionProxyRebuildsOnClickPath: 0,
+            reusedSculptureProxies: presentationResult ? presentationResult.reusedSculptureProxies : 0,
+            deferredSculptureProxyRepairs: presentationResult ? presentationResult.missingSculptureProxies.length : 0,
+            corePresentationMs: Math.round(Math.max(0, selectionFinishedAt - selectionStartedAt) * 10) / 10,
+            durationMs: Math.round(Math.max(0, finishedAt - startedAt) * 10) / 10,
+            at: Date.now()
+        };
+        try { window.dispatchEvent(new CustomEvent("gallery-mode-transition-complete", { detail: cloneGalleryJson(galleryExhibitionRuntime.lastModeTransition) })); } catch (error) {}
+        return editMode;
+    }
+
+    function enterGalleryAdminWorkspaceMode() {
+        if (galleryAdminWorkspaceMode) {
+            if (!editMode) setGallerySameRuntimeModeState(true, "same-runtime-admin-resume");
+            return !!editMode;
+        }
+
+        // C6C8C15: returning from Public Preview reuses the exact draft currently
+        // resident in the scene. No published snapshot is applied and no draft flag
+        // is cleared.
+        galleryAdminDraftPreviewActive = false;
+        galleryAdminWorkspaceMode = true;
+        galleryPublicViewerOnly = false;
+        syncGalleryArtworkEgressPolicyForWorkspaceMode("same-runtime-admin-enter");
+        startGalleryEditorTabHeartbeat();
+        installGalleryAdminBeforeUnloadGuard();
+        if (gallerySaveIntegrityRuntime.baselineReady) startGalleryDraftStateWatcher();
+        if (editorAuthenticated && typeof warmGalleryArtworkFrameLibrary === "function") warmGalleryArtworkFrameLibrary();
+        if (typeof scheduleGalleryZoneStreamingPump === "function") scheduleGalleryZoneStreamingPump("same-runtime-admin-enter", 0);
+        if (!editMode) setGallerySameRuntimeModeState(true, "same-runtime-admin-enter");
+        return !!editMode;
+    }
+
+    function exitGalleryAdminWorkspaceMode(options) {
+        options = options || {};
+        if (!galleryAdminWorkspaceMode) return true;
+
+        var preserveDraft = options.preserveDraft === true;
+        var sceneDraftDirty = hasGalleryUnsavedChanges();
+
+        if (sceneDraftDirty && !preserveDraft) {
+            if (!options.discardUnsaved) return false;
+            if (!discardGalleryUnsavedChanges("same-runtime-admin-discard")) return false;
+            sceneDraftDirty = false;
+        }
+
+        if (editMode) {
+            setGallerySameRuntimeModeState(
+                false,
+                preserveDraft && sceneDraftDirty ? "persistent-draft-public-preview" : "same-runtime-public-return"
+            );
+        }
+
+        stopGalleryDraftStateWatcher();
+        stopGalleryEditorTabHeartbeat(true);
+        galleryAdminWorkspaceMode = false;
+        galleryPublicViewerOnly = true;
+        galleryAdminDraftPreviewActive = !!(preserveDraft && sceneDraftDirty);
+
+        // A preserved scene draft must still protect the tab from accidental close.
+        // The existing guard now understands draft-preview mode; otherwise remove it.
+        if (galleryAdminDraftPreviewActive) installGalleryAdminBeforeUnloadGuard();
+        else removeGalleryAdminBeforeUnloadGuard();
+
+        syncGalleryArtworkEgressPolicyForWorkspaceMode(
+            galleryAdminDraftPreviewActive ? "persistent-draft-public-preview" : "same-runtime-public-return"
+        );
+        return true;
+    }
+
     editButton.onclick = function (event) {
         if (event) {
             event.preventDefault();
             event.stopPropagation();
+        }
+
+        if (galleryPublicViewerOnly) {
+            return openGalleryAdminWorkspaceForActiveExhibition();
         }
 
         if (isGalleryInspectTransitionInteractionLocked()) {
@@ -30098,6 +32045,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         if (editMode) {
             resetViewerWASDMovementRuntime(true);
             setEditorUiVisible(true);
+            warmGalleryArtworkFrameLibrary();
 
             refreshMobileViewerMode();
             updateViewerCollisionMode();
@@ -30110,7 +32058,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
             updateEditHelpStatus();
             updateAlignmentPanel();
-            rebuildGalleryExhibitTour({ reason: "enter-edit-mode", recalculateAutoOrder: true, force: true });
+            refreshGalleryExhibitTourOrderBadges();
             updateGalleryTourOrderUi();
         } else {
             resetViewerWASDMovementRuntime(true);
@@ -30146,7 +32094,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             editButton.style.display = (!galleryEditorLoginEnabled || editorAuthenticated) ? "" : "none";
         }
 
-        if (editorAuthenticated && typeof wallPalette !== "undefined" && wallPalette) {
+        if (galleryAdminWorkspaceMode && editorAuthenticated && typeof wallPalette !== "undefined" && wallPalette) {
             Array.from(wallPalette.querySelectorAll("[data-wall-texture-url]")).forEach(function (swatch) {
                 var textureUrl = swatch.getAttribute("data-wall-texture-url");
 
@@ -30159,6 +32107,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 runGalleryFastStartIdleTask(rebuildWallColorSelectorTextures, 900);
             }
         }
+
+        if (galleryAdminWorkspaceMode && editorAuthenticated) startGalleryEditorTabHeartbeat();
+        else stopGalleryEditorTabHeartbeat(true);
 
         if (galleryEditorLoginEnabled && !editorAuthenticated && editMode) {
             editMode = false;
@@ -30183,15 +32134,24 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     setEditorAuthenticated(editorAuthenticated);
 
 
-    registerGalleryDomEvent("galleryUnsavedBeforeUnload", window, "beforeunload", function (event) {
-        if (!hasGalleryUnsavedChanges()) {
-            return;
-        }
+    function installGalleryAdminBeforeUnloadGuard() {
+        if (!galleryAdminWorkspaceMode && !galleryAdminDraftPreviewActive) return false;
+        registerGalleryDomEvent("galleryUnsavedBeforeUnload", window, "beforeunload", function (event) {
+            if (!hasGalleryUnsavedChanges()) return;
+            event.preventDefault();
+            event.returnValue = "";
+            return "";
+        });
+        return true;
+    }
 
-        event.preventDefault();
-        event.returnValue = "";
-        return "";
-    });
+    function removeGalleryAdminBeforeUnloadGuard() {
+        return unregisterGalleryDomEvent("galleryUnsavedBeforeUnload");
+    }
+
+    if (galleryAdminWorkspaceMode) {
+        installGalleryAdminBeforeUnloadGuard();
+    }
 
 
     function getMobileResponsiveWidth() {
@@ -30496,7 +32456,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         mobileJoystickKnob.style.transform =
             "translate(calc(-50% + " + dx + "px), calc(-50% + " + dy + "px))";
     }
-
 
 
     // STAGE 12C1 - VIEWER WASD / MOBILE JOYSTICK GROUNDED WALK
@@ -31458,10 +33417,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
 
-
-
-
-
     function createGalleryDesktopDpad() {
         var old = document.getElementById("galleryDesktopDpad");
         if (old) old.remove();
@@ -31645,19 +33600,19 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             "  return 1.0 - smoothstep(halfWidth - softness, halfWidth + softness, radial);",
             "}",
             "void main(void) {",
-            "  float darkHalo = softRing(0.275, 0.041, 0.010) * baseAlpha * 0.56;",
-            "  float brightCore = softRing(0.275, 0.018, 0.008) * baseAlpha;",
-            "  float glow = softRing(0.275, 0.070, 0.016) * baseAlpha * 0.15;",
+            "  float darkHalo = softRing(0.278, 0.018, 0.011) * baseAlpha * 0.22;",
+            "  float brightCore = softRing(0.278, 0.0085, 0.006) * baseAlpha * 0.88;",
+            "  float glow = softRing(0.278, 0.034, 0.014) * baseAlpha * 0.08;",
             "  float pulse = 0.0;",
             "  if (pulseProgress >= 0.0 && pulseProgress <= 1.0) {",
             "    float eased = 1.0 - pow(1.0 - pulseProgress, 3.0);",
-            "    float pulseRadius = 0.275 + eased * 0.155;",
-            "    pulse = softRing(pulseRadius, 0.017, 0.010) * pow(1.0 - pulseProgress, 1.35) * 0.96;",
+            "    float pulseRadius = 0.278 + eased * 0.115;",
+            "    pulse = softRing(pulseRadius, 0.009, 0.008) * pow(1.0 - pulseProgress, 1.55) * 0.68;",
             "  }",
             "  float alpha = max(max(darkHalo, glow), max(brightCore, pulse));",
             "  if (alpha < 0.003) discard;",
             "  float brightShare = clamp(max(brightCore, pulse) / max(alpha, 0.001), 0.0, 1.0);",
-            "  vec3 color = mix(vec3(0.035, 0.040, 0.050), vec3(1.0, 1.0, 1.0), brightShare);",
+            "  vec3 color = mix(vec3(0.12, 0.13, 0.15), vec3(0.98, 0.98, 0.97), brightShare);",
             "  gl_FragColor = vec4(color, alpha);",
             "}"
         ].join("\n");
@@ -31693,7 +33648,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         galleryFloorCursorRing = BABYLON.MeshBuilder.CreatePlane(
             "GalleryFloorCursorSdfPlane",
-            { size: 0.92, sideOrientation: BABYLON.Mesh.DOUBLESIDE },
+            { size: 0.78, sideOrientation: BABYLON.Mesh.DOUBLESIDE },
             scene
         );
         galleryFloorCursorRing.material = galleryFloorCursorRingMaterial;
@@ -31708,7 +33663,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         if (!point) return false;
         var ring = getOrCreateGalleryFloorCursorRing();
         ring.position.copyFrom(point);
-        ring.position.y += 0.018;
+        ring.position.y += 0.012;
         ring.rotationQuaternion = null;
         ring.rotation.x = Math.PI * 0.5;
         ring.rotation.y = 0;
@@ -31793,7 +33748,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         galleryFloorCursorHoverVisible = true;
         setGalleryFloorCursorWorldPosition(pick.pickedPoint);
-        galleryFloorCursorRingMaterial.setFloat("baseAlpha", 0.96);
+        galleryFloorCursorRingMaterial.setFloat("baseAlpha", 0.78);
     }
 
     function scheduleGalleryFloorCursorRingUpdate(event) {
@@ -32075,7 +34030,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
 
-
     function stopGalleryClickToMove(reason) {
         galleryGroundCollisionRuntime.clickToMove.active = false;
         galleryGroundCollisionRuntime.clickToMove.target = null;
@@ -32129,7 +34083,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
     registerGalleryBeforeRenderObserver("mainFrameTick", runGalleryFrameTick);
-
 
 
     // STAGE 12C43 - pointermove may fire much faster than the render loop.
@@ -32490,6 +34443,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         updateArtworkManagementUi();
         updateArtworkImageUi();
+        updateArtworkFrameUi();
         updateArtworkInfoUi();
         updateArtworkTransformUi();
         updateModel3dSlotUi();
@@ -32712,6 +34666,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             existing.isPickable = false;
             existing.renderingGroupId = 2;
 
+            tagGalleryExhibitionNode(existing, "artwork-selection-glow", getGalleryNodeOwnerId(artwork) || getActiveGalleryExhibitionId());
             artwork.metadata.selectionGlowPlane = existing;
         }
 
@@ -34519,55 +36474,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return !overlaps;
     }
 
-    function areArtworksOnSameWall(firstWallData, secondWallData) {
-
-        return (
-            firstWallData.wallAxis === secondWallData.wallAxis &&
-            Math.abs(firstWallData.wallValue - secondWallData.wallValue) <= artworkSameWallTolerance
-        );
-    }
-
-    function getArtworkRectForWallAxis(artwork, wallData, targetPosition, targetRotation) {
-
-        return getArtworkWallRect(
-            artwork,
-            wallData,
-            targetPosition || null,
-            targetRotation || null
-        );
-    }
-
-    function getArtworkCenterForWallAxis(artwork, wallData) {
-
-        var rect = getArtworkRectForWallAxis(
-            artwork,
-            wallData,
-            null,
-            null
-        );
-
-        return (
-            rect.minHorizontal +
-            rect.maxHorizontal
-        ) / 2;
-    }
-
-    function getSameWallArtworks(referenceWallData) {
-
-        return selectedArtworks.filter(function (artwork) {
-
-            var wallData = getArtworkWallDataFromRotation(
-                artwork
-            );
-
-            return areArtworksOnSameWall(
-                referenceWallData,
-                wallData
-            );
-        });
-    }
-
-    function getCameraRightFlatForAlignment() {
+                    function getCameraRightFlatForAlignment() {
 
         var cameraRight = camera.getDirection(
             new BABYLON.Vector3(1, 0, 0)
@@ -34681,31 +36588,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             visualCenter / cameraSign;
     }
 
-    function moveTargetPositionToCameraCenter(targetPosition, wallData, currentCameraCenter, targetCameraCenter) {
-
-        var cameraRight = getCameraRightFlatForAlignment();
-
-        var wallHorizontalVector =
-            wallData.horizontalAxis === "x"
-                ? new BABYLON.Vector3(1, 0, 0)
-                : new BABYLON.Vector3(0, 0, 1);
-
-        var influence = BABYLON.Vector3.Dot(
-            wallHorizontalVector,
-            cameraRight
-        );
-
-        if (Math.abs(influence) < 0.0001) {
-            return false;
-        }
-
-        targetPosition[wallData.horizontalAxis] +=
-            (targetCameraCenter - currentCameraCenter) / influence;
-
-        return true;
-    }
-
-    function alignSelectedArtworksLeftRightSingleWall(mode) {
+        function alignSelectedArtworksLeftRightSingleWall(mode) {
 
         if (selectedArtworks.length < 2) {
             return;
@@ -35362,27 +37245,11 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
     function updateArtworkLight(artwork) {
         syncDetachedArtworkImagePlane(artwork);
+        syncArtworkFrameRuntime(artwork);
         updateDisplaySpotLight(artwork);
     }
 
-    function getMeshesExcludedFromArtworkLights() {
-
-        var excludedMeshes = [];
-
-        floorMeshes.forEach(function (mesh) {
-            excludedMeshes.push(mesh);
-        });
-
-        artSpheres.forEach(function (slot) {
-            getModel3dSlotLightingMeshes(slot).forEach(function (mesh) {
-                excludedMeshes.push(mesh);
-            });
-        });
-
-        return excludedMeshes;
-    }
-
-    function refreshArtworkLightExclusions() {
+        function refreshArtworkLightExclusions() {
 
         artworkLights.forEach(function (lightData) {
             if (lightData && lightData.artwork) {
@@ -35391,20 +37258,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         });
     }
 
-    function createArtworkLight(artwork, index) {
-        // Stage 8M:
-        // Automatyczne lampy przy artworkach są wyłączone.
-        // Obrazy mają być tylko obrazami. Oświetlenie ma być dodawane ręcznie
-        // przez Local Lights Spot / Point albo przez przyszły system fake glow.
-        if (artwork && artwork.metadata) {
-            artwork.metadata.lampMesh = null;
-            artwork.metadata.spotLight = null;
-        }
-
-        return null;
-    }
-
-    // SHARED COLLISION-SAFE INSPECT PATH DEBUG
+        // SHARED COLLISION-SAFE INSPECT PATH DEBUG
     // Viewer click and Edit double-click use the same validated route runtime.
     // Generated connector points are internal and never editable waypoint state.
     var viewerSafeFocusPathDebug = null;
@@ -35802,199 +37656,64 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return true;
     }
 
-    // STAGE 12C62S6D - SUPABASE STATIC MODEL ASSETS
-    var gallerySupabaseModelsRootUrl = "https://bazbszvhoxmuekxahokc.supabase.co/storage/v1/object/public/berryboy-art-gallery-assets/Models/";
+    // STAGE 12C66C6C7C8 — SPACE-AGNOSTIC STARTUP ASSETS
+    // The engine no longer knows concrete GLB file names. They come from gallery-space-config.js.
+    var galleryFloorSpaceAsset = requireGallerySpaceAsset("floor");
+    var galleryWallSpaceAsset = requireGallerySpaceAsset("walls");
+    var galleryPropsSpaceAsset = requireGallerySpaceAsset("props");
+    var galleryCeilingSpaceAsset = requireGallerySpaceAsset("ceiling");
 
-    loadGalleryStartupAssetWithRetry(
-        "",
-        gallerySupabaseModelsRootUrl,
-        "Floor_segment.glb",
-        scene,
+    loadGalleryStartupAssetWithRetry("", galleryFloorSpaceAsset.rootUrl, galleryFloorSpaceAsset.deliveryFileName, scene,
         function (meshes) {
-
             floorMeshes = meshes.filter(mesh => mesh.name !== "__root__");
+            tagGallerySpaceCollection(floorMeshes, "floor");
+            registerGallerySpaceIntegrityBaseline("floor", floorMeshes);
             markGalleryGeometryDirty("floorImported");
-
-            floorMeshes.forEach(mesh => {
-                mesh.isPickable = true;
-
-                // Podloga odbiera cienie globalne i lokalne.
-                registerCommonShadowMesh(mesh, {
-                    global: true,
-                    local: true,
-                    receive: true,
-                    cast: false
-                });
-            });
-
+            floorMeshes.forEach(mesh => { mesh.isPickable = true; registerCommonShadowMesh(mesh, { global: true, local: true, receive: true, cast: false }); });
             freezeStaticGalleryMeshes(floorMeshes, "floor");
-            updateMobileFloorBounds();
-            rebuildGalleryStreamingZones("floor-imported");
-            refreshGalleryCurrentStreamingZone("floor-imported", true);
-            applyVisualReflectionSettings(readVisualSettingsFromScene());
-            refreshViewerCollisionMeshes();
-            refreshArtworkLightExclusions();
-            refreshPedestalLightIncludedMeshes();
-
+            updateMobileFloorBounds(); rebuildGalleryStreamingZones("floor-imported"); refreshGalleryCurrentStreamingZone("floor-imported", true);
+            applyVisualReflectionSettings(readVisualSettingsFromScene()); refreshViewerCollisionMeshes(); refreshArtworkLightExclusions(); refreshPedestalLightIncludedMeshes();
             assetLoaded("floor");
-        },
-        null,
-        function (scene, message, exception) {
-            console.error("Floor GLB load failed:", {
-                file: "Floor_segment.glb",
-                message: message,
-                exception: exception
-            });
-
-            assetLoaded("floor", true);
-        }
+        }, null,
+        function (scene, message, exception) { console.error("Floor Space asset load failed:", { spaceId: galleryActiveSpaceId, file: galleryFloorSpaceAsset.fileName, message: message, exception: exception }); assetLoaded("floor", true); },
+        ".glb"
     );
 
-    // STAGE 12C62S6D - SUPABASE STATIC MODELS ROOT
-    // Modele startowe sa teraz w publicznym buckecie Supabase, plasko w folderze Models/.
-    // GLB trzyma geometrie i zaleznosci w jednym pliku, wiec nie uzywamy juz folderow Floor/Wall/props/Ceiling z GitHub raw.
-    var wallModelRootUrl = gallerySupabaseModelsRootUrl;
-
-    loadGalleryStartupAssetWithRetry(
-        "",
-        wallModelRootUrl,
-        "Wall_segments.glb",
-        scene,
+    loadGalleryStartupAssetWithRetry("", galleryWallSpaceAsset.rootUrl, galleryWallSpaceAsset.deliveryFileName, scene,
         function (meshes) {
-
-            wallMeshes = meshes.filter(mesh => mesh.name !== "__root__");
-            markGalleryGeometryDirty("wallImported");
-
-            wallMeshes.forEach(mesh => {
-                mesh.isPickable = true;
-                registerViewerCollisionMesh(mesh, "wall");
-
-                if (mesh.material) {
-                    configureMaterialForCommonLighting(mesh.material);
-                    configureMeshMaterialForMainShadows(mesh);
-                }
-
-                registerCommonShadowMesh(mesh, {
-                    global: true,
-                    local: true,
-                    receive: true,
-                    cast: true
-                });
-            });
-
-            freezeStaticGalleryMeshes(wallMeshes, "wall");
-            console.log("Wall GLB loaded", {
-                rootUrl: wallModelRootUrl,
-                file: "Wall_segments.glb",
-                meshes: wallMeshes
-            });
-            refreshViewerCollisionMeshes();
-            refreshCommonLightingMaterialSupport();
-
-            assetLoaded("wall");
-        },
-        null,
-        function (scene, message, exception) {
-            console.error("Wall GLB load failed:", {
-                rootUrl: wallModelRootUrl,
-                file: "Wall_segments.glb",
-                message: message,
-                exception: exception
-            });
-
-            assetLoaded("wall", true);
-        }
+            wallMeshes = meshes.filter(mesh => mesh.name !== "__root__"); tagGallerySpaceCollection(wallMeshes, "wall"); registerGallerySpaceIntegrityBaseline("wall", wallMeshes); markGalleryGeometryDirty("wallImported");
+            wallMeshes.forEach(mesh => { mesh.isPickable = true; registerViewerCollisionMesh(mesh, "wall"); if (mesh.material) { configureMaterialForCommonLighting(mesh.material); configureMeshMaterialForMainShadows(mesh); } registerCommonShadowMesh(mesh, { global: true, local: true, receive: true, cast: true }); });
+            freezeStaticGalleryMeshes(wallMeshes, "wall"); console.log("Wall Space asset loaded", { spaceId: galleryActiveSpaceId, rootUrl: galleryWallSpaceAsset.rootUrl, file: galleryWallSpaceAsset.fileName, meshes: wallMeshes });
+            refreshViewerCollisionMeshes(); refreshCommonLightingMaterialSupport(); assetLoaded("wall");
+        }, null,
+        function (scene, message, exception) { console.error("Wall Space asset load failed:", { spaceId: galleryActiveSpaceId, rootUrl: galleryWallSpaceAsset.rootUrl, file: galleryWallSpaceAsset.fileName, message: message, exception: exception }); assetLoaded("wall", true); },
+        ".glb"
     );
 
-    // STAGE 12C62S6D - PROPS GLB SUPABASE PATH
-    // Props are loaded from the shared Supabase Models root.
-    loadGalleryStartupAssetWithRetry(
-        "",
-        gallerySupabaseModelsRootUrl,
-        "Props.glb",
-        scene,
+    loadGalleryStartupAssetWithRetry("", galleryPropsSpaceAsset.rootUrl, galleryPropsSpaceAsset.deliveryFileName, scene,
         function (meshes) {
-            meshes.forEach(mesh => {
-                mesh.isPickable = true;
-
-                if (mesh.name !== "__root__" && propMeshes.indexOf(mesh) === -1) {
-                    propMeshes.push(mesh);
-                    registerViewerCollisionMesh(mesh, "prop");
-                }
-
-                registerCommonShadowMesh(mesh, {
-                    global: true,
-                    local: true,
-                    receive: true,
-                    cast: true
-                });
-            });
-
+            meshes.forEach(mesh => { mesh.isPickable = true; if (mesh.name !== "__root__" && propMeshes.indexOf(mesh) === -1) { propMeshes.push(mesh); tagGallerySpaceNode(mesh, "prop"); registerViewerCollisionMesh(mesh, "prop"); } registerCommonShadowMesh(mesh, { global: true, local: true, receive: true, cast: true }); });
+            registerGallerySpaceIntegrityBaseline("prop", propMeshes);
             markGalleryObjectsDirty("propsImported");
+            freezeStaticGalleryMeshes(propMeshes, "prop");
+            propMeshes.forEach(function (mesh) { configureGalleryPropStreamingLod(mesh); if (mesh && mesh.setEnabled) mesh.setEnabled(true); });
             rebuildGalleryStreamingZones("props-imported");
-            propMeshes.forEach(function (mesh) { configureGalleryPropStreamingLod(mesh); });
             updateGalleryPropZoneActivation();
-            if (galleryFastStartRuntime && !galleryFastStartRuntime.interactionFinalizationComplete) {
-                galleryFastStartRuntime.startupBatchGlobalRefreshNeeded = true;
-            } else {
-                refreshViewerCollisionMeshes();
-                hydrateSavedLocalLightTargetsForAll("props-imported");
-            }
-
+            if (galleryFastStartRuntime && !galleryFastStartRuntime.interactionFinalizationComplete) galleryFastStartRuntime.startupBatchGlobalRefreshNeeded = true; else { refreshViewerCollisionMeshes(); hydrateSavedLocalLightTargetsForAll("props-imported"); }
             assetLoaded("props");
-        },
-        null,
-        function (scene, message, exception) {
-            console.error("Props GLB load failed:", {
-                file: "Props.glb",
-                message: message,
-                exception: exception
-            });
-
-            assetLoaded("props", true);
-        }
+        }, null,
+        function (scene, message, exception) { console.error("Props Space asset load failed:", { spaceId: galleryActiveSpaceId, file: galleryPropsSpaceAsset.fileName, message: message, exception: exception }); assetLoaded("props", true); },
+        ".glb"
     );
 
-    // STAGE 12C62S6D - CEILING GLB SUPABASE PATH
-    // Ceiling is loaded from the shared Supabase Models root.
-    loadGalleryStartupAssetWithRetry(
-        "",
-        gallerySupabaseModelsRootUrl,
-        "Ceiling.glb",
-        scene,
+    loadGalleryStartupAssetWithRetry("", galleryCeilingSpaceAsset.rootUrl, galleryCeilingSpaceAsset.deliveryFileName, scene,
         function (meshes) {
-            meshes.forEach(mesh => {
-                mesh.isPickable = true;
-
-                if (mesh.name !== "__root__" && ceilingMeshes.indexOf(mesh) === -1) {
-                    ceilingMeshes.push(mesh);
-                }
-
-                // Sufit moze teraz odbierac lokalne swiatlo jako osobny target per lampa.
-                // Nie dodajemy go jako lokalnego castera, zeby nie blokowal swiatla z lamp.
-                registerCommonShadowMesh(mesh, {
-                    global: true,
-                    local: true,
-                    receive: true,
-                    cast: false
-                });
-            });
-
-            markGalleryGeometryDirty("ceilingImported");
-            freezeStaticGalleryMeshes(ceilingMeshes, "ceiling");
-
-            assetLoaded("ceiling");
-        },
-        null,
-        function (scene, message, exception) {
-            console.error("Ceiling GLB load failed:", {
-                file: "Ceiling.glb",
-                message: message,
-                exception: exception
-            });
-
-            assetLoaded("ceiling", true);
-        }
+            meshes.forEach(mesh => { mesh.isPickable = true; if (mesh.name !== "__root__" && ceilingMeshes.indexOf(mesh) === -1) { ceilingMeshes.push(mesh); tagGallerySpaceNode(mesh, "ceiling"); } registerCommonShadowMesh(mesh, { global: true, local: true, receive: true, cast: false }); });
+            registerGallerySpaceIntegrityBaseline("ceiling", ceilingMeshes);
+            markGalleryGeometryDirty("ceilingImported"); freezeStaticGalleryMeshes(ceilingMeshes, "ceiling"); assetLoaded("ceiling");
+        }, null,
+        function (scene, message, exception) { console.error("Ceiling Space asset load failed:", { spaceId: galleryActiveSpaceId, file: galleryCeilingSpaceAsset.fileName, message: message, exception: exception }); assetLoaded("ceiling", true); },
+        ".glb"
     );
 
 
@@ -36107,7 +37826,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         (runtime.meshes || []).forEach(addNode);
         addNode(runtime.root);
 
-        (runtime.meshes || []).forEach(function (mesh) { unregisterCommonShadowMesh(mesh, "model-runtime-dispose"); });
+        var slotOwnerId = getGalleryNodeOwnerId(slot) || getActiveGalleryExhibitionId();
+        nodes = nodes.filter(function (node) { return canGalleryExhibitionMutateNode(node, "dispose-model-runtime", slotOwnerId); });
+        (runtime.meshes || []).forEach(function (mesh) { if (nodes.indexOf(mesh) !== -1) unregisterCommonShadowMesh(mesh, "model-runtime-dispose"); });
         nodes.forEach(function (node) {
             try { if (node && node.getClassName && /Mesh/.test(node.getClassName())) unregisterCommonShadowMesh(node, "model-node-dispose"); } catch (error) {}
         });
@@ -36119,9 +37840,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         });
         nodes.forEach(function (node) {
             if (!node || (node.isDisposed && node.isDisposed())) return;
-            try { if (node.dispose) node.dispose(true, false); } catch (error) {
-                try { if (node.dispose) node.dispose(); } catch (fallbackError) {}
-            }
+            // Nodes are already collected deepest-first. Never recurse here: an accidental
+            // cross-owner child must not be destroyed together with a model runtime.
+            disposeGalleryExhibitionOwnedNode(node, slotOwnerId, "dispose-model-runtime-node", false);
         });
         slot.metadata.model3dRuntime = null;
         pruneGalleryShadowRegistries("model-runtime-disposed");
@@ -36391,7 +38112,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 loadedAt: pendingRuntime.loadedAt
             };
             if (galleryFastStartRuntime && galleryFastStartRuntime.startupBatchHydrationActive) galleryFastStartRuntime.startupBatchGlobalRefreshNeeded = true;
-            else { refreshViewerCollisionMeshes(); refreshCommonLightingMaterialSupport(); hydrateSavedLocalLightTargetsForAll("model3d-loaded"); }
+            else { refreshViewerExhibitionCollisionMeshes(); refreshCommonLightingMaterialSupport(); hydrateSavedLocalLightTargetsForAll("model3d-loaded"); }
             updateViewerModePlaceholderVisibility();
             updateModel3dSlotUi();
             return true;
@@ -36762,8 +38483,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
 
-
-
     function getModel3dSlotSelectionMeshes(slot) {
         var result = [];
 
@@ -36880,19 +38599,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         slot.metadata.model3dSelectionGlowMeshes = appliedMeshes;
     }
 
-    function setModel3dSlotSelected(slot, isSelected) {
-        if (!slot) {
-            return;
-        }
-
-        clearModel3dSlotSelectionGlow(slot);
-
-        if (isSelected) {
-            applyModel3dSlotSelectionGlow(slot, slot === referenceSculpture ? "reference" : slot === primarySculpture ? "primary" : "default");
-        }
-    }
-
-    function refreshSculptureOutlines() {
+        function refreshSculptureOutlines() {
         artSpheres.forEach(function (slot) {
             clearModel3dSlotSelectionGlow(slot);
         });
@@ -37076,13 +38783,15 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             console.warn("Model slot dispose warning:", slotDisposeError);
         }
 
-        refreshViewerCollisionMeshes();
-        refreshCommonLightingMaterialSupport();
-        refreshAllCommonLocalLightTargets();
-        refreshAllLocalSpotShadows();
-        updateViewerModePlaceholderVisibility();
-        updateModel3dSlotUi();
-        updateEditHelpStatus();
+        if (!galleryExhibitionRuntime.switching) {
+            refreshViewerCollisionMeshes();
+            refreshCommonLightingMaterialSupport();
+            refreshAllCommonLocalLightTargets();
+            refreshAllLocalSpotShadows();
+            updateViewerModePlaceholderVisibility();
+            updateModel3dSlotUi();
+            updateEditHelpStatus();
+        }
 
         if (!options.silent) {
             notifyGalleryStatus("Deleted sculpture/model slot. Save state to keep the change.");
@@ -37252,6 +38961,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         pedestal.metadata.isModel3dSlot = true;
         pedestal.metadata.model3d = pedestal.metadata.model3d || null;
         pedestal.metadata.model3dRuntime = pedestal.metadata.model3dRuntime || null;
+        tagGalleryExhibitionNode(pedestal, "sculpture-slot", options.exhibitionId || getActiveGalleryExhibitionId());
         ensureModel3dSlotIdentity(pedestal, options.slotId || ("model3d-" + slotName));
         forgetDeletedModel3dSlotName(pedestal.name);
         artSpheres.push(pedestal);
@@ -37260,8 +38970,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         markGalleryObjectsDirty("sculptureSlotAdded");
         ensureModel3dSlotUnifiedStructure(pedestal, index);
         createPedestalLight(pedestal, index);
-        refreshArtworkLightExclusions();
-        refreshAllCommonLocalLightTargets();
+        if (!galleryExhibitionRuntime.hydrationActive && !(galleryFastStartRuntime && galleryFastStartRuntime.stateApplyActive)) {
+            refreshArtworkLightExclusions();
+            refreshAllCommonLocalLightTargets();
+        }
         if (typeof updateViewerModePlaceholderVisibility === "function") updateViewerModePlaceholderVisibility();
         return pedestal;
     }
@@ -37311,6 +39023,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         artwork.metadata.spotLight = null;
         artwork.metadata.isDynamicArtwork = false;
         artwork.metadata.deletedArtwork = false;
+        tagGalleryExhibitionNode(artwork, "artwork", getActiveGalleryExhibitionId());
         ensureArtworkIdentity(artwork);
         updateArtworkCreateCounterFromName(artwork.name);
         registerViewerCollisionMesh(artwork, "artwork");
@@ -37327,8 +39040,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         artworks.push(artwork);
         markGalleryObjectsDirty("artworkAdded");
 
-        // Auto artwork lights disabled in Stage 8M.
-        refreshAllCommonLocalLightTargets();
+        // Auto artwork lights disabled in Stage 8M. During atomic hydration the global
+        // light target refresh is committed once after the complete exhibition layer exists.
+        if (!galleryExhibitionRuntime.hydrationActive && !(galleryFastStartRuntime && galleryFastStartRuntime.stateApplyActive)) refreshAllCommonLocalLightTargets();
     });
 
 
@@ -37469,6 +39183,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         artwork.metadata.isDynamicArtwork = !!options.isDynamicArtwork;
         artwork.metadata.deletedArtwork = false;
         artwork.metadata.createdAt = options.createdAt || new Date().toISOString();
+        tagGalleryExhibitionNode(artwork, "artwork", options.exhibitionId || getActiveGalleryExhibitionId());
         ensureArtworkIdentity(artwork, options.artworkId);
 
         registerViewerCollisionMesh(artwork, "artwork");
@@ -37483,7 +39198,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         artworks.push(artwork);
         markGalleryObjectsDirty("artworkAdded");
         updateArtworkCreateCounterFromName(artwork.name);
-        refreshAllCommonLocalLightTargets();
+        if (!galleryExhibitionRuntime.hydrationActive && !(galleryFastStartRuntime && galleryFastStartRuntime.stateApplyActive)) {
+            refreshAllCommonLocalLightTargets();
+        }
 
         return artwork;
     }
@@ -37944,6 +39661,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         var imageMaterial = artwork.metadata.imageMaterial || null;
 
         if (imagePlane && !imagePlane.isDisposed()) {
+            if (!canGalleryExhibitionMutateNode(imagePlane, "dispose-artwork-image", getGalleryNodeOwnerId(artwork) || getActiveGalleryExhibitionId())) return;
             try {
                 imagePlane.dispose();
             } catch (error) {
@@ -37980,6 +39698,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         if (!artwork || (artwork.isDisposed && artwork.isDisposed())) {
             return false;
         }
+        if (!canGalleryExhibitionMutateNode(artwork, "delete-artwork", getGalleryNodeOwnerId(artwork) || getActiveGalleryExhibitionId())) return false;
 
         var isDynamicArtwork = !!(
             artwork.metadata &&
@@ -37994,6 +39713,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         unregisterViewerCollisionMesh(artwork);
         invalidateArtworkTextureLoad(artwork, "artwork-deleted");
         unregisterArtworkIdentity(artwork);
+        disposeArtworkFrameRuntime(artwork);
         disposeArtworkImageOnly(artwork);
 
         artworks = artworks.filter(function (candidate) {
@@ -38011,15 +39731,21 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
 
         try {
-            artwork.dispose();
+            if (artwork.metadata && artwork.metadata.selectionGlowPlane && !(artwork.metadata.selectionGlowPlane.isDisposed && artwork.metadata.selectionGlowPlane.isDisposed())) {
+                disposeGalleryExhibitionOwnedNode(artwork.metadata.selectionGlowPlane, getGalleryNodeOwnerId(artwork) || getActiveGalleryExhibitionId(), "dispose-artwork-selection-glow", false);
+                artwork.metadata.selectionGlowPlane = null;
+            }
+            disposeGalleryExhibitionOwnedNode(artwork, getGalleryNodeOwnerId(artwork) || getActiveGalleryExhibitionId(), "dispose-artwork-root", false);
         } catch (error) {
             console.warn("Artwork mesh dispose warning:", error);
         }
 
         markGalleryObjectsDirty("artworkDeleted");
-        refreshAllCommonLocalLightTargets();
-        updateEditHelpStatus();
-        updateAlignmentPanel();
+        if (!galleryExhibitionRuntime.switching) {
+            refreshAllCommonLocalLightTargets();
+            updateEditHelpStatus();
+            updateAlignmentPanel();
+        }
 
         return true;
     }
@@ -38175,7 +39901,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         if (
             mesh.metadata &&
-            mesh.metadata.isArtworkImagePlane
+            (mesh.metadata.isArtworkImagePlane || mesh.metadata.isArtworkFrameMesh)
         ) {
             var baseName = mesh.metadata.parentArtworkName || (
                 mesh.name
@@ -38288,15 +40014,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 : BABYLON.Vector3.Zero();
     }
 
-    function getModel3dSlotFocusTarget(slot) {
-        var meshes = getModel3dSlotSelectionMeshes(slot).filter(function (mesh) {
-            return !!(mesh && mesh.isVisible !== false && mesh.visibility !== 0);
-        });
-
-        return meshes.length ? meshes[0] : slot;
-    }
-
-
+    
     function getGalleryInfoAuthorInitials(authorName) {
         var parts = String(authorName || "")
             .trim()
@@ -38434,8 +40152,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         artworkInfoPopup.setAttribute("aria-hidden", "true");
         currentArtworkInfoPopupMesh = null;
     }
-
-
 
 
     // ============================================================
@@ -39222,7 +40938,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         } finally { galleryExhibitTourRuntime.rebuilding=false; }
     }
 
-    function scheduleGalleryExhibitTourRebuild(reason,options) {
+        function scheduleGalleryExhibitTourRebuild(reason,options) {
         options=options||{}; galleryExhibitTourRuntime.dirty=true; if(galleryExhibitTourRuntime.rebuildTimer)clearTimeout(galleryExhibitTourRuntime.rebuildTimer);
         galleryExhibitTourRuntime.rebuildTimer=setTimeout(function(){galleryExhibitTourRuntime.rebuildTimer=null;rebuildGalleryExhibitTour({reason:reason||"scheduled",recalculateAutoOrder:!!options.recalculateAutoOrder,force:true});},Math.max(40,Number(options.delayMs)||180));
     }
@@ -39446,25 +41162,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         lastReason: "initial"
     };
 
-    function isGalleryInspectLayoutElementVisible(element) {
-        if (!element || !element.getBoundingClientRect) {
-            return false;
-        }
-
-        var rect = element.getBoundingClientRect();
-        if (!rect || rect.width <= 1 || rect.height <= 1) {
-            return false;
-        }
-
-        try {
-            var style = window.getComputedStyle(element);
-            return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity || 1) > 0.01;
-        } catch (error) {
-            return true;
-        }
-    }
-
-    function updateGalleryMobileInspectSafeFrame(reason) {
+        function updateGalleryMobileInspectSafeFrame(reason) {
         if (!artworkInfoPopup) return galleryMobileInspectSafeFrameRuntime;
 
         var mobile = getArtworkInfoPopupMobileMode();
@@ -41080,6 +42778,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                     },
                     material: getMaterialState(artwork.material),
                     image: getArtworkImageStateForSave(artwork),
+                    frame: getArtworkFrameStateForSave(artwork),
                     artworkTransform: getArtworkTransformState(artwork),
                     focusCamera: getGalleryObjectFocusCameraState(artwork),
                     tourOrder: getGalleryExhibitTourOrder(artwork),
@@ -41116,7 +42815,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         };
     }
 
-    function applyEditorState(editorState) {
+    function applyEditorState(editorState, options) {
+        options = options || {};
         if (!editorState || typeof editorState !== "object") {
             return;
         }
@@ -41125,7 +42825,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             selectedWallMaterial = wallColorMaterials[editorState.selectedWallMaterialName];
         }
 
-        if (Array.isArray(editorState.walls)) {
+        if (!options.skipWalls && Array.isArray(editorState.walls)) {
             editorState.walls.forEach(function (wallState) {
                 if (!wallState) {
                     return;
@@ -41150,7 +42850,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 ) {
                     applyWallColorMaterialToSegment(
                         wallMesh,
-                        wallColorMaterials[colorName]
+                        wallColorMaterials[colorName],
+                        { runtimeRestore: true }
                     );
                 }
             });
@@ -41318,6 +43019,20 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                     }
                 }
 
+                if (artworkState.frame || artworkState.artworkFrame) {
+                    Promise.resolve(applyArtworkFrameState(
+                        artwork,
+                        artworkState.frame || artworkState.artworkFrame,
+                        { silent: true, markDirty: false }
+                    )).catch(function (frameRestoreError) {
+                        console.warn("Artwork frame restore warning:", frameRestoreError);
+                    });
+                } else {
+                    nextArtworkFrameLoadGeneration(artwork);
+                    disposeArtworkFrameRuntime(artwork);
+                    if (artwork.metadata) artwork.metadata.artworkFrame = null;
+                }
+
                 artwork.computeWorldMatrix(true);
                 updateArtworkLight(artwork);
             });
@@ -41453,26 +43168,965 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             });
         }
 
+        if (!options.deferGlobalRefresh) {
+            if (galleryFastStartRuntime.stateApplyActive || galleryExhibitionRuntime.hydrationActive) {
+                // C6C8C7 atomic state apply: structure first, one global commit later.
+                galleryFastStartRuntime.startupBatchGlobalRefreshNeeded = true;
+                galleryExhibitTourRuntime.dirty = true;
+                updateGalleryTourOrderUi();
+            } else {
+                refreshCommonLightingMaterialSupport();
+                refreshArtworkLightExclusions();
+                refreshPedestalLightIncludedMeshes();
+                refreshAllCommonLocalLightTargets();
+                refreshAllLocalSpotShadows();
+                updateEditHelpStatus();
+                updateAlignmentPanel();
+                updateFocusCameraUi();
+                rebuildGalleryExhibitTour({ reason: "editor-state-applied", recalculateAutoOrder: true, force: true });
+                updateGalleryTourOrderUi();
+            }
+        }
+    }
+
+    function cloneGalleryJson(value) {
+        try { return JSON.parse(JSON.stringify(value)); } catch (error) { return value; }
+    }
+
+    function captureGallerySpaceBaseline() {
+        if (galleryExhibitionRuntime.spaceBaselineCaptured && galleryExhibitionRuntime.spaceBaseline) return galleryExhibitionRuntime.spaceBaseline;
+        var wallMaterialRefs = {};
+        var wallStates = (wallMeshes || []).map(function (wallMesh) {
+            if (!wallMesh) return null;
+            wallMaterialRefs[wallMesh.name] = wallMesh.material || null;
+            return { name: wallMesh.name, materialName: wallMesh.material ? wallMesh.material.name : null, colorName: getWallColorNameFromMaterial(wallMesh.material), isSegment: isPaintableWallSegmentMesh(wallMesh), paintable: isPaintableWallSegmentMesh(wallMesh), segmentColorName: wallMesh.metadata ? wallMesh.metadata.wallSegmentColorName || null : null };
+        }).filter(Boolean);
+        galleryExhibitionRuntime.spaceBaseline = { spaceId: galleryActiveSpaceId, wallMaterialRefs: wallMaterialRefs, wallStates: wallStates, lighting: cloneGalleryJson(lightingDefaultSettings || readLightingSettingsFromScene()), visualSettings: cloneGalleryJson(visualDefaultSettings || readVisualSettingsFromScene()) };
+        galleryExhibitionRuntime.spaceBaselineCaptured = true;
+        return galleryExhibitionRuntime.spaceBaseline;
+    }
+
+    function createBlankGalleryExhibitionState(exhibition) {
+        var baseline = captureGallerySpaceBaseline();
+        exhibition = normalizeGalleryExhibitionRecord(exhibition) || galleryExhibitionRuntime.active || getGalleryFallbackMainExhibition();
+        return {
+            version: "Gallery_V0_11_WEB", savedAt: new Date().toISOString(), context: { exhibitionId: exhibition.id, spaceId: galleryActiveSpaceId },
+            editor: { version: "Gallery_V0_11_editor", selectedWallMaterialName: null, walls: cloneGalleryJson(baseline.wallStates || []), deletedArtworkNames: [], deletedModel3dSlotNames: [], authors: [], artworks: [], spheres: [] },
+            lighting: cloneGalleryJson(baseline.lighting || readLightingSettingsFromScene()), visualSettings: cloneGalleryJson(baseline.visualSettings || visualDefaultSettings), lightingPresets: [],
+            localLights: { version: "Gallery_V0_11_local_lights", createCounter: 0, activeGroupIndex: 0, groups: [[], [], [], [], [], [], [], []], lights: [] }
+        };
+    }
+
+    function resetGalleryRuntimeToBlankExhibition() {
+        galleryExhibitionRuntime.fullRuntimeResetCount += 1;
+        galleryExhibitionRuntime.lastSwitchMode = "full-runtime-reset";
+        var baseline = captureGallerySpaceBaseline();
+        var previousSwitchingState = galleryExhibitionRuntime.switching;
+        galleryExhibitionRuntime.switching = true;
+        try {
+            closeGalleryInspect("exhibition-switch"); clearEditSelection();
+            (artworks || []).slice().forEach(function (artwork) { deleteArtworkRuntimeNoLights(artwork); });
+            deletedArtworkNames = []; artworkCreateCounter = 0; artworkAuthors = [];
+            (artSpheres || []).slice().forEach(function (slot) { deleteModel3dSlotRuntime(slot, { skipRememberDeleted: true, silent: true }); });
+            deletedModel3dSlotNames = []; galleryModel3dCreateCounter = 0; setSculptureSelectionState([], null, null);
+            (localLightItems || []).slice().forEach(function (item) { disposeLocalLightItem(item); });
+            localLightItems = []; selectedLocalLights = []; localLightGroups = [[], [], [], [], [], [], [], []]; activeLocalGroupIndex = 0; localLightCreateCounter = 0; cleanDisabledLocalLightPool();
+            (wallMeshes || []).forEach(function (wallMesh) { if (!wallMesh) return; var baselineMaterial = baseline.wallMaterialRefs ? baseline.wallMaterialRefs[wallMesh.name] : null; if (baselineMaterial) wallMesh.material = baselineMaterial; wallMesh.metadata = wallMesh.metadata || {}; wallMesh.metadata.wallSegmentColorName = null; });
+            selectedWallMaterial = null;
+            if (baseline.lighting) applyLightingSettings(cloneGalleryJson(baseline.lighting), true, true);
+            if (baseline.visualSettings) applyVisualSettings(normalizeVisualSettings(cloneGalleryJson(baseline.visualSettings)), true, true);
+            writeLightingPresets([]);
+            if (galleryFastStartRuntime.stateApplyActive || galleryExhibitionRuntime.hydrationActive) {
+                galleryFastStartRuntime.startupBatchGlobalRefreshNeeded = true;
+                galleryExhibitTourRuntime.dirty = true;
+                updateViewerModePlaceholderVisibility();
+                updateLocalLightsUi();
+                updateGalleryTourOrderUi();
+            } else {
+                refreshViewerCollisionMeshes(); refreshCommonLightingMaterialSupport(); refreshArtworkLightExclusions(); refreshPedestalLightIncludedMeshes(); refreshAllCommonLocalLightTargets(); refreshAllLocalSpotShadows(); updateViewerModePlaceholderVisibility(); updateLocalLightsUi(); updateEditHelpStatus(); updateAlignmentPanel(); rebuildGalleryExhibitTour({ reason: "exhibition-runtime-reset", recalculateAutoOrder: true, force: true }); updateGalleryTourOrderUi();
+            }
+        } finally { galleryExhibitionRuntime.switching = previousSwitchingState; }
+    }
+
+    function getGalleryExhibitionSpaceId(exhibition) {
+        return normalizeGalleryRuntimeId(exhibition && exhibition.space_id, galleryActiveSpaceId);
+    }
+
+    function areGalleryExhibitionsInSameSpace(firstExhibition, secondExhibition) {
+        return getGalleryExhibitionSpaceId(firstExhibition) === getGalleryExhibitionSpaceId(secondExhibition);
+    }
+
+    function getGalleryStateEditorSection(state) {
+        if (!state || typeof state !== "object") return {};
+        return state.editor && typeof state.editor === "object" ? state.editor : state;
+    }
+
+    function getGalleryTargetWallColorName(wallState) {
+        if (!wallState || typeof wallState !== "object") return null;
+        return normalizeWallColorName(
+            wallState.segmentColorName ||
+            wallState.colorName ||
+            (wallState.materialName && wallState.materialName.indexOf("WallColor_") === 0
+                ? wallState.materialName.replace("WallColor_", "")
+                : null)
+        );
+    }
+
+    function applyGalleryWallPresentationDelta(state) {
+        var baseline = captureGallerySpaceBaseline();
+        var editorState = getGalleryStateEditorSection(state);
+        var targetByName = Object.create(null);
+        if (Array.isArray(editorState.walls)) {
+            editorState.walls.forEach(function (wallState) {
+                if (wallState && wallState.name) targetByName[wallState.name] = wallState;
+            });
+        }
+
+        (wallMeshes || []).forEach(function (wallMesh) {
+            if (!wallMesh) return;
+            var wallState = targetByName[wallMesh.name] || null;
+            var targetColorName = getGalleryTargetWallColorName(wallState);
+            var currentColorName = normalizeWallColorName(
+                (wallMesh.metadata && wallMesh.metadata.wallSegmentColorName) ||
+                getWallColorNameFromMaterial(wallMesh.material)
+            );
+
+            if (targetColorName && wallColorMaterials[targetColorName] && isPaintableWallSegmentMesh(wallMesh)) {
+                if (currentColorName !== targetColorName) {
+                    applyWallColorMaterialToSegment(wallMesh, wallColorMaterials[targetColorName], { runtimeRestore: true });
+                }
+                return;
+            }
+
+            var baselineMaterial = baseline.wallMaterialRefs ? baseline.wallMaterialRefs[wallMesh.name] : null;
+            if (baselineMaterial && wallMesh.material !== baselineMaterial) {
+                wallMesh.material = baselineMaterial;
+                configureMeshMaterialForMainShadows(wallMesh);
+            }
+            wallMesh.metadata = wallMesh.metadata || {};
+            wallMesh.metadata.wallSegmentColorName = null;
+            wallMesh.metadata.wallSegmentPaintMode = null;
+            wallMesh.metadata.wallSegmentPaintedAt = null;
+        });
+    }
+
+    function isGalleryNodeEnabled(node) {
+        if (!node || (node.isDisposed && node.isDisposed())) return false;
+        try { return node.isEnabled ? !!node.isEnabled() : true; } catch (error) { return true; }
+    }
+
+    function setGalleryNodeEnabledSafe(node, enabled) {
+        if (!node || (node.isDisposed && node.isDisposed()) || !node.setEnabled) return false;
+        try {
+            if (enabled && node.metadata && node.metadata._galleryOwnerSweepDisabled && isGalleryEntityOwnerActive(node)) {
+                restoreGalleryOwnedEntitySweepState(node);
+            }
+            node.setEnabled(!!enabled);
+            return true;
+        } catch (error) { return false; }
+    }
+
+    // C6C8C7 — SCENE OWNERSHIP CONTRACT
+    // Space nodes are immutable infrastructure. Exhibition cleanup may only mutate nodes
+    // explicitly owned by the active/parked exhibition layer.
+    function tagGallerySceneOwner(node, ownerType, ownerId, role) {
+        if (!node) return node;
+        node.metadata = node.metadata || {};
+        node.metadata.galleryOwnerType = ownerType || null;
+        node.metadata.galleryOwnerId = ownerId || null;
+        node.metadata.galleryOwnerEpoch = Number(galleryExhibitionRuntime.transitionEpoch) || 0;
+        if (role) node.metadata.galleryOwnerRole = role;
+        if (ownerType === "exhibition" && ownerId && !isGalleryExhibitionOwnerActive(ownerId)) {
+            setGalleryOwnedEntityDisabled(node, "created-for-inactive-owner");
+            galleryExhibitionRuntime.staleOwnerCallbacksBlocked += 1;
+        }
+        return node;
+    }
+
+    function tagGallerySpaceNode(node, role) {
+        return tagGallerySceneOwner(node, "space", galleryActiveSpaceId, role || "space-node");
+    }
+
+    function tagGalleryExhibitionNode(node, role, exhibitionId) {
+        return tagGallerySceneOwner(node, "exhibition", normalizeGalleryRuntimeId(exhibitionId || getActiveGalleryExhibitionId(), "main"), role || "exhibition-node");
+    }
+
+    function tagGalleryExhibitionLight(light, role, exhibitionId) {
+        if (!light) return light;
+        var ownerId = normalizeGalleryRuntimeId(exhibitionId || getActiveGalleryExhibitionId(), "main");
+        tagGallerySceneOwner(light, "exhibition", ownerId, role || "exhibition-light");
+        return light;
+    }
+
+    function isGallerySpaceOwnedNode(node) {
+        return !!(node && node.metadata && node.metadata.galleryOwnerType === "space");
+    }
+
+    function getGalleryNodeOwnerId(node) {
+        return node && node.metadata ? String(node.metadata.galleryOwnerId || "") : "";
+    }
+
+    function getGallerySceneOwnerEntities() {
+        var entities = [];
+        function add(list) {
+            (list || []).forEach(function (entity) {
+                if (entity && entities.indexOf(entity) === -1) entities.push(entity);
+            });
+        }
+        add(scene && scene.meshes);
+        add(scene && scene.transformNodes);
+        add(scene && scene.lights);
+        return entities;
+    }
+
+    function isGalleryExhibitionOwnedEntity(entity) {
+        return !!(entity && entity.metadata && entity.metadata.galleryOwnerType === "exhibition" && entity.metadata.galleryOwnerId);
+    }
+
+    function setGalleryOwnedEntityDisabled(entity, reason) {
+        if (!entity || (entity.isDisposed && entity.isDisposed())) return false;
+        var isLight = !!(scene && scene.lights && scene.lights.indexOf(entity) !== -1);
+        entity.metadata = entity.metadata || {};
+        if (!entity.metadata._galleryOwnerSweepState) {
+            entity.metadata._galleryOwnerSweepState = {
+                enabled: isGalleryNodeEnabled(entity),
+                intensity: isLight && isFinite(Number(entity.intensity)) ? Number(entity.intensity) : null
+            };
+        }
+        entity.metadata._galleryOwnerSweepDisabled = true;
+        entity.metadata._galleryOwnerSweepReason = reason || "inactive-owner";
+        var changed = false;
+        try {
+            if (entity.setEnabled && isGalleryNodeEnabled(entity)) { entity.setEnabled(false); changed = true; }
+        } catch (error) {}
+        if (isLight) {
+            try { if (isFinite(Number(entity.intensity)) && Number(entity.intensity) !== 0) { entity.intensity = 0; changed = true; } } catch (error) {}
+        }
+        return changed;
+    }
+
+    function restoreGalleryOwnedEntitySweepState(entity) {
+        if (!entity || !entity.metadata || !entity.metadata._galleryOwnerSweepDisabled) return false;
+        var state = entity.metadata._galleryOwnerSweepState || {};
+        var isLight = !!(scene && scene.lights && scene.lights.indexOf(entity) !== -1);
+        try { if (entity.setEnabled) entity.setEnabled(state.enabled !== false); } catch (error) {}
+        if (isLight && state.intensity !== null && state.intensity !== undefined) {
+            try { entity.intensity = Number(state.intensity) || 0; } catch (error) {}
+        }
+        entity.metadata._galleryOwnerSweepDisabled = false;
+        entity.metadata._galleryOwnerSweepReason = null;
+        entity.metadata._galleryOwnerSweepState = null;
+        return true;
+    }
+
+    function sweepGalleryInactiveExhibitionOwners(activeExhibitionId, reason) {
+        var activeId = normalizeGalleryRuntimeId(activeExhibitionId || getActiveGalleryExhibitionId(), "main");
+        var disabledNodes = 0;
+        var disabledLights = 0;
+        var detected = 0;
+        getGallerySceneOwnerEntities().forEach(function (entity) {
+            if (!isGalleryExhibitionOwnedEntity(entity)) return;
+            var ownerId = normalizeGalleryRuntimeId(getGalleryNodeOwnerId(entity), "main");
+            if (!ownerId || ownerId === activeId) return;
+            var wasEnabled = isGalleryNodeEnabled(entity);
+            var isLight = !!(scene && scene.lights && scene.lights.indexOf(entity) !== -1);
+            var hadIntensity = isLight && isFinite(Number(entity.intensity)) && Number(entity.intensity) > 0.000001;
+            if (wasEnabled || hadIntensity) detected += 1;
+            if (setGalleryOwnedEntityDisabled(entity, reason || "inactive-exhibition-owner")) {
+                if (isLight) disabledLights += 1;
+                else disabledNodes += 1;
+            }
+        });
+        galleryExhibitionRuntime.ownerSweepRuns += 1;
+        galleryExhibitionRuntime.ownerSweepDisabledNodes += disabledNodes;
+        galleryExhibitionRuntime.ownerSweepDisabledLights += disabledLights;
+        galleryExhibitionRuntime.orphanSweepDetections += detected;
+        galleryExhibitionRuntime.ownerSweepLast = {
+            activeId: activeId, reason: reason || "inactive-exhibition-owner", detected: detected,
+            disabledNodes: disabledNodes, disabledLights: disabledLights, at: Date.now()
+        };
+        return galleryExhibitionRuntime.ownerSweepLast;
+    }
+
+    function restoreGalleryKnownOwnerEntity(entity, expectedOwnerId) {
+        if (!entity || !isGalleryExhibitionOwnedEntity(entity)) return false;
+        if (normalizeGalleryRuntimeId(getGalleryNodeOwnerId(entity), "main") !== normalizeGalleryRuntimeId(expectedOwnerId, "main")) return false;
+        return restoreGalleryOwnedEntitySweepState(entity);
+    }
+
+    function restoreGalleryKnownOwnerEntityTree(entity, expectedOwnerId) {
+        if (!entity) return 0;
+        var ownerId = normalizeGalleryRuntimeId(expectedOwnerId, "main");
+        var restored = restoreGalleryKnownOwnerEntity(entity, ownerId) ? 1 : 0;
+        try {
+            var descendants = entity.getDescendants ? (entity.getDescendants(false) || []) : [];
+            descendants.forEach(function (child) {
+                if (restoreGalleryKnownOwnerEntity(child, ownerId)) restored += 1;
+            });
+        } catch (error) {}
+        return restored;
+    }
+
+    function isGalleryEntityOwnerActive(entity) {
+        if (!isGalleryExhibitionOwnedEntity(entity)) return true;
+        return isGalleryExhibitionOwnerActive(getGalleryNodeOwnerId(entity));
+    }
+
+    function canGalleryExhibitionMutateNode(node, operation, expectedExhibitionId) {
+        if (!node) return true;
+        if (isGallerySpaceOwnedNode(node)) {
+            galleryExhibitionRuntime.ownershipViolations += 1;
+            galleryExhibitionRuntime.blockedSpaceDisposals += /dispose|delete|remove/i.test(String(operation || "")) ? 1 : 0;
+            console.error("C6C8C7 ownership barrier blocked Exhibition mutation of Space node", {
+                operation: operation || "mutation",
+                node: node.name || null,
+                role: node.metadata && node.metadata.galleryOwnerRole || null,
+                spaceId: node.metadata && node.metadata.galleryOwnerId || null
+            });
+            return false;
+        }
+        var ownerType = node.metadata && node.metadata.galleryOwnerType;
+        var ownerId = getGalleryNodeOwnerId(node);
+        var expectedId = normalizeGalleryRuntimeId(expectedExhibitionId || getActiveGalleryExhibitionId(), "main");
+        if (ownerType === "exhibition" && ownerId && expectedId && ownerId !== expectedId) {
+            galleryExhibitionRuntime.ownershipViolations += 1;
+            console.warn("C6C8C7 ownership barrier blocked cross-exhibition mutation", { operation: operation || "mutation", node: node.name || null, ownerId: ownerId, expectedId: expectedId });
+            return false;
+        }
+        return true;
+    }
+
+    function disposeGalleryExhibitionOwnedNode(node, expectedExhibitionId, operation, recurse) {
+        if (!node || (node.isDisposed && node.isDisposed())) return true;
+        if (!canGalleryExhibitionMutateNode(node, operation || "dispose-exhibition-node", expectedExhibitionId)) return false;
+        if (recurse && node.getDescendants) {
+            try {
+                var descendants = node.getDescendants(false) || [];
+                for (var i = 0; i < descendants.length; i += 1) {
+                    if (!canGalleryExhibitionMutateNode(descendants[i], (operation || "dispose-exhibition-node") + "-descendant", expectedExhibitionId)) return false;
+                }
+            } catch (error) {}
+        }
+        try {
+            if (node.dispose) node.dispose(!recurse, false);
+            return true;
+        } catch (error) {
+            console.warn("C6C8C7 exhibition node dispose warning", { operation: operation || "dispose", node: node.name || null, error: error });
+            return false;
+        }
+    }
+
+    function tagGallerySpaceAncestorChain(node, role) {
+        var parent = node && node.parent ? node.parent : null;
+        var guard = 0;
+        while (parent && guard < 64) {
+            tagGallerySpaceNode(parent, (role || "space") + "-ancestor");
+            parent = parent.parent || null;
+            guard += 1;
+        }
+    }
+
+    function tagGallerySpaceCollection(nodes, role) {
+        (nodes || []).forEach(function (node) {
+            if (!node) return;
+            tagGallerySpaceNode(node, role);
+            tagGallerySpaceAncestorChain(node, role);
+        });
+    }
+
+    function captureGallerySpaceNodeIntegrityEntry(node, role) {
+        var ancestors = [];
+        var parent = node && node.parent ? node.parent : null;
+        var guard = 0;
+        while (parent && guard < 64) {
+            tagGallerySpaceNode(parent, (role || "space") + "-ancestor");
+            ancestors.push({
+                ref: parent,
+                name: parent.name || "",
+                enabled: isGalleryNodeEnabled(parent),
+                isVisible: parent.isVisible === undefined ? null : !!parent.isVisible,
+                visibility: typeof parent.visibility === "number" ? parent.visibility : null
+            });
+            parent = parent.parent || null;
+            guard += 1;
+        }
+        return {
+            ref: node,
+            name: node && node.name || "",
+            enabled: isGalleryNodeEnabled(node),
+            isVisible: node && node.isVisible === undefined ? null : !!(node && node.isVisible),
+            visibility: node && typeof node.visibility === "number" ? node.visibility : null,
+            ancestors: ancestors
+        };
+    }
+
+    function registerGallerySpaceIntegrityBaseline(role, nodes) {
+        var key = String(role || "space");
+        galleryExhibitionRuntime.spaceIntegrityBaseline[key] = (nodes || []).filter(Boolean).map(function (node) {
+            tagGallerySpaceNode(node, key);
+            tagGallerySpaceAncestorChain(node, key);
+            return captureGallerySpaceNodeIntegrityEntry(node, key);
+        });
+    }
+
+    function verifyGalleryCanonicalSpaceIntegrity(reason) {
+        var baseline = galleryExhibitionRuntime.spaceIntegrityBaseline || {};
+        var snapshot = {
+            reason: "canonical-space-baseline",
+            spaceId: galleryActiveSpaceId,
+            wall: baseline.wall || [],
+            floor: baseline.floor || [],
+            ceiling: baseline.ceiling || [],
+            prop: baseline.prop || [],
+            at: 0
+        };
+        return verifyGallerySpaceIntegrity(snapshot, reason || "canonical-space-integrity");
+    }
+
+    function captureGallerySpaceIntegritySnapshot(reason) {
+        function capture(nodes, role) {
+            return (nodes || []).filter(Boolean).map(function (node) {
+                tagGallerySpaceNode(node, role);
+                tagGallerySpaceAncestorChain(node, role);
+                return captureGallerySpaceNodeIntegrityEntry(node, role);
+            });
+        }
+        return {
+            reason: reason || "snapshot",
+            spaceId: galleryActiveSpaceId,
+            wall: capture(wallMeshes, "wall"),
+            floor: capture(floorMeshes, "floor"),
+            ceiling: capture(ceilingMeshes, "ceiling"),
+            prop: capture(propMeshes, "prop"),
+            at: Date.now()
+        };
+    }
+
+    function verifyGallerySpaceIntegrity(snapshot, reason) {
+        if (!snapshot) return { ok: true, reason: reason || "no-snapshot", failures: [] };
+        var failures = [];
+        function verifyIntegrityEntry(kind, entry, label, enforceVisibility) {
+            var node = entry && entry.ref;
+            var nodeLabel = label || (entry && entry.name) || "unnamed";
+            if (!node) { failures.push(kind + ":missing-ref:" + nodeLabel); return; }
+            if (node.isDisposed && node.isDisposed()) { failures.push(kind + ":disposed:" + nodeLabel); return; }
+            if (!isGallerySpaceOwnedNode(node)) failures.push(kind + ":ownership-lost:" + nodeLabel);
+            if (entry.enabled && !isGalleryNodeEnabled(node)) failures.push(kind + ":disabled:" + nodeLabel);
+            if (enforceVisibility && entry.isVisible === true && node.isVisible === false) failures.push(kind + ":hidden:" + nodeLabel);
+            if (enforceVisibility && entry.visibility !== null && entry.visibility > 0.0001 && typeof node.visibility === "number" && node.visibility <= 0.0001) failures.push(kind + ":visibility-zero:" + nodeLabel);
+            (entry.ancestors || []).forEach(function (ancestorEntry) {
+                verifyIntegrityEntry(kind + "-ancestor", ancestorEntry, (ancestorEntry.name || "ancestor") + "<" + nodeLabel, true);
+            });
+        }
+        function verify(kind, currentNodes, expectedEntries) {
+            currentNodes = (currentNodes || []).filter(Boolean);
+            expectedEntries = expectedEntries || [];
+            if (currentNodes.length !== expectedEntries.length) failures.push(kind + ":count " + expectedEntries.length + "->" + currentNodes.length);
+            var enforceVisibility = kind !== "prop";
+            expectedEntries.forEach(function (entry) {
+                var node = entry.ref;
+                if (!node || currentNodes.indexOf(node) === -1) failures.push(kind + ":missing:" + (entry.name || "unnamed"));
+                else verifyIntegrityEntry(kind, entry, entry.name || "unnamed", enforceVisibility);
+            });
+        }
+        verify("wall", wallMeshes, snapshot.wall);
+        verify("floor", floorMeshes, snapshot.floor);
+        verify("ceiling", ceilingMeshes, snapshot.ceiling);
+        verify("prop", propMeshes, snapshot.prop);
+        var result = { ok: failures.length === 0, reason: reason || "verify", failures: failures, spaceId: galleryActiveSpaceId, checkedAt: Date.now(), counts: { wall: wallMeshes.length, floor: floorMeshes.length, ceiling: ceilingMeshes.length, prop: propMeshes.length } };
+        galleryExhibitionRuntime.lastSpaceIntegrity = result;
+        if (!result.ok) {
+            console.error("C6C8C7 SPACE INTEGRITY FAILURE", result);
+            throw new Error("Space integrity guard blocked a corrupted exhibition transition: " + failures.join(", "));
+        }
+        return result;
+    }
+
+    function isGalleryExhibitionOwnerActive(ownerId) {
+        return normalizeGalleryRuntimeId(ownerId, "main") === normalizeGalleryRuntimeId(getActiveGalleryExhibitionId(), "main");
+    }
+
+    function cancelGalleryLocalLightDeferredWork(item) {
+        if (!item) return;
+        try { cancelLocalLightAtomicTargetCommit(item); } catch (error) {}
+        try { cancelDeferredLocalLightFinalRetarget(item); } catch (error) {}
+        try { clearLocalLightParameterFinalCommit(item); } catch (error) {}
+        if (item._localSpotShadowBudgetDisposeTimer) { clearTimeout(item._localSpotShadowBudgetDisposeTimer); item._localSpotShadowBudgetDisposeTimer = null; }
+    }
+
+    function scheduleGalleryDeferredTourAfterHydration(reason) {
+        galleryExhibitionRuntime.deferredTourReason = reason || "atomic-hydration";
+        galleryExhibitTourRuntime.dirty = true;
+        if (galleryExhibitTourRuntime.rebuildTimer) {
+            clearTimeout(galleryExhibitTourRuntime.rebuildTimer);
+            galleryExhibitTourRuntime.rebuildTimer = null;
+        }
+        // C6C8C9: path precomputation is debug/navigation work, not a readiness dependency.
+        // Keep the saved order/badges immediately, but build paths only when a caller
+        // explicitly asks for a current Tour (or debug visualization is enabled).
+        refreshGalleryExhibitTourOrderBadges();
+        updateGalleryTourOrderUi();
+        if (galleryExhibitTourRuntime.debugVisible) {
+            runGalleryFastStartIdleTask(function () {
+                if (galleryExhibitTourRuntime.debugVisible && galleryExhibitTourRuntime.dirty) {
+                    rebuildGalleryExhibitTour({ reason: galleryExhibitionRuntime.deferredTourReason + "-debug", recalculateAutoOrder: false, force: true });
+                }
+            }, 1800);
+        }
+    }
+
+    function setGalleryArtworkResidentEnabled(artwork, enabled, savedState) {
+        if (!artwork || (artwork.isDisposed && artwork.isDisposed())) return;
+        var state = savedState || {};
+        if (enabled) restoreGalleryKnownOwnerEntity(artwork, getGalleryNodeOwnerId(artwork));
+        setGalleryNodeEnabledSafe(artwork, enabled ? state.artwork !== false : false);
+        var imagePlane = artwork.metadata && artwork.metadata.imagePlane;
+        if (imagePlane) { if (enabled) restoreGalleryKnownOwnerEntity(imagePlane, getGalleryNodeOwnerId(artwork)); setGalleryNodeEnabledSafe(imagePlane, enabled ? state.imagePlane !== false : false); }
+        var glowPlane = artwork.metadata && artwork.metadata.selectionGlowPlane;
+        if (glowPlane) setGalleryNodeEnabledSafe(glowPlane, enabled ? state.glowPlane !== false : false);
+        var frameRuntime = artwork.metadata && artwork.metadata.artworkFrameRuntime;
+        if (frameRuntime && frameRuntime.root) {
+            if (enabled) restoreGalleryKnownOwnerEntityTree(frameRuntime.root, getGalleryNodeOwnerId(artwork));
+            setGalleryNodeEnabledSafe(frameRuntime.root, enabled ? state.frameRoot !== false : false);
+        }
+    }
+
+    function setGallerySculptureResidentEnabled(slot, enabled, savedState) {
+        if (!slot || (slot.isDisposed && slot.isDisposed())) return;
+        var state = savedState || {};
+        if (enabled) restoreGalleryKnownOwnerEntity(slot, getGalleryNodeOwnerId(slot));
+        setGalleryNodeEnabledSafe(slot, enabled ? state.slot !== false : false);
+        var proxy = slot.metadata && slot.metadata.sculptureCollisionProxy;
+        if (proxy) setGalleryNodeEnabledSafe(proxy, enabled ? state.proxy !== false : false);
+        var placeholder = slot.metadata && (slot.metadata.placeholderMesh || slot.metadata.sculptureMesh);
+        if (placeholder) setGalleryNodeEnabledSafe(placeholder, enabled ? state.placeholder !== false : false);
+        var runtime = slot.metadata && slot.metadata.model3dRuntime;
+        (runtime && runtime.rootNodes || []).forEach(function (node, idx) {
+            var states = state.runtimeRoots || [];
+            if (enabled) restoreGalleryKnownOwnerEntityTree(node, getGalleryNodeOwnerId(slot));
+            setGalleryNodeEnabledSafe(node, enabled ? states[idx] !== false : false);
+        });
+    }
+
+    function setGalleryLocalLightResidentEnabled(item, enabled, savedState) {
+        if (!item || item.hardDisposed) return;
+        var state = savedState || {};
+        if (!enabled) cancelGalleryLocalLightDeferredWork(item);
+        if (item.rootNode) setGalleryNodeEnabledSafe(item.rootNode, enabled ? state.rootNode !== false : false);
+        if (item.markerMesh) setGalleryNodeEnabledSafe(item.markerMesh, enabled ? state.markerMesh !== false : false);
+        if (item.targetMesh && item.targetMesh.metadata && item.targetMesh.metadata.galleryOwnerType === "exhibition") setGalleryNodeEnabledSafe(item.targetMesh, enabled ? state.targetMesh !== false : false);
+        if (item.helperMesh) setGalleryNodeEnabledSafe(item.helperMesh, enabled ? state.helperMesh !== false : false);
+        (item.helperMeshes || []).forEach(function (helper, idx) {
+            var states = state.helperMeshes || [];
+            setGalleryNodeEnabledSafe(helper, enabled ? states[idx] !== false : false);
+        });
+        if (item.light) {
+            if (enabled) restoreGalleryKnownOwnerEntity(item.light, item.exhibitionId || getActiveGalleryExhibitionId());
+            if (!enabled) {
+                try { if (item.light.setEnabled) item.light.setEnabled(false); } catch (error) {}
+                try { item.light.intensity = 0; } catch (error) {}
+            } else if (isGalleryExhibitionOwnerActive(item.exhibitionId || getActiveGalleryExhibitionId())) {
+                applyLocalLightUserState(item);
+            }
+        }
+    }
+
+    function captureGalleryExhibitionLayerNodeStates(layer) {
+        layer.artworkNodeStates = (layer.artworks || []).map(function (artwork) {
+            var imagePlane = artwork && artwork.metadata ? artwork.metadata.imagePlane : null;
+            var glowPlane = artwork && artwork.metadata ? artwork.metadata.selectionGlowPlane : null;
+            var frameRuntime = artwork && artwork.metadata ? artwork.metadata.artworkFrameRuntime : null;
+            return {
+                artwork: isGalleryNodeEnabled(artwork),
+                imagePlane: imagePlane ? isGalleryNodeEnabled(imagePlane) : false,
+                glowPlane: glowPlane ? isGalleryNodeEnabled(glowPlane) : false,
+                frameRoot: frameRuntime && frameRuntime.root ? isGalleryNodeEnabled(frameRuntime.root) : false
+            };
+        });
+        layer.sculptureNodeStates = (layer.artSpheres || []).map(function (slot) {
+            var proxy = slot && slot.metadata ? slot.metadata.sculptureCollisionProxy : null;
+            var placeholder = slot && slot.metadata ? (slot.metadata.placeholderMesh || slot.metadata.sculptureMesh) : null;
+            var runtime = slot && slot.metadata ? slot.metadata.model3dRuntime : null;
+            return {
+                slot: isGalleryNodeEnabled(slot),
+                proxy: proxy ? isGalleryNodeEnabled(proxy) : false,
+                placeholder: placeholder ? isGalleryNodeEnabled(placeholder) : false,
+                runtimeRoots: (runtime && runtime.rootNodes || []).map(isGalleryNodeEnabled)
+            };
+        });
+        layer.localLightNodeStates = (layer.localLightItems || []).map(function (item) {
+            return {
+                rootNode: item && item.rootNode ? isGalleryNodeEnabled(item.rootNode) : false,
+                markerMesh: item && item.markerMesh ? isGalleryNodeEnabled(item.markerMesh) : false,
+                targetMesh: item && item.targetMesh && item.targetMesh.metadata && item.targetMesh.metadata.galleryOwnerType === "exhibition" ? isGalleryNodeEnabled(item.targetMesh) : false,
+                helperMesh: item && item.helperMesh ? isGalleryNodeEnabled(item.helperMesh) : false,
+                helperMeshes: (item && item.helperMeshes || []).map(isGalleryNodeEnabled)
+            };
+        });
+    }
+
+    function detachGalleryActiveLayerGlobals() {
+        artworks = [];
+        artSpheres = [];
+        artworkLights = [];
+        artworkAuthors = [];
+        deletedArtworkNames = [];
+        deletedModel3dSlotNames = [];
+        artworkCreateCounter = 0;
+        galleryModel3dCreateCounter = 0;
+        localLightItems = [];
+        selectedLocalLights = [];
+        localLightGroups = [[], [], [], [], [], [], [], []];
+        activeLocalGroupIndex = 0;
+        localLightCreateCounter = 0;
+        localLightSoftDeletedItems = [];
+        setSculptureSelectionState([], null, null);
+        selectedWallMaterial = null;
+        galleryArtworkResidencyRuntime.desiredFullIds = Object.create(null);
+        galleryArtworkResidencyRuntime.desiredFullOrder = [];
+    }
+
+    function parkActiveGalleryExhibitionLayer(exhibition, runtimeState) {
+        exhibition = normalizeGalleryExhibitionRecord(exhibition) || galleryExhibitionRuntime.active;
+        if (!exhibition || !exhibition.id) return null;
+        var layerId = normalizeGalleryRuntimeId(exhibition.id, "main");
+        closeGalleryInspect("exhibition-layer-park");
+        clearEditSelection();
+        var layer = {
+            id: layerId,
+            exhibition: Object.assign({}, exhibition),
+            spaceId: getGalleryExhibitionSpaceId(exhibition),
+            state: runtimeState && typeof runtimeState === "object" ? cloneGalleryJson(runtimeState) : serializeGalleryState(),
+            artworks: artworks.slice(),
+            artSpheres: artSpheres.slice(),
+            artworkLights: artworkLights.slice(),
+            artworkAuthors: artworkAuthors.slice(),
+            deletedArtworkNames: deletedArtworkNames.slice(),
+            deletedModel3dSlotNames: deletedModel3dSlotNames.slice(),
+            artworkCreateCounter: artworkCreateCounter,
+            galleryModel3dCreateCounter: galleryModel3dCreateCounter,
+            localLightItems: localLightItems.slice(),
+            localLightGroups: localLightGroups.map(function (group) { return Array.isArray(group) ? group.slice() : []; }),
+            activeLocalGroupIndex: activeLocalGroupIndex,
+            localLightCreateCounter: localLightCreateCounter,
+            localLightSoftDeletedItems: localLightSoftDeletedItems.slice(),
+            parkedAt: Date.now(),
+            lastUsedAt: Date.now()
+        };
+        captureGalleryExhibitionLayerNodeStates(layer);
+
+        layer.artworks.forEach(function (artwork, index) {
+            // In-flight texture/frame callbacks must never revive a parked owner into the active layer.
+            artwork.metadata = artwork.metadata || {};
+            artwork.metadata.exhibitionLayerParked = true;
+            invalidateArtworkTextureLoad(artwork, "exhibition-layer-park");
+            nextArtworkFrameLoadGeneration(artwork);
+            unregisterArtworkIdentity(artwork);
+            setGalleryArtworkResidentEnabled(artwork, false, layer.artworkNodeStates[index]);
+        });
+        layer.artSpheres.forEach(function (slot, index) {
+            nextModel3dSlotLoadGeneration(slot, "exhibition-layer-park");
+            unregisterModel3dSlotIdentity(slot);
+            setGallerySculptureResidentEnabled(slot, false, layer.sculptureNodeStates[index]);
+        });
+        layer.localLightItems.forEach(function (item, index) {
+            if (item) item.exhibitionLayerParked = true;
+            setGalleryLocalLightResidentEnabled(item, false, layer.localLightNodeStates[index]);
+        });
+
+        if (Array.isArray(galleryFastStartRuntime.deferredArtworkLoads)) {
+            galleryFastStartRuntime.deferredArtworkLoads = galleryFastStartRuntime.deferredArtworkLoads.filter(function (entry) {
+                return !(entry && layer.artworks.indexOf(entry.artwork) !== -1);
+            });
+        }
+        if (Array.isArray(galleryFastStartRuntime.deferredFullArtworkLoads)) {
+            galleryFastStartRuntime.deferredFullArtworkLoads = galleryFastStartRuntime.deferredFullArtworkLoads.filter(function (entry) {
+                return !(entry && layer.artworks.indexOf(entry.artwork) !== -1);
+            });
+        }
+        if (Array.isArray(galleryFastStartRuntime.deferredModelLoads)) {
+            galleryFastStartRuntime.deferredModelLoads = galleryFastStartRuntime.deferredModelLoads.filter(function (entry) {
+                return !(entry && layer.artSpheres.indexOf(entry.slot) !== -1);
+            });
+        }
+
+        // C6C8C9: references are not the source of truth. Catch every detached helper/image/light
+        // tagged with the outgoing owner, even if an older async callback lost its canonical reference.
+        sweepGalleryInactiveExhibitionOwners("__parking__", "park-owner-layer-" + layerId);
+
+        galleryExhibitionRuntime.layerResidency[layerId] = layer;
+        galleryExhibitionRuntime.residentLayerParks += 1;
+        galleryExhibitionRuntime.lastResidentLayerAction = "park";
+        galleryExhibitionRuntime.lastResidentLayerId = layerId;
+        detachGalleryActiveLayerGlobals();
+        return layer;
+    }
+
+    function restoreGalleryExhibitionLayer(exhibitionId) {
+        exhibitionId = normalizeGalleryRuntimeId(exhibitionId, "main");
+        var layer = galleryExhibitionRuntime.layerResidency[exhibitionId] || null;
+        if (!layer || layer.spaceId !== galleryActiveSpaceId) {
+            galleryExhibitionRuntime.residentLayerMisses += 1;
+            galleryExhibitionRuntime.lastResidentLayerAction = "miss";
+            galleryExhibitionRuntime.lastResidentLayerId = exhibitionId;
+            return null;
+        }
+        delete galleryExhibitionRuntime.layerResidency[exhibitionId];
+        artworks = layer.artworks || [];
+        artSpheres = layer.artSpheres || [];
+        artworkLights = layer.artworkLights || [];
+        artworkAuthors = layer.artworkAuthors || [];
+        deletedArtworkNames = layer.deletedArtworkNames || [];
+        deletedModel3dSlotNames = layer.deletedModel3dSlotNames || [];
+        artworkCreateCounter = Number(layer.artworkCreateCounter) || 0;
+        galleryModel3dCreateCounter = Number(layer.galleryModel3dCreateCounter) || 0;
+        localLightItems = layer.localLightItems || [];
+        localLightGroups = layer.localLightGroups || [[], [], [], [], [], [], [], []];
+        activeLocalGroupIndex = Number(layer.activeLocalGroupIndex) || 0;
+        localLightCreateCounter = Number(layer.localLightCreateCounter) || 0;
+        localLightSoftDeletedItems = layer.localLightSoftDeletedItems || [];
+
+        artworks.forEach(function (artwork, index) {
+            if (!artwork || (artwork.isDisposed && artwork.isDisposed())) return;
+            artwork.metadata = artwork.metadata || {};
+            artwork.metadata.exhibitionLayerParked = false;
+            ensureArtworkIdentity(artwork, artwork.metadata && artwork.metadata.artworkId);
+            setGalleryArtworkResidentEnabled(artwork, true, layer.artworkNodeStates && layer.artworkNodeStates[index]);
+            var imageState = getArtworkImageState(artwork);
+            var imagePlane = artwork.metadata && artwork.metadata.imagePlane;
+            if (imageState && (!imagePlane || !artwork.metadata.imageMaterial)) queueGalleryFastStartArtworkLoad(artwork, imageState);
+            var frameState = artwork.metadata && artwork.metadata.artworkFrame;
+            if (frameState && !(artwork.metadata && artwork.metadata.artworkFrameRuntime)) {
+                Promise.resolve(applyArtworkFrameState(artwork, frameState, { silent: true, markDirty: false })).catch(function () {});
+            }
+        });
+        artSpheres.forEach(function (slot, index) {
+            if (!slot || (slot.isDisposed && slot.isDisposed())) return;
+            ensureModel3dSlotIdentity(slot, slot.metadata && slot.metadata.model3dSlotId);
+            setGallerySculptureResidentEnabled(slot, true, layer.sculptureNodeStates && layer.sculptureNodeStates[index]);
+            var modelState = getModel3dState(slot);
+            if (modelState && !(slot.metadata && slot.metadata.model3dRuntime)) queueGalleryFastStartModelLoad(slot, modelState);
+        });
+        localLightItems.forEach(function (item, index) {
+            if (item) item.exhibitionLayerParked = false;
+            setGalleryLocalLightResidentEnabled(item, true, layer.localLightNodeStates && layer.localLightNodeStates[index]);
+        });
+        setSculptureSelectionState([], null, null);
+        layer.lastUsedAt = Date.now();
+        sweepGalleryInactiveExhibitionOwners(exhibitionId, "resident-layer-restored");
+        galleryExhibitionRuntime.residentLayerHits += 1;
+        galleryExhibitionRuntime.lastResidentLayerAction = "restore";
+        galleryExhibitionRuntime.lastResidentLayerId = exhibitionId;
+        return layer;
+    }
+
+    function disposeParkedGalleryExhibitionLayer(layer) {
+        if (!layer) return false;
+        (layer.artworks || []).forEach(function (artwork) {
+            if (!artwork || (artwork.isDisposed && artwork.isDisposed())) return;
+            invalidateArtworkTextureLoad(artwork, "exhibition-layer-evict");
+            unregisterArtworkIdentity(artwork);
+            disposeArtworkFrameRuntime(artwork);
+            disposeArtworkImageOnly(artwork);
+            disposeGalleryExhibitionOwnedNode(artwork, layer.id, "evict-artwork-root", false);
+        });
+        (layer.artSpheres || []).forEach(function (slot) {
+            if (!slot || (slot.isDisposed && slot.isDisposed())) return;
+            nextModel3dSlotLoadGeneration(slot, "exhibition-layer-evict");
+            disposeModel3dSlotRuntime(slot);
+            disposeSculptureCollisionProxy(slot);
+            var placeholder = slot.metadata && (slot.metadata.placeholderMesh || slot.metadata.sculptureMesh);
+            if (placeholder && !(placeholder.isDisposed && placeholder.isDisposed())) disposeGalleryExhibitionOwnedNode(placeholder, layer.id, "evict-sculpture-placeholder", false);
+            unregisterModel3dSlotIdentity(slot);
+            disposeGalleryExhibitionOwnedNode(slot, layer.id, "evict-sculpture-slot", false);
+        });
+        (layer.localLightItems || []).concat(layer.localLightSoftDeletedItems || []).filter(function (item, index, array) {
+            return item && array.indexOf(item) === index;
+        }).forEach(function (item) {
+            cancelGalleryLocalLightDeferredWork(item);
+            try { if (item.localShadowGenerator && item.localShadowGenerator.dispose) item.localShadowGenerator.dispose(); } catch (error) {}
+            try { if (item.light && item.light.dispose) item.light.dispose(); } catch (error) {}
+            (item.helperMeshes || []).forEach(function (helper) { disposeGalleryExhibitionOwnedNode(helper, layer.id, "evict-local-light-helper", false); });
+            if (item.helperMesh && (item.helperMeshes || []).indexOf(item.helperMesh) === -1) disposeGalleryExhibitionOwnedNode(item.helperMesh, layer.id, "evict-local-light-helper", false);
+            if (item.targetMesh) disposeGalleryExhibitionOwnedNode(item.targetMesh, layer.id, "evict-local-light-target", false);
+            if (item.markerMesh) disposeGalleryExhibitionOwnedNode(item.markerMesh, layer.id, "evict-local-light-marker", false);
+            if (item.rootNode) disposeGalleryExhibitionOwnedNode(item.rootNode, layer.id, "evict-local-light-root", false);
+            item.hardDisposed = true;
+        });
+        return true;
+    }
+
+    function pruneGalleryExhibitionLayerResidency(excludeId) {
+        var maxParked = Math.max(0, Number(galleryExhibitionRuntime.maxParkedLayers) || 0);
+        var ids = Object.keys(galleryExhibitionRuntime.layerResidency || {}).filter(function (id) { return id !== excludeId; });
+        if (ids.length <= maxParked) return 0;
+        ids.sort(function (a, b) {
+            var left = galleryExhibitionRuntime.layerResidency[a];
+            var right = galleryExhibitionRuntime.layerResidency[b];
+            return Number(left && left.lastUsedAt || left && left.parkedAt || 0) - Number(right && right.lastUsedAt || right && right.parkedAt || 0);
+        });
+        var removed = 0;
+        while (ids.length > maxParked) {
+            var id = ids.shift();
+            var layer = galleryExhibitionRuntime.layerResidency[id];
+            if (!layer) continue;
+            disposeParkedGalleryExhibitionLayer(layer);
+            delete galleryExhibitionRuntime.layerResidency[id];
+            galleryExhibitionRuntime.residentLayerEvictions += 1;
+            galleryExhibitionRuntime.lastResidentLayerAction = "evict";
+            galleryExhibitionRuntime.lastResidentLayerId = id;
+            removed += 1;
+        }
+        return removed;
+    }
+
+    function applyGalleryResidentLayerPresentation(state, reason) {
+        galleryExhibitionRuntime.deltaSwitchActive = true;
+        try {
+            applyGalleryWallPresentationDelta(state);
+            var baseline = captureGallerySpaceBaseline();
+            var targetLighting = state && state.lighting ? state.lighting : baseline.lighting;
+            var targetVisual = state && state.visualSettings ? normalizeVisualSettings(state.visualSettings) : normalizeVisualSettings(baseline.visualSettings || visualDefaultSettings);
+            if (targetLighting) applyLightingSettings(cloneGalleryJson(targetLighting), true, true);
+            if (targetVisual) applyVisualSettings(targetVisual, true, true, { reason: reason || "resident-layer-resume" });
+            writeLightingPresets(state && Array.isArray(state.lightingPresets) ? state.lightingPresets : []);
+            updateLightingPresetRows();
+        } finally {
+            finalizeGallerySameSpaceExhibitionDelta(reason || "resident-layer-resume");
+        }
+    }
+
+    function clearGalleryExhibitionOwnedRuntime() {
+        closeGalleryInspect("same-space-exhibition-switch");
+        clearEditSelection();
+        (artworks || []).slice().forEach(function (artwork) { deleteArtworkRuntimeNoLights(artwork); });
+        deletedArtworkNames = [];
+        artworkCreateCounter = 0;
+        artworkAuthors = [];
+        (artSpheres || []).slice().forEach(function (slot) {
+            deleteModel3dSlotRuntime(slot, { skipRememberDeleted: true, silent: true });
+        });
+        deletedModel3dSlotNames = [];
+        galleryModel3dCreateCounter = 0;
+        setSculptureSelectionState([], null, null);
+        (localLightItems || []).slice().forEach(function (item) { disposeLocalLightItem(item); });
+        localLightItems = [];
+        selectedLocalLights = [];
+        localLightGroups = [[], [], [], [], [], [], [], []];
+        activeLocalGroupIndex = 0;
+        localLightCreateCounter = 0;
+        cleanDisabledLocalLightPool();
+        selectedWallMaterial = null;
+    }
+
+    function prepareGallerySameSpaceExhibitionDelta(state) {
+        galleryExhibitionRuntime.deltaSwitchActive = true;
+        clearGalleryExhibitionOwnedRuntime();
+        applyGalleryWallPresentationDelta(state);
+
+        var baseline = captureGallerySpaceBaseline();
+        var targetLighting = state && state.lighting ? state.lighting : baseline.lighting;
+        var targetVisual = state && state.visualSettings
+            ? normalizeVisualSettings(state.visualSettings)
+            : normalizeVisualSettings(baseline.visualSettings || visualDefaultSettings);
+        if (targetLighting) applyLightingSettings(cloneGalleryJson(targetLighting), true, true);
+        if (targetVisual) applyVisualSettings(targetVisual, true, true, { reason: "same-space-exhibition-delta" });
+        writeLightingPresets(state && Array.isArray(state.lightingPresets) ? state.lightingPresets : []);
+        updateLightingPresetRows();
+    }
+
+    function finalizeGallerySameSpaceExhibitionDelta(reason, profile) {
+        var finalizeStartedAt = getGalleryPerformanceNow();
+        refreshViewerExhibitionCollisionMeshes();
         refreshCommonLightingMaterialSupport();
         refreshArtworkLightExclusions();
         refreshPedestalLightIncludedMeshes();
-
-        if (!galleryFastStartRuntime.stateApplyActive) {
-            refreshAllCommonLocalLightTargets();
-            refreshAllLocalSpotShadows();
+        // Prefer the target names persisted with the Exhibition. A full segment-aware
+        // retarget and shadow refresh are post-hydration work and must not block the switch.
+        var unresolvedLightTargets = hydrateSavedLocalLightTargetsForAll(reason || "same-space-atomic-hydration");
+        if (unresolvedLightTargets && unresolvedLightTargets.length) {
+            scheduleLoadTimeLocalLightRetarget("same-space-exhibition-delta-unresolved", localLightLoadTimeRetargetDelayMs);
         }
-
+        var lightingCommitEpoch = Number(galleryExhibitionRuntime.transitionEpoch) || 0;
+        var lightingCommitExhibitionId = getActiveGalleryExhibitionId();
+        runGalleryFastStartIdleTask(function () {
+            if (lightingCommitEpoch !== (Number(galleryExhibitionRuntime.transitionEpoch) || 0) || !isGalleryExhibitionOwnerActive(lightingCommitExhibitionId)) return;
+            refreshAllLocalSpotShadows();
+        }, 800);
+        updateViewerModePlaceholderVisibility();
+        updateLocalLightsUi();
         updateEditHelpStatus();
         updateAlignmentPanel();
         updateFocusCameraUi();
-        rebuildGalleryExhibitTour({ reason: "editor-state-applied", recalculateAutoOrder: true, force: true });
+        // C6C8C7: do not block Exhibition hydration with O(n^2) route/path recomputation.
+        // Saved tourOrder is already restored by applyEditorState. Paths are rebuilt after paint/idle.
+        scheduleGalleryDeferredTourAfterHydration(reason || "same-space-exhibition-delta");
         updateGalleryTourOrderUi();
+        sweepGalleryInactiveExhibitionOwners(getActiveGalleryExhibitionId(), "post-hydration-orphan-sweep");
+        galleryExhibitionRuntime.deltaSwitchActive = false;
+        galleryExhibitionRuntime.hydrationActive = false;
+        galleryExhibitionRuntime.hydrationExhibitionId = null;
+        if (profile) {
+            profile.finalizeMs = Math.round((getGalleryPerformanceNow() - finalizeStartedAt) * 100) / 100;
+            profile.previewQueue = galleryFastStartRuntime.deferredArtworkLoads.length;
+            profile.modelQueue = galleryFastStartRuntime.deferredModelLoads.length;
+            profile.unresolvedLightTargets = unresolvedLightTargets ? unresolvedLightTargets.length : 0;
+            profile.lightingDeferred = true;
+            profile.tourDeferred = true;
+            profile.totalMs = Math.round((getGalleryPerformanceNow() - profile.startedAt) * 100) / 100;
+            galleryExhibitionRuntime.lastHydrationProfile = profile;
+        }
+        if (galleryZoneStreamingRuntime && galleryZoneStreamingRuntime.started) scheduleGalleryZoneStreamingPump("atomic-exhibition-hydration", 40);
+    }
+
+    async function applyGallerySameSpaceExhibitionState(state, reason) {
+        var applyResult = { ok: true, usedFallback: false };
+        var previousStateApplyActive = !!galleryFastStartRuntime.stateApplyActive;
+        var previousBatchHydrationActive = !!galleryFastStartRuntime.startupBatchHydrationActive;
+        var profile = {
+            reason: reason || "same-space-exhibition-delta",
+            exhibitionId: getActiveGalleryExhibitionId(),
+            epoch: Number(galleryExhibitionRuntime.transitionEpoch) || 0,
+            startedAt: getGalleryPerformanceNow(),
+            prepareMs: 0,
+            hydrateMs: 0,
+            finalizeMs: 0,
+            tourDeferred: false
+        };
+        galleryExhibitionRuntime.hydrationActive = true;
+        galleryExhibitionRuntime.hydrationExhibitionId = getActiveGalleryExhibitionId();
+        galleryExhibitionRuntime.hydrationEpoch = Number(galleryExhibitionRuntime.transitionEpoch) || 0;
+        galleryFastStartRuntime.stateApplyActive = true;
+        galleryFastStartRuntime.startupBatchHydrationActive = true;
+        try {
+            var prepareStartedAt = getGalleryPerformanceNow();
+            prepareGallerySameSpaceExhibitionDelta(state);
+            profile.prepareMs = Math.round((getGalleryPerformanceNow() - prepareStartedAt) * 100) / 100;
+            await yieldGalleryForegroundFrame(0);
+            if (state && Object.keys(state).length > 0) {
+                var hydrateStartedAt = getGalleryPerformanceNow();
+                applyResult = tryApplyGalleryStateSafely(state, {
+                    skipWalls: true,
+                    skipSpacePresentation: true,
+                    deferGlobalRefresh: true
+                });
+                profile.hydrateMs = Math.round((getGalleryPerformanceNow() - hydrateStartedAt) * 100) / 100;
+                await yieldGalleryForegroundFrame(0);
+            }
+            return applyResult;
+        } finally {
+            galleryFastStartRuntime.stateApplyActive = previousStateApplyActive;
+            galleryFastStartRuntime.startupBatchHydrationActive = previousBatchHydrationActive;
+            if (galleryExhibitionRuntime.deltaSwitchActive) finalizeGallerySameSpaceExhibitionDelta(reason, profile);
+            else { galleryExhibitionRuntime.hydrationActive = false; galleryExhibitionRuntime.hydrationExhibitionId = null; }
+        }
     }
 
     function serializeGalleryState() {
         return {
             version: "Gallery_V0_11_WEB",
             savedAt: new Date().toISOString(),
+            context: { exhibitionId: getActiveGalleryExhibitionId(), spaceId: galleryActiveSpaceId },
             editor: serializeEditorState(),
             lighting: readLightingSettingsFromScene(),
             visualSettings: createVisualSettingsSnapshot(),
@@ -41493,10 +44147,13 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return 0;
     }
 
-    function applyGalleryState(state) {
+    function applyGalleryState(state, options) {
+        options = options || {};
         if (!state || typeof state !== "object") {
             return;
         }
+        if (state.context && state.context.spaceId && normalizeGalleryRuntimeId(state.context.spaceId, galleryActiveSpaceId) !== galleryActiveSpaceId) throw new Error("Exhibition state belongs to another Space: " + state.context.spaceId);
+        if (state.context && state.context.exhibitionId && normalizeGalleryRuntimeId(state.context.exhibitionId, getActiveGalleryExhibitionId()) !== getActiveGalleryExhibitionId()) throw new Error("Exhibition state ID mismatch: " + state.context.exhibitionId + " != " + getActiveGalleryExhibitionId());
 
         // Kompatybilność ze starym V0_8: jeśli state nie ma sekcji editor,
         // traktujemy go jako dawny serializeGalleryState().
@@ -41510,43 +44167,47 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 Array.isArray(editorState.spheres)
             )
         ) {
-            applyEditorState(editorState);
+            applyEditorState(editorState, options);
         }
 
-        if (state.lighting) {
-            applyLightingSettings(state.lighting, true, true);
-        }
+        if (!options.skipSpacePresentation) {
+            if (state.lighting) {
+                applyLightingSettings(state.lighting, true, true);
+            }
 
-        if (state.visualSettings) {
-            applyVisualSettings(normalizeVisualSettings(state.visualSettings), true, true);
-        } else {
-            applyVisualSettings(visualDefaultSettings, true, true);
-        }
+            if (state.visualSettings) {
+                applyVisualSettings(normalizeVisualSettings(state.visualSettings), true, true);
+            } else {
+                applyVisualSettings(visualDefaultSettings, true, true);
+            }
 
-        if (Array.isArray(state.lightingPresets)) {
-            writeLightingPresets(state.lightingPresets);
-            updateLightingPresetRows();
+            if (Array.isArray(state.lightingPresets)) {
+                writeLightingPresets(state.lightingPresets);
+                updateLightingPresetRows();
+            }
         }
 
         if (state.localLights) {
-            restoreLocalLightState(state.localLights);
+            restoreLocalLightState(state.localLights, { deferGlobalRefresh: !!options.deferGlobalRefresh });
         }
 
         if (state.editor || state.deletedArtworkNames) {
             applyDeletedArtworkNamesFromState(editorState);
         }
 
-        refreshCommonLightingMaterialSupport();
-        refreshArtworkLightExclusions();
-        refreshPedestalLightIncludedMeshes();
+        if (!options.deferGlobalRefresh) {
+            refreshCommonLightingMaterialSupport();
+            refreshArtworkLightExclusions();
+            refreshPedestalLightIncludedMeshes();
 
-        if (!galleryFastStartRuntime.stateApplyActive) {
-            refreshAllCommonLocalLightTargets();
-            scheduleLoadTimeLocalLightRetarget("applyGalleryState", localLightLoadTimeRetargetDelayMs);
-            refreshAllLocalSpotShadows();
+            if (!galleryFastStartRuntime.stateApplyActive) {
+                refreshAllCommonLocalLightTargets();
+                scheduleLoadTimeLocalLightRetarget("applyGalleryState", localLightLoadTimeRetargetDelayMs);
+                refreshAllLocalSpotShadows();
+            }
+
+            updateLocalLightsUi();
         }
-
-        updateLocalLightsUi();
     }
 
     function cloneStateWithoutAuthorLibrary(state) {
@@ -41588,9 +44249,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return clone;
     }
 
-    function tryApplyGalleryStateSafely(state) {
+    function tryApplyGalleryStateSafely(state, options) {
+        options = options || {};
         try {
-            applyGalleryState(state);
+            applyGalleryState(state, options);
             return {
                 ok: true,
                 usedFallback: false
@@ -41610,7 +44272,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         try {
             artworkAuthors = [];
-            applyGalleryState(fallbackState);
+            applyGalleryState(fallbackState, options);
             return {
                 ok: true,
                 usedFallback: true
@@ -41624,82 +44286,242 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
     }
 
-    async function loadGalleryStateFromSupabase() {
+    async function loadGalleryStateFromSupabase(options) {
+        options = options || {};
         var client = window.gallerySupabase;
-
-        if (!client) {
-            // Tryb developerski poza stroną WEB.
-            restoreSavedLocalLightStateOnce();
-            notifyGalleryStatus("Supabase nie jest skonfigurowany. Uzywam lokalnego fallbacku.");
-            return false;
-        }
-
-        var response = await client
-            .from("gallery_state")
-            .select("state, updated_at")
-            .eq("id", "main")
-            .order("updated_at", {
-                ascending: false,
-                nullsFirst: false
-            })
-            .limit(10);
-
-        if (response.error) {
-            console.warn(response.error);
-            notifyGalleryStatus("Nie udalo sie wczytac stanu galerii.");
-            return false;
-        }
-
-        var rows = Array.isArray(response.data)
-            ? response.data
-            : (response.data ? [response.data] : []);
-
-        var row = rows.find(function (candidate) {
-            return !!(
-                candidate &&
-                candidate.state &&
-                candidate.state.localLights &&
-                Array.isArray(candidate.state.localLights.lights)
-            );
-        }) || rows[0];
-
-        if (
-            row &&
-            row.state &&
-            Object.keys(row.state).length > 0
-        ) {
-            var applyResult = tryApplyGalleryStateSafely(row.state);
-
-            if (!applyResult.ok) {
-                notifyGalleryStatus("Nie udalo sie wczytac zapisanego stanu galerii.");
-                return false;
+        if (!client) { restoreSavedLocalLightStateOnce(); notifyGalleryStatus("Supabase nie jest skonfigurowany. Uzywam lokalnego fallbacku."); return false; }
+        var exhibitionId = normalizeGalleryRuntimeId(options.exhibitionId || getActiveGalleryExhibitionId(), "main");
+        try {
+            var exhibition = options.exhibition || await resolveGalleryExhibitionMetadata(client, exhibitionId);
+            var row = await fetchGalleryStateRowForExhibition(client, exhibition.id);
+            var rowState = row && row.state && typeof row.state === "object" ? row.state : null;
+            cacheGalleryExhibitionState(exhibition, rowState, { updatedAt: row ? row.updated_at || null : null, rowExists: !!row, source: "manual-load-supabase" });
+            if (options.resetRuntime !== false) { setActiveGalleryExhibitionContext(exhibition, { restoreQueues: true }); resetGalleryRuntimeToBlankExhibition(); } else setActiveGalleryExhibitionContext(exhibition, { restoreQueues: false });
+            if (rowState && Object.keys(rowState).length > 0) {
+                var applyResult = tryApplyGalleryStateSafely(rowState);
+                if (!applyResult.ok) { notifyGalleryStatus("Nie udalo sie wczytac zapisanej wystawy."); return false; }
+                if (applyResult.usedFallback) notifyGalleryStatus("Wczytano wystawe bez biblioteki autorow. Sprawdz ARTWORK INFO i zapisz ponownie."); else if (!options.silent) notifyGalleryStatus("Wczytano wystawe: " + exhibition.name + ". Lampy: " + getStateLightCount(rowState) + ".");
+                setGalleryPublishedStateBaseline(serializeGalleryState(), { serverState: rowState, revision: getGalleryStateRevision(rowState), confirmed: true, serverRowExists: true, reason: "manual-load-exhibition-baseline" });
+                return true;
             }
+            if (!options.silent) notifyGalleryStatus("Wystawa nie ma jeszcze stanu. Uzywam pustej wystawy.");
+            setGalleryPublishedStateBaseline(serializeGalleryState(), { serverState: null, revision: 0, confirmed: true, serverRowExists: !!row, reason: "manual-load-empty-exhibition-baseline" });
+            return false;
+        } catch (error) { console.warn("Gallery exhibition load failed:", error); notifyGalleryStatus("Nie udalo sie wczytac wystawy: " + (error && error.message ? error.message : error)); return false; }
+    }
 
-            if (applyResult.usedFallback) {
-                notifyGalleryStatus("Wczytano stan galerii bez biblioteki autorow. Sprawdz ARTWORK INFO i zapisz ponownie.");
+    async function switchGalleryExhibition(exhibitionId, options) {
+        options = options || {}; exhibitionId = normalizeGalleryRuntimeId(exhibitionId, "main");
+        if (galleryExhibitionRuntime.switching || exhibitionId === getActiveGalleryExhibitionId()) return true;
+        if (!options.force && !confirmGalleryDiscardUnsavedChanges("Switching exhibition")) return false;
+        var client = window.gallerySupabase; if (!client) { notifyGalleryStatus("Supabase nie jest skonfigurowany."); return false; }
+        galleryExhibitionRuntime.switching = true;
+        markGalleryForegroundNotReady("exhibition-switch-start");
+        galleryExhibitionRuntime.transitionEpoch = (Number(galleryExhibitionRuntime.transitionEpoch) || 0) + 1;
+        var transitionEpoch = galleryExhibitionRuntime.transitionEpoch;
+        var transitionStartedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+        var spaceIntegrityBefore = captureGallerySpaceIntegritySnapshot("before-exhibition-switch-" + transitionEpoch);
+        var previousExhibition = galleryExhibitionRuntime.active ? Object.assign({}, galleryExhibitionRuntime.active) : getGalleryFallbackMainExhibition();
+        var previousRuntimeState = serializeGalleryState();
+        var previousBaseline = {
+            publishedRevision: gallerySaveIntegrityRuntime.publishedRevision,
+            publishedServerStateFingerprint: gallerySaveIntegrityRuntime.publishedServerStateFingerprint,
+            publishedServerRowExists: gallerySaveIntegrityRuntime.publishedServerRowExists,
+            publishedStateConfirmed: gallerySaveIntegrityRuntime.publishedStateConfirmed
+        };
+        var contextChanged = false;
+        var previousLayerParked = false;
+        var targetLayerRestored = false;
+        try {
+            var previousIsClean = !hasGalleryUnsavedChanges();
+            if (previousIsClean && previousExhibition) {
+                cacheGalleryExhibitionState(previousExhibition, previousRuntimeState, { rowExists: previousBaseline.publishedServerRowExists, source: "switch-away-clean-runtime" });
+            }
+            var cachedTarget = options.forceRemote ? null : getCachedGalleryExhibitionState(exhibitionId);
+            var exhibition = cachedTarget ? Object.assign({}, cachedTarget.exhibition) : await resolveGalleryExhibitionMetadata(client, exhibitionId);
+            var row = null;
+            var state = null;
+            if (cachedTarget) {
+                state = cachedTarget.state && typeof cachedTarget.state === "object" ? cloneGalleryJson(cachedTarget.state) : null;
+                row = cachedTarget.rowExists === false ? null : { id: exhibition.id, state: state, updated_at: cachedTarget.updatedAt || null };
             } else {
-                notifyGalleryStatus("Wczytano zapisany stan galerii. Lampy: " + getStateLightCount(row.state) + ".");
+                row = await fetchGalleryStateRowForExhibition(client, exhibition.id);
+                state = row && row.state && typeof row.state === "object" ? row.state : null;
+                cacheGalleryExhibitionState(exhibition, state, { updatedAt: row ? row.updated_at || null : null, rowExists: !!row, source: "switch-supabase" });
+            }
+            try { persistGalleryPendingStorageCleanupQueue(); } catch (error) {}
+            try { persistGalleryPendingDraftUploads(); } catch (error) {}
+            var sameSpaceSwitch = areGalleryExhibitionsInSameSpace(previousExhibition, exhibition);
+            var targetResidentLayer = !options.forceRemote && sameSpaceSwitch ? galleryExhibitionRuntime.layerResidency[exhibition.id] || null : null;
+
+            if (sameSpaceSwitch && previousIsClean) {
+                parkActiveGalleryExhibitionLayer(previousExhibition, previousRuntimeState);
+                previousLayerParked = true;
             }
 
-            setGalleryPublishedStateBaseline(serializeGalleryState(), {
-                serverState: row.state,
-                revision: getGalleryStateRevision(row.state),
-                confirmed: true,
-                serverRowExists: true,
-                reason: "manual-load-baseline"
-            });
+            setActiveGalleryExhibitionContext(exhibition, { persistCurrentQueues: false, restoreQueues: true });
+            contextChanged = true;
+            await yieldGalleryForegroundFrame(0);
+
+            if (sameSpaceSwitch && targetResidentLayer) {
+                var restoredLayer = restoreGalleryExhibitionLayer(exhibition.id);
+                if (!restoredLayer) throw new Error("Resident Exhibition layer could not be restored.");
+                targetLayerRestored = true;
+                state = restoredLayer.state && typeof restoredLayer.state === "object" ? cloneGalleryJson(restoredLayer.state) : state;
+                applyGalleryResidentLayerPresentation(state, "resident-exhibition-resume");
+                galleryExhibitionRuntime.sameSpaceSwitchCount += 1;
+                galleryExhibitionRuntime.lastSwitchMode = "resident-layer-resume";
+            } else if (sameSpaceSwitch) {
+                if (!previousLayerParked) clearGalleryExhibitionOwnedRuntime();
+                var deltaApplyResult = await applyGallerySameSpaceExhibitionState(state, "same-space-exhibition-switch");
+                if (!deltaApplyResult.ok) throw new Error("Saved exhibition state could not be applied.");
+                galleryExhibitionRuntime.sameSpaceSwitchCount += 1;
+                galleryExhibitionRuntime.residentLayerMisses += 1;
+                galleryExhibitionRuntime.lastResidentLayerAction = "miss-load";
+                galleryExhibitionRuntime.lastResidentLayerId = exhibition.id;
+                galleryExhibitionRuntime.lastSwitchMode = "same-space-delta-load";
+            } else {
+                resetGalleryRuntimeToBlankExhibition();
+                if (state && Object.keys(state).length > 0) {
+                    var applyResult = tryApplyGalleryStateSafely(state);
+                    if (!applyResult.ok) throw new Error("Saved exhibition state could not be applied.");
+                }
+                galleryExhibitionRuntime.lastSwitchMode = "full-space-switch";
+            }
+
+            verifyGallerySpaceIntegrity(spaceIntegrityBefore, "after-exhibition-switch-" + transitionEpoch);
+            verifyGalleryCanonicalSpaceIntegrity("canonical-after-exhibition-switch-" + transitionEpoch);
+            pruneGalleryExhibitionLayerResidency(exhibition.id);
+            sweepGalleryInactiveExhibitionOwners(exhibition.id, "switch-success-final-isolation");
+            var transitionFinishedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+            galleryExhibitionRuntime.lastSwitchDurationMs = Math.max(0, transitionFinishedAt - transitionStartedAt);
+            galleryExhibitionRuntime.lastSwitchFromId = previousExhibition && previousExhibition.id ? previousExhibition.id : null;
+            galleryExhibitionRuntime.lastSwitchToId = exhibition.id;
+            galleryExhibitionRuntime.lastSwitchSpaceId = getGalleryExhibitionSpaceId(exhibition);
+            galleryExhibitionRuntime.lastModeTransition = {
+                type: "exhibition",
+                from: galleryExhibitionRuntime.lastSwitchFromId,
+                to: exhibition.id,
+                mode: galleryExhibitionRuntime.lastSwitchMode,
+                residentHit: targetLayerRestored,
+                durationMs: Math.round(galleryExhibitionRuntime.lastSwitchDurationMs * 10) / 10,
+                epoch: transitionEpoch,
+                spaceIntegrity: galleryExhibitionRuntime.lastSpaceIntegrity ? cloneGalleryJson(galleryExhibitionRuntime.lastSpaceIntegrity) : null,
+                hydration: galleryExhibitionRuntime.lastHydrationProfile ? cloneGalleryJson(galleryExhibitionRuntime.lastHydrationProfile) : null,
+                at: Date.now()
+            };
+            setGalleryPublishedStateBaseline(serializeGalleryState(), { serverState: state && Object.keys(state).length ? state : null, revision: getGalleryStateRevision(state), confirmed: true, serverRowExists: !!row, reason: "exhibition-switch-baseline" });
+            cacheGalleryExhibitionState(exhibition, serializeGalleryState(), { updatedAt: row ? row.updated_at || null : null, rowExists: !!row, source: targetLayerRestored ? "switch-resident-hit" : (cachedTarget ? "switch-cache-hit" : "switch-loaded") });
+            globalThis.BerryboyArtGalleryLatestState = serializeGalleryState();
+            notifyGalleryStatus("Active exhibition: " + exhibition.name + (targetLayerRestored ? " (resident)." : (cachedTarget ? " (session cache)." : ".")));
+            try { window.dispatchEvent(new CustomEvent("gallery-exhibition-transition-complete", { detail: cloneGalleryJson(galleryExhibitionRuntime.lastModeTransition) })); } catch (error) {}
             return true;
+        } catch (error) {
+            galleryExhibitionRuntime.lastError = error && error.message ? error.message : String(error); console.warn("Exhibition switch failed:", error);
+            if (contextChanged && previousExhibition) {
+                try {
+                    var rollbackSameSpace = areGalleryExhibitionsInSameSpace(galleryExhibitionRuntime.active, previousExhibition);
+                    if (targetLayerRestored) {
+                        parkActiveGalleryExhibitionLayer(galleryExhibitionRuntime.active, serializeGalleryState());
+                    } else if (rollbackSameSpace) {
+                        clearGalleryExhibitionOwnedRuntime();
+                    }
+                    setActiveGalleryExhibitionContext(previousExhibition, { persistCurrentQueues: false, restoreQueues: true });
+                    var previousResident = previousLayerParked ? restoreGalleryExhibitionLayer(previousExhibition.id) : null;
+                    if (previousResident) applyGalleryResidentLayerPresentation(previousRuntimeState, "resident-exhibition-rollback");
+                    else if (rollbackSameSpace) await applyGallerySameSpaceExhibitionState(previousRuntimeState, "same-space-exhibition-rollback");
+                    else { resetGalleryRuntimeToBlankExhibition(); tryApplyGalleryStateSafely(previousRuntimeState); }
+                    verifyGallerySpaceIntegrity(spaceIntegrityBefore, "after-exhibition-switch-rollback-" + transitionEpoch);
+                    verifyGalleryCanonicalSpaceIntegrity("canonical-after-exhibition-switch-rollback-" + transitionEpoch);
+                    setGalleryPublishedStateBaseline(serializeGalleryState(), { serverState: previousRuntimeState, revision: previousBaseline.publishedRevision, confirmed: previousBaseline.publishedStateConfirmed, serverRowExists: previousBaseline.publishedServerRowExists, reason: "exhibition-switch-rollback" });
+                } catch (rollbackError) { console.warn("Exhibition switch rollback failed:", rollbackError); }
+            }
+            notifyGalleryStatus("Nie udalo sie przelaczyc wystawy: " + galleryExhibitionRuntime.lastError); return false;
+        } finally { galleryExhibitionRuntime.switching = false; }
+    }
+
+    function createGalleryExhibitionId() {
+        try { if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") return normalizeGalleryRuntimeId(globalThis.crypto.randomUUID(), "exhibition-" + Date.now().toString(36)); } catch (error) {}
+        return "exhibition-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 9);
+    }
+    function createGalleryExhibitionSlug(name, id) {
+        var slug = String(name || "exhibition").trim().toLowerCase(); if (typeof slug.normalize === "function") slug = slug.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        slug = slug.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 56); return (slug || "exhibition") + "-" + String(id || "").slice(-6).toLowerCase();
+    }
+    async function createGalleryExhibition(name) {
+        name = String(name || "").trim(); if (!name) { notifyGalleryStatus("Podaj nazwe nowej wystawy."); return null; }
+        if (galleryExhibitionRuntime.creating) return null;
+        if (galleryEditorLoginEnabled && !editorAuthenticated) { notifyGalleryStatus("Zaloguj sie jako edytor, aby utworzyc wystawe."); return null; }
+        if (!confirmGalleryDiscardUnsavedChanges("Creating another exhibition")) return null;
+        var client = window.gallerySupabase; if (!client) { notifyGalleryStatus("Supabase nie jest skonfigurowany."); return null; }
+        galleryExhibitionRuntime.creating = true;
+        var exhibitionId = createGalleryExhibitionId();
+        var exhibition = normalizeGalleryExhibitionRecord({ id: exhibitionId, name: name, slug: createGalleryExhibitionSlug(name, exhibitionId), description: "", cover_path: null, is_published: false, sort_order: galleryExhibitionRuntime.catalog.length, storage_prefix: "exhibitions/" + exhibitionId, space_id: galleryActiveSpaceId });
+        try {
+            var metadataInsertPayload = { id: exhibition.id, name: exhibition.name, slug: exhibition.slug, description: exhibition.description || "", cover_path: exhibition.cover_path || null, is_published: !!exhibition.is_published, sort_order: Number(exhibition.sort_order) || 0, storage_prefix: exhibition.storage_prefix, space_id: exhibition.space_id };
+            var metadataResponse = await client.from("gallery_exhibitions").insert(metadataInsertPayload).select("id, name, slug, description, cover_path, is_published, sort_order, storage_prefix, space_id, created_at, updated_at");
+            if (metadataResponse.error) throw metadataResponse.error;
+            exhibition = normalizeGalleryExhibitionRecord(Array.isArray(metadataResponse.data) ? metadataResponse.data[0] : metadataResponse.data) || exhibition;
+            var blankState = createBlankGalleryExhibitionState(exhibition);
+            var blankUpdatedAt = new Date().toISOString();
+            var stateResponse = await client.from("gallery_state").insert({ id: exhibition.id, state: blankState, updated_at: blankUpdatedAt }).select("id");
+            if (stateResponse.error) { try { await client.from("gallery_exhibitions").delete().eq("id", exhibition.id); } catch (rollbackError) {} throw stateResponse.error; }
+            cacheGalleryExhibitionState(exhibition, blankState, { updatedAt: blankUpdatedAt, rowExists: true, source: "create-exhibition" });
+            galleryExhibitionRuntime.catalogLoaded = false; await loadGalleryExhibitionCatalog(true); await switchGalleryExhibition(exhibition.id, { force: true }); return exhibition;
+        } catch (error) { galleryExhibitionRuntime.lastError = error && error.message ? error.message : String(error); console.warn("Create exhibition failed:", error); notifyGalleryStatus("Nie udalo sie utworzyc wystawy: " + galleryExhibitionRuntime.lastError); return null; }
+        finally { galleryExhibitionRuntime.creating = false; }
+    }
+
+    async function updateGalleryExhibitionMetadata(exhibitionId, patch) {
+        exhibitionId = normalizeGalleryRuntimeId(exhibitionId, getActiveGalleryExhibitionId());
+        patch = patch && typeof patch === "object" ? patch : {};
+        if (galleryEditorLoginEnabled && !editorAuthenticated) {
+            notifyGalleryStatus("Zaloguj sie jako edytor, aby zmienic dane wystawy.");
+            return null;
+        }
+        var client = window.gallerySupabase;
+        if (!client) return null;
+
+        var payload = {};
+        if (patch.name !== undefined) {
+            var nextName = String(patch.name || "").trim();
+            if (!nextName) throw new Error("Exhibition name cannot be empty.");
+            payload.name = nextName;
+        }
+        if (patch.description !== undefined) payload.description = String(patch.description || "");
+        if (patch.cover_path !== undefined) payload.cover_path = patch.cover_path ? String(patch.cover_path) : null;
+        if (patch.is_published !== undefined) payload.is_published = !!patch.is_published;
+        if (patch.sort_order !== undefined) payload.sort_order = Number(patch.sort_order) || 0;
+        if (Object.keys(payload).length === 0) return resolveGalleryExhibitionMetadata(client, exhibitionId);
+
+        var response = await client.from("gallery_exhibitions")
+            .update(payload)
+            .eq("id", exhibitionId)
+            .select("id, name, slug, description, cover_path, is_published, sort_order, storage_prefix, space_id, created_at, updated_at")
+            .limit(1);
+        if (response.error) throw response.error;
+        var rows = Array.isArray(response.data) ? response.data : (response.data ? [response.data] : []);
+        var updated = normalizeGalleryExhibitionRecord(rows[0]);
+        if (!updated) throw new Error("Updated exhibition metadata was not returned.");
+
+        var found = false;
+        galleryExhibitionRuntime.catalog = (galleryExhibitionRuntime.catalog || []).map(function (item) {
+            if (item && item.id === updated.id) { found = true; return updated; }
+            return item;
+        });
+        if (!found) galleryExhibitionRuntime.catalog.push(updated);
+        galleryExhibitionRuntime.catalog.sort(function (a, b) {
+            return (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0);
+        });
+        galleryExhibitionRuntime.catalogLoaded = true;
+        if (galleryExhibitionRuntime.stateCache[updated.id]) {
+            galleryExhibitionRuntime.stateCache[updated.id].exhibition = Object.assign({}, updated);
         }
 
-        notifyGalleryStatus("Brak zapisanego stanu. Uzywam ukladu startowego.");
-        setGalleryPublishedStateBaseline(serializeGalleryState(), {
-            serverState: null,
-            revision: 0,
-            confirmed: true,
-            serverRowExists: false,
-            reason: "manual-load-empty-baseline"
-        });
-        return false;
+        if (updated.id === getActiveGalleryExhibitionId()) {
+            setActiveGalleryExhibitionContext(updated, { persistCurrentQueues: false, restoreQueues: false });
+        }
+        return Object.assign({}, updated);
     }
 
     async function saveGalleryStateToSupabase() {
@@ -41714,6 +44536,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
 
         var client = window.gallerySupabase;
+        var activeExhibitionId = typeof getActiveGalleryExhibitionId === "function" ? getActiveGalleryExhibitionId() : "main";
 
         if (!client) {
             notifyGalleryStatus("Supabase nie jest skonfigurowany.");
@@ -41729,7 +44552,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             var currentServerResponse = await client
                 .from("gallery_state")
                 .select("state, updated_at")
-                .eq("id", "main")
+                .eq("id", activeExhibitionId)
                 .order("updated_at", {
                     ascending: false,
                     nullsFirst: false
@@ -41841,7 +44664,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             globalThis.BerryboyArtGalleryLatestState = state;
 
             var payload = {
-                id: "main",
+                id: activeExhibitionId,
                 state: state,
                 updated_at: savedAt
             };
@@ -41855,7 +44678,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                         state: state,
                         updated_at: savedAt
                     })
-                    .eq("id", "main");
+                    .eq("id", activeExhibitionId);
 
                 commitQuery = currentServerUpdatedAt
                     ? commitQuery.eq("updated_at", currentServerUpdatedAt)
@@ -41902,6 +44725,13 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 serverRowExists: true,
                 reason: "save-success"
             });
+            if (typeof cacheGalleryExhibitionState === "function" && typeof galleryExhibitionRuntime !== "undefined") {
+                cacheGalleryExhibitionState(
+                    galleryExhibitionRuntime.active || getGalleryFallbackMainExhibition(),
+                    state,
+                    { updatedAt: savedAt, rowExists: true, source: "save-success" }
+                );
+            }
 
             var draftUploadReconcileResult = reconcileGalleryPendingDraftUploads(state, {
                 queueUnreferenced: true,
@@ -41922,7 +44752,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             if (cleanupResult.failed > 0) {
                 notifyGalleryStatus("Zapisano galerie. Niektore stare pliki pozostaly w kolejce cleanup i zostana ponowione przy nastepnym zapisie.");
             } else {
-                notifyGalleryStatus("Zapisano stan galerii online. Rewizja: " + nextRevision + ".");
+                notifyGalleryStatus("Zapisano wystawe " + ((typeof galleryExhibitionRuntime !== "undefined" && galleryExhibitionRuntime.active) ? galleryExhibitionRuntime.active.name : activeExhibitionId) + ". Rewizja: " + nextRevision + ".");
             }
 
             return true;
@@ -41950,6 +44780,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         getDraftStatus: function () {
             checkGalleryDraftStateNow("web-state-status");
             return {
+                exhibitionId: getActiveGalleryExhibitionId(),
+                spaceId: galleryActiveSpaceId,
                 dirty: gallerySaveIntegrityRuntime.dirty,
                 revision: gallerySaveIntegrityRuntime.publishedRevision,
                 saveInFlight: gallerySaveIntegrityRuntime.saveInFlight,
@@ -41960,6 +44792,16 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         getPreviousBackup: readGalleryPreviousStateBackup
     };
 
+    globalThis.BerryboyArtGalleryExhibitions = {
+        getActive: function () { return galleryExhibitionRuntime.active ? Object.assign({}, galleryExhibitionRuntime.active) : getGalleryFallbackMainExhibition(); },
+        list: function (force) { return loadGalleryExhibitionCatalog(!!force); },
+        create: createGalleryExhibition,
+        updateMetadata: updateGalleryExhibitionMetadata,
+        switchTo: switchGalleryExhibition,
+        getSpace: function () { return cloneGalleryJson(gallerySpaceDefinition); },
+        getDebug: function () { return { stage: galleryExhibitionRuntime.stage, schema: galleryExhibitionRuntime.schema, activeId: getActiveGalleryExhibitionId(), storagePrefix: galleryArtworkStoragePrefix, spaceId: galleryActiveSpaceId, catalogLoaded: galleryExhibitionRuntime.catalogLoaded, catalogCount: galleryExhibitionRuntime.catalog.length, switching: galleryExhibitionRuntime.switching, creating: galleryExhibitionRuntime.creating, stateCacheEntries: Object.keys(galleryExhibitionRuntime.stateCache).length, stateCacheHits: galleryExhibitionRuntime.stateCacheHits, stateCacheMisses: galleryExhibitionRuntime.stateCacheMisses, sameSpaceSwitchCount: galleryExhibitionRuntime.sameSpaceSwitchCount, fullRuntimeResetCount: galleryExhibitionRuntime.fullRuntimeResetCount, residentLayerCount: Object.keys(galleryExhibitionRuntime.layerResidency || {}).length, residentLayerIds: Object.keys(galleryExhibitionRuntime.layerResidency || {}), residentLayerHits: galleryExhibitionRuntime.residentLayerHits, residentLayerMisses: galleryExhibitionRuntime.residentLayerMisses, residentLayerParks: galleryExhibitionRuntime.residentLayerParks, residentLayerEvictions: galleryExhibitionRuntime.residentLayerEvictions, maxParkedLayers: galleryExhibitionRuntime.maxParkedLayers, lastResidentLayerAction: galleryExhibitionRuntime.lastResidentLayerAction, lastResidentLayerId: galleryExhibitionRuntime.lastResidentLayerId, lastSwitchMode: galleryExhibitionRuntime.lastSwitchMode, lastSwitchDurationMs: galleryExhibitionRuntime.lastSwitchDurationMs, lastSwitchFromId: galleryExhibitionRuntime.lastSwitchFromId, lastSwitchToId: galleryExhibitionRuntime.lastSwitchToId, lastSwitchSpaceId: galleryExhibitionRuntime.lastSwitchSpaceId, lastModeTransition: galleryExhibitionRuntime.lastModeTransition, workspaceModeFastPathCount: galleryExhibitionRuntime.workspaceModeFastPathCount, workspaceModeAuditRuns: galleryExhibitionRuntime.workspaceModeAuditRuns, workspaceModeAuditFailures: galleryExhibitionRuntime.workspaceModeAuditFailures, workspaceModeAuditPending: galleryExhibitionRuntime.workspaceModeAuditPending, workspaceModeAuditLast: galleryExhibitionRuntime.workspaceModeAuditLast ? cloneGalleryJson(galleryExhibitionRuntime.workspaceModeAuditLast) : null, transitionEpoch: galleryExhibitionRuntime.transitionEpoch, hydrationActive: galleryExhibitionRuntime.hydrationActive, hydrationExhibitionId: galleryExhibitionRuntime.hydrationExhibitionId, ownershipViolations: galleryExhibitionRuntime.ownershipViolations, blockedSpaceDisposals: galleryExhibitionRuntime.blockedSpaceDisposals, lastSpaceIntegrity: galleryExhibitionRuntime.lastSpaceIntegrity ? cloneGalleryJson(galleryExhibitionRuntime.lastSpaceIntegrity) : null, lastHydrationProfile: galleryExhibitionRuntime.lastHydrationProfile ? cloneGalleryJson(galleryExhibitionRuntime.lastHydrationProfile) : null, ownerSweepLast: galleryExhibitionRuntime.ownerSweepLast ? cloneGalleryJson(galleryExhibitionRuntime.ownerSweepLast) : null, ownerSweepRuns: galleryExhibitionRuntime.ownerSweepRuns, orphanSweepDetections: galleryExhibitionRuntime.orphanSweepDetections, staleOwnerCallbacksBlocked: galleryExhibitionRuntime.staleOwnerCallbacksBlocked, foregroundReady: galleryExhibitionRuntime.foregroundReady, foregroundReadinessLast: galleryExhibitionRuntime.foregroundReadinessLast ? cloneGalleryJson(galleryExhibitionRuntime.foregroundReadinessLast) : null, spaceGpuWarmup: cloneGalleryJson(galleryExhibitionRuntime.spaceGpuWarmup), longTaskCount: galleryExhibitionRuntime.longTaskCount, longTaskDurationMs: galleryExhibitionRuntime.longTaskDurationMs, cooperativeYields: galleryExhibitionRuntime.cooperativeYields, lastError: galleryExhibitionRuntime.lastError }; }
+    };
+
     globalThis.GalleryApp = {
         setEditorAuthenticated: setEditorAuthenticated,
         isEditorLoginEnabled: function () {
@@ -41968,6 +44810,28 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         isEditModeActive: function () {
             return !!editMode;
         },
+        setEditMode: function (enabled) {
+            var desired = !!enabled;
+            if (desired && galleryPublicViewerOnly) {
+                return false;
+            }
+            if (editMode !== desired && editButton && typeof editButton.click === "function") editButton.click();
+            return !!editMode;
+        },
+        isAdminWorkspaceMode: function () {
+            return !!galleryAdminWorkspaceMode;
+        },
+        isDraftPreviewActive: function () {
+            return !!galleryAdminDraftPreviewActive;
+        },
+        canUseInstantWorkspaceModeSwitch: function () {
+            return !!galleryExhibitionRuntime.foregroundReady &&
+                !galleryExhibitionRuntime.hydrationActive &&
+                !galleryExhibitionRuntime.switching;
+        },
+        enterAdminWorkspaceMode: enterGalleryAdminWorkspaceMode,
+        exitAdminWorkspaceMode: exitGalleryAdminWorkspaceMode,
+        discardUnsavedChanges: discardGalleryUnsavedChanges,
         hasUnsavedChanges: hasGalleryUnsavedChanges,
         confirmDiscardUnsavedChanges: confirmGalleryDiscardUnsavedChanges,
         setEditorLoginEnabled: function (isEnabled) {
@@ -41978,14 +44842,68 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         setMobileQualityMode: setGalleryMobileQualityMode,
         getMobileQualityInspector: getGalleryMobileQualityInspectorSnapshot,
         setMobileQualityInspectorVisible: setGalleryMobileQualityInspectorVisible,
+        getAssetDeliveryDebug: getGalleryAssetDeliveryDebug,
+        getSceneOwnershipDebug: function () {
+            var integrity = captureGallerySpaceIntegritySnapshot("debug-api");
+            return {
+                stage: "12C66C6C8C16",
+                activeExhibitionId: getActiveGalleryExhibitionId(),
+                spaceId: galleryActiveSpaceId,
+                transitionEpoch: galleryExhibitionRuntime.transitionEpoch,
+                hydrationActive: galleryExhibitionRuntime.hydrationActive,
+                hydrationExhibitionId: galleryExhibitionRuntime.hydrationExhibitionId,
+                ownershipViolations: galleryExhibitionRuntime.ownershipViolations,
+                blockedSpaceDisposals: galleryExhibitionRuntime.blockedSpaceDisposals,
+                orphanSweepDetections: galleryExhibitionRuntime.orphanSweepDetections,
+                staleOwnerCallbacksBlocked: galleryExhibitionRuntime.staleOwnerCallbacksBlocked,
+                ownerSweepLast: galleryExhibitionRuntime.ownerSweepLast ? cloneGalleryJson(galleryExhibitionRuntime.ownerSweepLast) : null,
+                foregroundReady: galleryExhibitionRuntime.foregroundReady,
+                lastSpaceIntegrity: galleryExhibitionRuntime.lastSpaceIntegrity ? cloneGalleryJson(galleryExhibitionRuntime.lastSpaceIntegrity) : null,
+                lastHydrationProfile: galleryExhibitionRuntime.lastHydrationProfile ? cloneGalleryJson(galleryExhibitionRuntime.lastHydrationProfile) : null,
+                counts: { wall: integrity.wall.length, floor: integrity.floor.length, ceiling: integrity.ceiling.length, prop: integrity.prop.length, artworks: artworks.length, sculptures: artSpheres.length, localLights: localLightItems.length, parkedLayers: Object.keys(galleryExhibitionRuntime.layerResidency || {}).length }
+            };
+        },
+        verifySpaceIntegrity: function () {
+            var snapshot = captureGallerySpaceIntegritySnapshot("manual-integrity-check");
+            return verifyGallerySpaceIntegrity(snapshot, "manual-integrity-check");
+        },
+        waitForForegroundReady: waitForGalleryForegroundReady,
+        getForegroundReadiness: function () {
+            return {
+                stage: "12C66C6C8C16",
+                ready: !!galleryExhibitionRuntime.foregroundReady,
+                reason: galleryExhibitionRuntime.foregroundReadyReason,
+                at: galleryExhibitionRuntime.foregroundReadyAt,
+                last: galleryExhibitionRuntime.foregroundReadinessLast ? cloneGalleryJson(galleryExhibitionRuntime.foregroundReadinessLast) : null,
+                ownerSweep: galleryExhibitionRuntime.ownerSweepLast ? cloneGalleryJson(galleryExhibitionRuntime.ownerSweepLast) : null,
+                spaceGpuWarmup: cloneGalleryJson(galleryExhibitionRuntime.spaceGpuWarmup),
+                longTasks: galleryExhibitionRuntime.longTaskCount,
+                longTaskDurationMs: galleryExhibitionRuntime.longTaskDurationMs,
+                cooperativeYields: galleryExhibitionRuntime.cooperativeYields,
+                startupCriticalPath: cloneGalleryJson(galleryExhibitionRuntime.startupCriticalPath),
+                backgroundHydration: cloneGalleryJson(galleryExhibitionRuntime.backgroundHydration)
+            };
+        },
         getArtworkById: getArtworkById,
         saveStateToSupabase: saveGalleryStateToSupabase,
         loadStateFromSupabase: loadGalleryStateFromSupabase,
+        getActiveExhibition: function () { return galleryExhibitionRuntime.active ? Object.assign({}, galleryExhibitionRuntime.active) : getGalleryFallbackMainExhibition(); },
+        createNavigationHandoff: createGalleryNavigationHandoff,
+        getExhibitions: function (force) { return loadGalleryExhibitionCatalog(!!force); },
+        createExhibition: createGalleryExhibition,
+        updateExhibitionMetadata: updateGalleryExhibitionMetadata,
+        switchExhibition: switchGalleryExhibition,
+        invalidateExhibitionStateCache: invalidateCachedGalleryExhibitionState,
+        getSpaceDefinition: function () { return cloneGalleryJson(gallerySpaceDefinition); },
         getDraftStatus: function () {
             checkGalleryDraftStateNow("gallery-app-status");
             return {
-                stage: gallerySaveIntegrityRuntime.stage,
+                stage: "12C66C6C8C16",
+                exhibitionId: getActiveGalleryExhibitionId(),
+                spaceId: galleryActiveSpaceId,
+                storagePrefix: galleryArtworkStoragePrefix,
                 dirty: gallerySaveIntegrityRuntime.dirty,
+                draftPreviewActive: !!galleryAdminDraftPreviewActive,
                 reason: gallerySaveIntegrityRuntime.dirtyReason,
                 revision: gallerySaveIntegrityRuntime.publishedRevision,
                 saveInFlight: gallerySaveIntegrityRuntime.saveInFlight,
@@ -42812,7 +45730,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         checkDirty: checkGalleryDraftStateNow,
         getPreviousBackup: readGalleryPreviousStateBackup
     };
-    rebuildGalleryExhibitTour({ reason: "scene-ready", recalculateAutoOrder: true, force: true });
+    galleryExhibitTourRuntime.dirty = true;
+    galleryExhibitTourRuntime.lastRebuildReason = "scene-ready-lazy";
     refreshGalleryExhibitTourOrderBadges();
     window.dispatchEvent(new CustomEvent("gallery-ready"));
 
