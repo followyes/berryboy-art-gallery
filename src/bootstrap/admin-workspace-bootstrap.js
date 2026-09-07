@@ -1,14 +1,14 @@
 /*
-  Exhibition Platform — Stage 12C66C6C8C16 Admin Workspace / Persistent Draft Public Preview
+  Exhibition Platform — C6C8C21 Admin Workspace / Persistent Draft Public Preview
   Authenticated exhibition management + constrained 3D editor viewport.
 */
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-import { gallerySpaceDefinition } from "../config/gallery-space-config.js?v=stage12c66c6c8c16_mobile_ui_polish_inspect_cursor_20260813";
-import { registerExhibitionAssetCache, getExhibitionAssetCacheStatus, getExhibitionAssetDeliveryStats, evictExhibitionAssetCacheUrl } from "./asset-cache-bootstrap.js?v=stage12c66c6c8c16_mobile_ui_polish_inspect_cursor_20260813";
-import { beginTransitionGuard, endTransitionGuard, isTransitionGuardActive } from "./transition-guard.js?v=stage12c66c6c8c16_mobile_ui_polish_inspect_cursor_20260813";
+import { registerExhibitionAssetCache, getExhibitionAssetCacheStatus, getExhibitionAssetDeliveryStats, evictExhibitionAssetCacheUrl } from "./asset-cache-bootstrap.js?v=c6c8c21_multi_space_foundation_20260907";
+import { beginTransitionGuard, endTransitionGuard, isTransitionGuardActive } from "./transition-guard.js?v=c6c8c21_multi_space_foundation_20260907";
+import { createExhibitionDataAdapter, resolveInitialAdminRuntime } from "../data/exhibition-api.js?v=c6c8c21_multispace_foundation";
 
-const STAGE = "12C66C6C8C16";
-const ENGINE_CACHE_KEY = "stage12c66c6c8c16_mobile_ui_polish_inspect_cursor_20260813";
+const STAGE = "C6C8C21";
+const ENGINE_CACHE_KEY = "c6c8c21_multi_space_foundation_20260907";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
 const inlineRuntimeContext = window.__EXHIBITION_INLINE_ADMIN_CONTEXT__ || null;
@@ -75,6 +75,7 @@ let metadataBaseline = "";
 let metadataDirty = false;
 let metadataBeforeUnloadInstalled = false;
 let metadataDraftPreviewActive = false;
+let exhibitionData = window.ExhibitionPlatformDataAdapter || null;
 
 function formatDeliveryBytes(bytes) {
   const value = Math.max(0, Number(bytes) || 0);
@@ -108,8 +109,8 @@ async function captureExhibitionTransitionDiagnostic(before, startedAt, fromId, 
   await new Promise((resolve) => setTimeout(resolve, 180));
   const after = await getExhibitionAssetDeliveryStats().catch(() => null);
   const delta = deliveryStatsDelta(before, after);
-  const engineDebug = window.BerryboyArtGalleryExhibitions && typeof window.BerryboyArtGalleryExhibitions.getDebug === "function"
-    ? window.BerryboyArtGalleryExhibitions.getDebug()
+  const engineDebug = window.ExhibitionPlatformExhibitions && typeof window.ExhibitionPlatformExhibitions.getDebug === "function"
+    ? window.ExhibitionPlatformExhibitions.getDebug()
     : null;
   const record = {
     type: "exhibition",
@@ -139,8 +140,8 @@ async function updateNetworkDiagnosticsStatus() {
       const net = last.network || {};
       transitionPart = `Last: ${last.from} → ${last.to} · ${net.supabaseNetworkFetches || 0} net · ${formatDeliveryBytes(net.supabaseNetworkKnownBytes || 0)} · ${last.mode || "transition"} · ${Math.round(Number(last.durationMs) || 0)} ms`;
     }
-    const engineDebug = window.BerryboyArtGalleryExhibitions && typeof window.BerryboyArtGalleryExhibitions.getDebug === "function"
-      ? window.BerryboyArtGalleryExhibitions.getDebug()
+    const engineDebug = window.ExhibitionPlatformExhibitions && typeof window.ExhibitionPlatformExhibitions.getDebug === "function"
+      ? window.ExhibitionPlatformExhibitions.getDebug()
       : null;
     const hydration = engineDebug && engineDebug.lastHydrationProfile;
     const integrity = engineDebug && engineDebug.lastSpaceIntegrity;
@@ -306,7 +307,7 @@ function getRequestedExhibitionId() {
   } catch (_error) { return "main"; }
 }
 
-function readNavigationHandoff(id) {
+function readNavigationHandoff(id, spaceId) {
   const key = `exhibition_platform_handoff_${id}`;
   try {
     const raw = sessionStorage.getItem(key);
@@ -316,7 +317,7 @@ function readNavigationHandoff(id) {
     if (!parsed || parsed.schema !== "exhibition-navigation-handoff.v1") return null;
     if (!parsed.exhibition || String(parsed.exhibition.id) !== String(id)) return null;
     if (Date.now() - Number(parsed.createdAt || 0) > 120000) return null;
-    if (String(parsed.spaceId || gallerySpaceDefinition.id) !== String(gallerySpaceDefinition.id)) return null;
+    if (spaceId && String(parsed.spaceId || spaceId) !== String(spaceId)) return null;
     return parsed;
   } catch (_error) {
     try { sessionStorage.removeItem(key); } catch (_ignore) {}
@@ -353,19 +354,18 @@ function normalizeExhibition(record) {
     is_published: record.is_published !== false,
     sort_order: Number(record.sort_order) || 0,
     storage_prefix: String(record.storage_prefix || (record.id === "main" ? "main" : `exhibitions/${record.id}`)),
-    space_id: String(record.space_id || gallerySpaceDefinition.id),
+    space_id: String(record.space_id || ""),
     created_at: record.created_at || null,
     updated_at: record.updated_at || null
   };
 }
 
 async function fetchCatalog() {
-  const response = await supabase.from("gallery_exhibitions")
-    .select("id, name, slug, description, cover_path, is_published, sort_order, storage_prefix, space_id, created_at, updated_at")
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: true });
-  if (response.error) throw response.error;
-  catalog = (response.data || []).map(normalizeExhibition).filter(Boolean);
+  if (!exhibitionData) exhibitionData = createExhibitionDataAdapter({ supabase, mode: "admin" });
+  if (typeof exhibitionData.setMode === "function") exhibitionData.setMode("admin");
+  window.ExhibitionPlatformDataAdapter = exhibitionData;
+  if (window.GalleryApp && typeof window.GalleryApp.setExhibitionDataMode === "function") window.GalleryApp.setExhibitionDataMode("admin");
+  catalog = (await exhibitionData.list()).map(normalizeExhibition).filter(Boolean);
   renderCatalog();
   return catalog;
 }
@@ -491,11 +491,9 @@ async function saveMetadata(patch) {
   if (window.GalleryApp && typeof window.GalleryApp.updateExhibitionMetadata === "function") {
     return window.GalleryApp.updateExhibitionMetadata(selectedExhibition.id, patch);
   }
-  const response = await supabase.from("gallery_exhibitions")
-    .update(patch).eq("id", selectedExhibition.id)
-    .select("id, name, slug, description, cover_path, is_published, sort_order, storage_prefix, space_id, created_at, updated_at").limit(1);
-  if (response.error) throw response.error;
-  return normalizeExhibition((response.data || [])[0]);
+  if (!exhibitionData) exhibitionData = createExhibitionDataAdapter({ supabase, mode: "admin" });
+  if (typeof exhibitionData.setMode === "function") exhibitionData.setMode("admin");
+  return exhibitionData.updateMetadata(selectedExhibition.id, patch);
 }
 
 async function decodePosterImage(file) {
@@ -551,7 +549,7 @@ async function uploadPoster(file) {
   });
   if (upload.error) throw upload.error;
   try {
-    const updated = await saveMetadata({ cover_path: path });
+    const updated = await saveMetadata({ cover_path: path, cover_mime_type: optimized.mimeType, cover_file_size: optimized.size });
     const localUpdated = upsertLocalCatalogRecord(updated || Object.assign({}, selectedExhibition, { cover_path: path }));
     setSelectedExhibition(localUpdated);
     if (oldPath && oldPath !== path) {
@@ -671,6 +669,7 @@ async function startEngine(initialId, initialSnapshot) {
     installResize();
     window.galleryEditorAuthenticated = true;
     if (window.GalleryApp) {
+      if (typeof window.GalleryApp.setExhibitionDataMode === "function") window.GalleryApp.setExhibitionDataMode("admin");
       window.GalleryApp.setEditorAuthenticated(true);
       window.GalleryApp.hideViewerIntroOverlay();
       if (typeof window.GalleryApp.enterAdminWorkspaceMode === "function") {
@@ -700,15 +699,21 @@ async function startEngine(initialId, initialSnapshot) {
   await ensureBabylon();
   const ready = waitForInteractionReady();
   const module = await import(`../Gallery_V0_11.min.js?v=${ENGINE_CACHE_KEY}`);
+  let initialRuntime = exhibitionData && typeof exhibitionData.getRuntime === "function" ? exhibitionData.getRuntime(initialId) : null;
+  if (!initialRuntime) initialRuntime = await resolveInitialAdminRuntime(supabase, initialId);
+  if (!exhibitionData) exhibitionData = createExhibitionDataAdapter({ supabase, mode: "admin", initialRuntime });
+  if (typeof exhibitionData.setMode === "function") exhibitionData.setMode("admin");
+  window.ExhibitionPlatformDataAdapter = exhibitionData;
   engine = new window.BABYLON.Engine(canvas, true, {
     preserveDrawingBuffer: false, stencil: true, antialias: true, powerPreference: "high-performance", adaptToDeviceRatio: false
   });
-  scene = module.createScene(engine, canvas, { spaceDefinition: gallerySpaceDefinition, exhibitionId: initialId, adminWorkspace: true, initialExhibitionSnapshot: initialSnapshot || null });
+  scene = module.createScene(engine, canvas, { spaceDefinition: initialRuntime.spaceDefinition, exhibitionData, exhibitionId: initialRuntime.exhibition.id, adminWorkspace: true, initialExhibitionSnapshot: initialSnapshot || null });
   engine.runRenderLoop(() => scene.render());
   installResize();
   await ready;
   window.galleryEditorAuthenticated = true;
   if (window.GalleryApp) {
+    if (typeof window.GalleryApp.setExhibitionDataMode === "function") window.GalleryApp.setExhibitionDataMode("admin");
     window.GalleryApp.setEditorAuthenticated(true);
     window.GalleryApp.hideViewerIntroOverlay();
     window.GalleryApp.setEditMode(true);
@@ -902,12 +907,18 @@ async function initializeWorkspace() {
   adminUser.textContent = session.user && session.user.email ? session.user.email : "Editor";
   window.galleryEditorAuthenticated = true;
   try {
+    if (!exhibitionData) exhibitionData = createExhibitionDataAdapter({ supabase, mode: "admin" });
+    if (typeof exhibitionData.setMode === "function") exhibitionData.setMode("admin");
+    window.ExhibitionPlatformDataAdapter = exhibitionData;
+    if (window.GalleryApp && typeof window.GalleryApp.setExhibitionDataMode === "function") window.GalleryApp.setExhibitionDataMode("admin");
     await fetchCatalog();
     const requested = getRequestedExhibitionId();
-    const initial = catalog.find((item) => item.id === requested) || catalog.find((item) => item.id === "main") || catalog[0];
-    if (!initial) throw new Error("No exhibition exists. Check the Multi-Exhibition SQL migration.");
+    const initial = catalog.find((item) => item.id === requested || item.slug === requested) || catalog.find((item) => item.slug === "main") || catalog[0];
+    if (!initial) throw new Error("No canonical Exhibition exists. Run the C6C8C21 migration and postcheck.");
     setSelectedExhibition(initial);
-    const navigationHandoff = readNavigationHandoff(initial.id);
+    let initialRuntime = exhibitionData && typeof exhibitionData.getRuntime === "function" ? exhibitionData.getRuntime(initial.id) : null;
+    if (!initialRuntime) initialRuntime = await resolveInitialAdminRuntime(supabase, initial.id);
+    const navigationHandoff = readNavigationHandoff(initial.id, initialRuntime.spaceDefinition.id);
     await startEngine(initial.id, navigationHandoff);
   } catch (error) {
     startupError.textContent = error.message || String(error);
@@ -970,6 +981,8 @@ export async function resumeAdminWorkspace() {
   workspaceActive = true;
   installMetadataBeforeUnload();
   installResize();
+  if (exhibitionData && typeof exhibitionData.setMode === "function") exhibitionData.setMode("admin");
+  if (window.GalleryApp && typeof window.GalleryApp.setExhibitionDataMode === "function") window.GalleryApp.setExhibitionDataMode("admin");
   if (window.GalleryApp && typeof window.GalleryApp.enterAdminWorkspaceMode === "function") {
     window.GalleryApp.enterAdminWorkspaceMode();
   }
