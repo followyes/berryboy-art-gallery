@@ -15,7 +15,7 @@ const admin = fs.readFileSync(new URL('src/bootstrap/admin-workspace-bootstrap.j
 const guard = fs.readFileSync(new URL('src/bootstrap/transition-guard.js', root), 'utf8');
 const pkg = JSON.parse(fs.readFileSync(new URL('package.json', root), 'utf8'));
 function expect(label, ok){ if(!ok) throw new Error(`FAIL: ${label}`); console.log(`OK: ${label}`); }
-expect('current package keeps transition guard regression coverage', pkg.version.includes('c6c8c25') && viewer.includes('const STAGE = "C6C8C25.1"') && admin.includes('const STAGE = "C6C8C25"'));
+expect('current package keeps transition guard regression coverage', pkg.version.includes('c6c8c25') && viewer.includes('const STAGE = "C6C8C25.2"') && admin.includes('const STAGE = "C6C8C25"'));
 expect('shared full-page guard exists', guard.includes('position:fixed; inset:0') && guard.includes('z-index:2147483000') && guard.includes('epTransitionSpinner'));
 expect('guard blocks wheel/touch/keyboard interaction', guard.includes('document.addEventListener("wheel"') && guard.includes('document.addEventListener("touchmove"') && guard.includes('document.addEventListener("keydown"'));
 expect('guard paints before transition work', guard.includes('await waitForPaint()'));
@@ -317,8 +317,8 @@ function expect(label, value) { if (!value) throw new Error(`C6C8C12 regression:
 expect('package stage', pkg.version.includes('c6c8c25'));
 expect('runtime stage', source.includes('stage: "C6C8C21"'));
 expect('props optional in Space config', /props:[\s\S]*?fileName: "Props\.glb"[\s\S]*?required: false/.test(config));
-expect('props removed from critical shell', source.includes('var galleryCriticalAssetNames = ["floor", "wall", "ceiling"]') && source.includes('galleryOptionalAssetNames = galleryHasOptionalProps ? ["props"] : []'));
-expect('Props are the current optional Space asset', source.includes('galleryOptionalAssetNames = galleryHasOptionalProps ? ["props"] : []'));
+expect('props removed from critical shell', source.includes('var galleryStrictCriticalAssetNames = ["floor", "wall", "ceiling"]') && source.includes('galleryAuthoringSpacePreview'));
+expect('Props are the current optional Space asset', source.includes('galleryAuthoringSpacePreview'));
 expect('generic optional deferral only', source.includes('return galleryOptionalAssetNames.indexOf(assetName) !== -1;'));
 expect('per mesh warmup cache', source.includes('var gallerySpaceGpuWarmMeshCache') && source.includes('getGallerySpaceGpuWarmupRevision'));
 expect('every wall mesh participates', source.includes('{ kind: "wall", meshes: wallMeshes }'));

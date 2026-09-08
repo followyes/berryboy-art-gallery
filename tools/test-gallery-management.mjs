@@ -49,7 +49,7 @@ const entryReader = extractFunction(admin, 'readRequiredFiniteGalleryNumber');
 const mutationWrapper = extractFunction(admin, 'withGalleryMutation');
 const detailRenderer = extractFunction(admin, 'renderGalleryDetail');
 
-expect('release package is C6C8C25.1 Home Entry Flow', pkg.version.includes('c6c8c25_1-home-entry-flow'));
+expect('release package is C6C8C25.2 Admin Gallery Preview', pkg.version.includes('c6c8c25_2-admin-gallery-preview'));
 expect('Admin release identity is C6C8C25', admin.includes('const STAGE = "C6C8C25"'));
 expect('Gallery data adapter uses canonical Venue RPCs', api.includes('admin_create_gallery_with_initial_draft') && api.includes('admin_begin_venue_draft') && api.includes('admin_set_venue_asset_slot'));
 expect('new asset paths are stable UUID owner paths, not Gallery names', api.includes('venues/${venue}/versions/${version}/assets/${normalizedRole}/') && !api.includes('venue.slug'));

@@ -135,8 +135,9 @@ export const createScene = function (engineArg, canvasArg, runtimeOptionsArg) {
     var runtimeOptions = runtimeOptionsArg && typeof runtimeOptionsArg === "object" ? runtimeOptionsArg : {};
     var galleryLifecycleId = String(runtimeOptions.lifecycleId || ("legacy-scene-" + Date.now().toString(36))).trim();
     var galleryDisposed = false;
-    var galleryAdminWorkspaceMode = runtimeOptions.adminWorkspace === true;
-    var galleryPublicViewerOnly = !galleryAdminWorkspaceMode;
+    var galleryAuthoringSpacePreview = runtimeOptions.authoringSpacePreview === true;
+    var galleryAdminWorkspaceMode = runtimeOptions.adminWorkspace === true && !galleryAuthoringSpacePreview;
+    var galleryPublicViewerOnly = !galleryAdminWorkspaceMode && !galleryAuthoringSpacePreview;
     // C6C8C15: when Admin temporarily previews the public presentation, keep the
     // in-memory scene draft alive without keeping Edit/Admin UI active.
     var galleryAdminDraftPreviewActive = false;
@@ -15880,9 +15881,15 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
     // C6C8C23 - Space asset contract: Floor / Walls / Ceiling are critical; Props are optional.
+    var galleryHasFloorAsset = !!(gallerySpaceDefinition && gallerySpaceDefinition.assets && gallerySpaceDefinition.assets.floor);
+    var galleryHasWallAsset = !!(gallerySpaceDefinition && gallerySpaceDefinition.assets && gallerySpaceDefinition.assets.walls);
+    var galleryHasCeilingAsset = !!(gallerySpaceDefinition && gallerySpaceDefinition.assets && gallerySpaceDefinition.assets.ceiling);
     var galleryHasOptionalProps = !!(gallerySpaceDefinition && gallerySpaceDefinition.assets && gallerySpaceDefinition.assets.props);
-    var galleryCriticalAssetNames = ["floor", "wall", "ceiling"];
-    var galleryOptionalAssetNames = galleryHasOptionalProps ? ["props"] : [];
+    var galleryStrictCriticalAssetNames = ["floor", "wall", "ceiling"];
+    var galleryCriticalAssetNames = galleryAuthoringSpacePreview ? [] : galleryStrictCriticalAssetNames.slice();
+    var galleryOptionalAssetNames = galleryAuthoringSpacePreview
+        ? ([galleryHasFloorAsset ? "floor" : null, galleryHasWallAsset ? "wall" : null, galleryHasCeilingAsset ? "ceiling" : null, galleryHasOptionalProps ? "props" : null].filter(Boolean))
+        : (galleryHasOptionalProps ? ["props"] : []);
     var galleryAssetNames = galleryCriticalAssetNames.concat(galleryOptionalAssetNames);
     var assetsToLoad = galleryCriticalAssetNames.length;
     var assetsLoaded = 0;
@@ -17502,6 +17509,17 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
     async function fetchGalleryStartupStateSnapshotFromSupabase() {
+        if (galleryAuthoringSpacePreview) {
+            try {
+                var previewExhibition = await resolveGalleryExhibitionMetadata(null, galleryRequestedExhibitionId);
+                setActiveGalleryExhibitionContext(previewExhibition, { persistCurrentQueues: false });
+                return { ok: true, status: "gallery-authoring-preview", exhibition: previewExhibition, state: null, rowExists: false, authoringPreview: true };
+            } catch (previewError) {
+                var fallbackPreview = getGalleryFallbackMainExhibition();
+                setActiveGalleryExhibitionContext(fallbackPreview, { persistCurrentQueues: false });
+                return { ok: true, status: "gallery-authoring-preview-fallback", exhibition: fallbackPreview, state: null, rowExists: false, authoringPreview: true };
+            }
+        }
         var handoff = runtimeOptions && runtimeOptions.initialExhibitionSnapshot;
         if (handoff && typeof handoff === "object") {
             var handoffExhibition = normalizeGalleryExhibitionRecord(handoff.exhibition);
@@ -17608,6 +17626,11 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         galleryFastStartRuntime.stateApplyActive = true;
 
         try {
+            if (galleryAuthoringSpacePreview || result.authoringPreview) {
+                resetGalleryRuntimeToBlankExhibition();
+                galleryStartupFinalizeDebug.stateApplyStatus = "gallery-authoring-preview";
+                return false;
+            }
             if (result.noClient) {
                 restoreSavedLocalLightStateOnce();
                 notifyGalleryStatus("Supabase nie jest skonfigurowany. Uzywam lokalnego fallbacku.");
@@ -37633,12 +37656,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
     // STAGE 12C66C6C7C8 — SPACE-AGNOSTIC STARTUP ASSETS
     // The engine no longer knows concrete GLB file names. They come from the resolved canonical Venue Space definition.
-    var galleryFloorSpaceAsset = requireGallerySpaceAsset("floor");
-    var galleryWallSpaceAsset = requireGallerySpaceAsset("walls");
+    var galleryFloorSpaceAsset = galleryAuthoringSpacePreview ? optionalGallerySpaceAsset("floor") : requireGallerySpaceAsset("floor");
+    var galleryWallSpaceAsset = galleryAuthoringSpacePreview ? optionalGallerySpaceAsset("walls") : requireGallerySpaceAsset("walls");
     var galleryPropsSpaceAsset = optionalGallerySpaceAsset("props");
-    var galleryCeilingSpaceAsset = requireGallerySpaceAsset("ceiling");
+    var galleryCeilingSpaceAsset = galleryAuthoringSpacePreview ? optionalGallerySpaceAsset("ceiling") : requireGallerySpaceAsset("ceiling");
 
-    loadGalleryStartupAssetWithRetry("", galleryFloorSpaceAsset.rootUrl, galleryFloorSpaceAsset.deliveryFileName, scene,
+    if (galleryFloorSpaceAsset) loadGalleryStartupAssetWithRetry("", galleryFloorSpaceAsset.rootUrl, galleryFloorSpaceAsset.deliveryFileName, scene,
         function (meshes) {
             floorMeshes = meshes.filter(mesh => mesh.name !== "__root__");
             tagGallerySpaceCollection(floorMeshes, "floor");
@@ -37654,7 +37677,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         ".glb"
     );
 
-    loadGalleryStartupAssetWithRetry("", galleryWallSpaceAsset.rootUrl, galleryWallSpaceAsset.deliveryFileName, scene,
+    if (galleryWallSpaceAsset) loadGalleryStartupAssetWithRetry("", galleryWallSpaceAsset.rootUrl, galleryWallSpaceAsset.deliveryFileName, scene,
         function (meshes) {
             wallMeshes = meshes.filter(mesh => mesh.name !== "__root__"); tagGallerySpaceCollection(wallMeshes, "wall"); registerGallerySpaceIntegrityBaseline("wall", wallMeshes); markGalleryGeometryDirty("wallImported");
             wallMeshes.forEach(mesh => { mesh.isPickable = true; registerViewerCollisionMesh(mesh, "wall"); if (mesh.material) { configureMaterialForCommonLighting(mesh.material); configureMeshMaterialForMainShadows(mesh); } registerCommonShadowMesh(mesh, { global: true, local: true, receive: true, cast: true }); });
@@ -37683,7 +37706,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         );
     }
 
-    loadGalleryStartupAssetWithRetry("", galleryCeilingSpaceAsset.rootUrl, galleryCeilingSpaceAsset.deliveryFileName, scene,
+    if (galleryCeilingSpaceAsset) loadGalleryStartupAssetWithRetry("", galleryCeilingSpaceAsset.rootUrl, galleryCeilingSpaceAsset.deliveryFileName, scene,
         function (meshes) {
             meshes.forEach(mesh => { mesh.isPickable = true; if (mesh.name !== "__root__" && ceilingMeshes.indexOf(mesh) === -1) { ceilingMeshes.push(mesh); tagGallerySpaceNode(mesh, "ceiling"); } registerCommonShadowMesh(mesh, { global: true, local: true, receive: true, cast: false }); });
             registerGallerySpaceIntegrityBaseline("ceiling", ceilingMeshes);
@@ -37693,6 +37716,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         ".glb"
     );
 
+    if (galleryAuthoringSpacePreview) {
+        setTimeout(function () { completeGalleryStartupIfReady(); }, 0);
+    }
 
     // STAGE 12A - 3D MODEL SLOT LOGIC
     function getModel3dState(slot) {

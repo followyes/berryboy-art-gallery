@@ -136,8 +136,8 @@ assert.ok(viewer.includes('exhibitionsButton'));
 assert.ok(index.includes('id="exhibitionsButton"'));
 assert.ok(index.includes('href="./index.html"'));
 
-assert.equal(pkg.version, '0.11.92-c6c8c25_1-home-entry-flow');
-assert.ok(pkg.description.includes('C6C8C25.1'));
+assert.equal(pkg.version, '0.11.93-c6c8c25_2-admin-gallery-preview');
+assert.ok(pkg.description.includes('C6C8C25.2'));
 assert.ok(pkg.scripts.test.includes('test:gallery-assignment'));
 
 console.log('C6C8C24 Exhibition ↔ Gallery Assignment regression invariants passed under C6C8C25.');

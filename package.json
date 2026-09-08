@@ -1,8 +1,8 @@
 {
   "name": "exhibition-platform",
-  "version": "0.11.92-c6c8c25_1-home-entry-flow",
+  "version": "0.11.93-c6c8c25_2-admin-gallery-preview",
   "private": true,
-  "description": "Exhibition Platform — C6C8C25.1 Main-page Exhibition Entry / Admin Direct Access",
+  "description": "Exhibition Platform — C6C8C25.2 Admin Gallery Partial Preview / UI Fixes",
   "type": "module",
   "scripts": {
     "build": "node tools/build-current.mjs",

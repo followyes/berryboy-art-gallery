@@ -163,11 +163,13 @@ export function createSceneLifecycleController(options = {}) {
       const extraOptions = typeof options.getCreateSceneOptions === "function"
         ? (options.getCreateSceneOptions(runtime, createOptions) || {})
         : {};
+      const sceneOptions = createOptions.sceneOptions && typeof createOptions.sceneOptions === "object" ? createOptions.sceneOptions : {};
+      const runtimeExhibitionData = sceneOptions.exhibitionData || exhibitionData;
       scene = engineModule.createScene(engine, canvas, {
         ...extraOptions,
-        ...createOptions.sceneOptions,
+        ...sceneOptions,
         spaceDefinition: runtime.spaceDefinition,
-        exhibitionData,
+        exhibitionData: runtimeExhibitionData,
         exhibitionId: runtime.exhibition.id,
         initialExhibitionSnapshot: createOptions.initialSnapshot || null,
         lifecycleId
@@ -219,7 +221,9 @@ export function createSceneLifecycleController(options = {}) {
       debug.lastToVersionId = targetVersionId;
       debug.lastError = null;
 
-      if (previousRuntime && areRuntimesSameVenueVersion(previousRuntime, targetRuntime) && previousScene && !isSceneDisposed(previousScene)) {
+      const previousIsGalleryAuthoring = previousRuntime && previousRuntime.context === "gallery-authoring";
+      const targetIsGalleryAuthoring = targetRuntime && targetRuntime.context === "gallery-authoring";
+      if (previousRuntime && !previousIsGalleryAuthoring && !targetIsGalleryAuthoring && areRuntimesSameVenueVersion(previousRuntime, targetRuntime) && previousScene && !isSceneDisposed(previousScene)) {
         setAdapterModeForRuntime(targetRuntime);
         const app = getApp();
         if (!app || typeof app.switchExhibition !== "function") throw new Error("Same-Space Exhibition switch API is unavailable.");

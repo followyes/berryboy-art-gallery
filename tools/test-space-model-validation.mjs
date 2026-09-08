@@ -196,8 +196,8 @@ assert.ok(apiSource.includes('C23 deep validation must pass before a Gallery mod
 assert.ok(adminSource.includes('validateGalleryModelFile') && adminSource.includes('validateExistingGalleryAsset'));
 assert.ok(adminSource.includes('../data/exhibition-api.js?v=c6c8c25_cross_space_runtime'));
 assert.ok(adminSource.includes('props · optional') && adminSource.includes('CHECKING SPACE'));
-assert.ok(engineSource.includes('var galleryCriticalAssetNames = ["floor", "wall", "ceiling"]'));
-assert.ok(engineSource.includes('var galleryOptionalAssetNames = galleryHasOptionalProps ? ["props"] : []'));
+assert.ok(engineSource.includes('var galleryStrictCriticalAssetNames = ["floor", "wall", "ceiling"]'));
+assert.ok(engineSource.includes('var galleryAuthoringSpacePreview'));
 assert.ok(engineSource.includes('if (galleryPropsSpaceAsset)'));
 assert.ok(!engineSource.includes('if (!snapshot.propsSettled) blockers.push("props")'));
 

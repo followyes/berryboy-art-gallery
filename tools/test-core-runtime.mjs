@@ -510,7 +510,7 @@ function createBootHarness() {
   assert.equal(ids.get('galleryBootMessage').textContent, 'Reload the page and try again.');
 }
 
-console.log('C6C8C25.1 Exhibition-selection startup and current-popup regression tests passed.');
+console.log('C6C8C25.2 Exhibition-selection startup and current-popup regression tests passed.');
 
 })();
 

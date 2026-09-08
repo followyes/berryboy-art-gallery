@@ -156,8 +156,9 @@ function expect(label, condition) {
 }
 
 expect('Engine has explicit Admin Workspace runtime mode',
-  source.includes('var galleryAdminWorkspaceMode = runtimeOptions.adminWorkspace === true;') &&
-  source.includes('var galleryPublicViewerOnly = !galleryAdminWorkspaceMode;'));
+  source.includes('var galleryAuthoringSpacePreview = runtimeOptions.authoringSpacePreview === true;') &&
+  source.includes('var galleryAdminWorkspaceMode = runtimeOptions.adminWorkspace === true && !galleryAuthoringSpacePreview;') &&
+  source.includes('var galleryPublicViewerOnly = !galleryAdminWorkspaceMode && !galleryAuthoringSpacePreview;'));
 
 expect('Public Edit Mode control routes to admin for active exhibition',
   source.includes('function openGalleryAdminWorkspaceForActiveExhibition()') &&

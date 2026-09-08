@@ -1,5 +1,5 @@
 /*
-  Exhibition Platform — C6C8C25.1 — Main-page Exhibition Entry + Cross-Space Runtime
+  Exhibition Platform — C6C8C25.2 — Main-page Exhibition Entry + Cross-Space Runtime
   Save Integrity Repair / Correct Startup Rebuild.
   Babylon, GLB loaders and the gallery engine start only after an explicit visitor click.
   The engine-owned instructional popup is shown after true interaction readiness; C6C8C16 keeps its mobile CTA pinned.
@@ -9,10 +9,10 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import { registerExhibitionAssetCache, getExhibitionAssetDeliveryStats } from "./asset-cache-bootstrap.js?v=c6c8c22_gallery_management_20260908";
 import { beginTransitionGuard, endTransitionGuard, isTransitionGuardActive } from "./transition-guard.js?v=c6c8c22_gallery_management_20260908";
 import { createExhibitionDataAdapter, resolveInitialPublicRuntime, listPublicExhibitionCards } from "../data/exhibition-api.js?v=c6c8c25_cross_space_runtime";
-import { createSceneLifecycleController, getRuntimeVenueVersionKey } from "../runtime/scene-lifecycle-controller.js?v=c6c8c25_cross_space_runtime";
+import { createSceneLifecycleController, getRuntimeVenueVersionKey } from "../runtime/scene-lifecycle-controller.js?v=c6c8c25_2_admin_gallery_preview";
 
-const STAGE = "C6C8C25.1";
-const ENGINE_CACHE_KEY = "c6c8c25_1_home_entry_flow_20260908";
+const STAGE = "C6C8C25.2";
+const ENGINE_CACHE_KEY = "c6c8c25_2_admin_gallery_preview_20260908";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
 
@@ -365,6 +365,7 @@ function ensureInlineAdminWorkspaceStyles() {
     #inlineAdminViewportToolbar { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:0 12px; border-bottom:1px solid rgba(255,255,255,.10); background:rgba(20,22,21,.96); }
     #inlineAdminWorkspace #viewportStatus { min-width:0; color:rgba(255,255,255,.57); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     #inlineAdminWorkspace #viewportStatus strong { color:rgba(255,255,255,.92); }
+    #inlineAdminWorkspace #assetDeliveryStatus, #inlineAdminWorkspace #networkDiagnostics, #inlineAdminViewportToolbar > .fieldMeta { display:none !important; }
     #adminViewportStage { position:relative; min-width:0; min-height:0; overflow:hidden; isolation:isolate; }
     #inlineAdminWorkspace #gallerySection { width:100% !important; height:100% !important; min-height:0 !important; }
     #inlineAdminWorkspace .workspaceLoading { position:absolute; inset:0; z-index:45; display:grid; place-items:center; pointer-events:none; background:rgba(5,6,6,.72); backdrop-filter:blur(4px); }
@@ -429,14 +430,15 @@ async function closeInlineAdminWorkspace(options = {}) {
   const activeBefore = window.GalleryApp && window.GalleryApp.getActiveExhibition ? window.GalleryApp.getActiveExhibition() : null;
   const transitionStartedAt = performance.now();
   const currentRuntime = sceneLifecycleController ? sceneLifecycleController.getActiveRuntime() : null;
+  const returnSourceRuntime = currentRuntime && currentRuntime.context === "gallery-authoring" ? activePublicRuntime : currentRuntime;
   let publicRuntime = null;
   let crossSpaceReturn = false;
 
   try {
-    if (publicExhibitionData && currentRuntime && currentRuntime.exhibition) {
+    if (publicExhibitionData && returnSourceRuntime && returnSourceRuntime.exhibition) {
       publicExhibitionData.setMode("public");
-      publicRuntime = await publicExhibitionData.resolveRuntime(currentRuntime.exhibition.id, { force: true });
-      crossSpaceReturn = getRuntimeVenueVersionKey(currentRuntime) !== getRuntimeVenueVersionKey(publicRuntime);
+      publicRuntime = await publicExhibitionData.resolveRuntime(returnSourceRuntime.exhibition.id, { force: true });
+      crossSpaceReturn = !currentRuntime || currentRuntime.context === "gallery-authoring" || getRuntimeVenueVersionKey(currentRuntime) !== getRuntimeVenueVersionKey(publicRuntime);
     }
   } catch (error) {
     if (publicExhibitionData) publicExhibitionData.setMode("admin");

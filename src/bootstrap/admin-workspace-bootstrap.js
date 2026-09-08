@@ -14,7 +14,8 @@ import {
   isCurrentGalleryModelValidation,
   summarizeGalleryModelValidation
 } from "../validation/gallery-model-validation.js?v=c6c8c25_cross_space_runtime";
-import { createSceneLifecycleController, getRuntimeVenueVersionKey } from "../runtime/scene-lifecycle-controller.js?v=c6c8c25_cross_space_runtime";
+import { createSceneLifecycleController, getRuntimeVenueVersionKey } from "../runtime/scene-lifecycle-controller.js?v=c6c8c25_2_admin_gallery_preview";
+import { buildAuthoringSpaceDefinition } from "../runtime/space-definition-resolver.js?v=c6c8c25_2_admin_gallery_preview";
 import {
   galleryBindingLabel,
   isExhibitionGalleryMigrationPending,
@@ -22,7 +23,7 @@ import {
 } from "../data/exhibition-gallery-assignment.js?v=c6c8c25_cross_space_runtime";
 
 const STAGE = "C6C8C25";
-const ENGINE_CACHE_KEY = "c6c8c25_cross_space_runtime_20260908";
+const ENGINE_CACHE_KEY = "c6c8c25_2_admin_gallery_preview_20260908";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
 const inlineRuntimeContext = window.__EXHIBITION_INLINE_ADMIN_CONTEXT__ || null;
@@ -105,6 +106,7 @@ let adminWorkspaceSection = "exhibitions";
 let exhibitionGalleryDetail = null;
 let exhibitionGalleryDetailRequest = 0;
 let exhibitionGalleryMutationInFlight = false;
+let galleryAuthoringPreviewActive = false;
 
 function formatDeliveryBytes(bytes) {
   const value = Math.max(0, Number(bytes) || 0);
@@ -193,7 +195,7 @@ async function updateNetworkDiagnosticsStatus() {
       ? `BG slices ${Number(background.slices) || 0} · art ${Number(background.artworkStarts) || 0} · model ${Number(background.modelStarts) || 0} · pauses ${Number(background.motionPauses) || 0}`
       : "BG waiting";
     networkDiagnostics.textContent = `${sessionPart} | ${transitionPart} | ${cpuPart} | ${foregroundPart} | ${backgroundPart} | ${spacePart}`;
-    networkDiagnostics.title = "Storage is measured by the local Service Worker. C6C8C12 requires the full static Space shell (Walls/Floor/Ceiling/Props), per-mesh GPU warmup and Preview presence before interaction. Full textures and sculpture/model hydration remain background-budgeted and motion-aware.";
+    networkDiagnostics.title = "Storage is measured by the local Service Worker. C6C8C23 requires Floor/Walls/Ceiling for Published runtime; Props are optional. Per-mesh GPU warmup and Preview presence remain part of normal Exhibition readiness. Full textures and sculpture/model hydration remain background-budgeted and motion-aware.";
   } catch (_error) {
     networkDiagnostics.textContent = "Network: diagnostics unavailable";
   }
@@ -881,7 +883,13 @@ function installResize() {
   let observer = null;
   const resize = () => {
     if (!workspaceActive || raf) return;
-    raf = requestAnimationFrame(() => { raf = 0; if (workspaceActive && engine) engine.resize(); });
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      if (!workspaceActive) return;
+      const stage = el("adminViewportStage");
+      if (stage) document.documentElement.style.setProperty("--gallery-visual-viewport-height", `${Math.max(1, stage.getBoundingClientRect().height)}px`);
+      if (engine) engine.resize();
+    });
   };
   window.addEventListener("resize", resize, { passive: true });
   if (window.ResizeObserver) {
@@ -1158,22 +1166,23 @@ function ensureGalleryManagementStyles() {
   style.id = "c22GalleryManagementStyles";
   style.textContent = `
     .adminSectionTabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:12px 14px 0}
-    .adminSectionTab{height:36px;border:1px solid var(--line,rgba(255,255,255,.1));border-radius:10px;background:rgba(255,255,255,.035);color:var(--muted,rgba(255,255,255,.57));font-size:10px;font-weight:800;letter-spacing:.08em;cursor:pointer}
-    .adminSectionTab.active{background:var(--accent-bg,rgba(125,160,127,.16));border-color:rgba(154,180,155,.38);color:var(--text,#fff)}
+    .adminSectionTabs,.galleryManagementSection{--gallery-admin-text:rgba(255,255,255,.92);--gallery-admin-muted:rgba(255,255,255,.62);--gallery-admin-line:rgba(255,255,255,.10);color:var(--gallery-admin-text)}
+    .adminSectionTab{height:36px;border:1px solid var(--gallery-admin-line);border-radius:10px;background:rgba(255,255,255,.035);color:var(--gallery-admin-muted);font-size:10px;font-weight:800;letter-spacing:.08em;cursor:pointer}
+    .adminSectionTab.active{background:rgba(125,160,127,.16);border-color:rgba(154,180,155,.38);color:var(--gallery-admin-text)}
     .galleryManagementSection.hidden{display:none!important}.exhibitionManagementSection.hidden{display:none!important}
     #galleryCreateForm{display:grid;gap:8px}.galleryList{display:grid;gap:7px;max-height:300px;overflow:auto;padding-right:2px}
     .galleryRow{width:100%;display:grid;gap:4px;text-align:left;padding:10px;border:1px solid transparent;border-radius:10px;background:transparent;color:inherit;cursor:pointer}
     .galleryRow:hover{background:rgba(255,255,255,.045)}.galleryRow.active{border-color:rgba(154,180,155,.38);background:rgba(125,160,127,.16)}
-    .galleryRow strong{font-size:12px}.galleryRow span{font-size:10px;color:var(--muted,rgba(255,255,255,.57));line-height:1.4}
-    #galleryDetailBody{display:grid;gap:13px}.gallerySubsection{display:grid;gap:9px;padding-top:4px}.gallerySubsection+.gallerySubsection{border-top:1px solid var(--line,rgba(255,255,255,.1));padding-top:13px}
-    .gallerySubsection h3{margin:0;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text,#fff)}
-    .galleryVersionLine{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border:1px solid var(--line,rgba(255,255,255,.1));border-radius:10px;background:rgba(255,255,255,.025);font-size:10px}
-    .galleryActions{display:flex;flex-wrap:wrap;gap:7px}.galleryAssetGrid{display:grid;gap:7px}.galleryAssetRow{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px;border:1px solid var(--line,rgba(255,255,255,.1));border-radius:10px}
-    .galleryAssetRole{font-size:10px;font-weight:800;text-transform:uppercase}.galleryAssetMeta{min-width:0;font-size:10px;color:var(--muted,rgba(255,255,255,.57));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .galleryAssetInput{display:none}.galleryEntryGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.galleryEntryLabel{display:grid;gap:4px;font-size:9px;color:var(--muted,rgba(255,255,255,.57));text-transform:uppercase}
-    .galleryValidation{padding:9px 10px;border:1px solid var(--line,rgba(255,255,255,.1));border-radius:10px;font-size:10px;line-height:1.5;color:var(--muted,rgba(255,255,255,.57))}.galleryValidation.valid{border-color:rgba(127,169,130,.45);background:rgba(127,169,130,.08)}.galleryValidation.invalid{border-color:rgba(209,139,139,.45);background:rgba(209,139,139,.06)}
+    .galleryRow strong{font-size:12px}.galleryRow span{font-size:10px;color:var(--gallery-admin-muted);line-height:1.4}
+    #galleryDetailBody{display:grid;gap:13px}.gallerySubsection{display:grid;gap:9px;padding-top:4px}.gallerySubsection+.gallerySubsection{border-top:1px solid var(--gallery-admin-line);padding-top:13px}
+    .gallerySubsection h3{margin:0;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--gallery-admin-text)}
+    .galleryVersionLine{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border:1px solid var(--gallery-admin-line);border-radius:10px;background:rgba(255,255,255,.025);font-size:10px}
+    .galleryActions{display:flex;flex-wrap:wrap;gap:7px}.galleryAssetGrid{display:grid;gap:7px}.galleryAssetRow{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px;border:1px solid var(--gallery-admin-line);border-radius:10px}
+    .galleryAssetRole{font-size:10px;font-weight:800;text-transform:uppercase}.galleryAssetMeta{min-width:0;font-size:10px;color:var(--gallery-admin-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .galleryAssetInput{display:none}.galleryEntryGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.galleryEntryLabel{display:grid;gap:4px;font-size:9px;color:var(--gallery-admin-muted);text-transform:uppercase}
+    .galleryValidation{padding:9px 10px;border:1px solid var(--gallery-admin-line);border-radius:10px;font-size:10px;line-height:1.5;color:var(--gallery-admin-muted)}.galleryValidation.valid{border-color:rgba(127,169,130,.45);background:rgba(127,169,130,.08)}.galleryValidation.invalid{border-color:rgba(209,139,139,.45);background:rgba(209,139,139,.06)}
     .galleryHistory{display:grid;gap:6px}.galleryHistoryItem{display:flex;justify-content:space-between;gap:10px;font-size:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)}
-    .galleryMuted{color:var(--muted,rgba(255,255,255,.57));font-size:10px;line-height:1.45}.galleryDangerNote{color:#d7a0a0;font-size:10px;line-height:1.45}
+    .galleryMuted{color:var(--gallery-admin-muted);font-size:10px;line-height:1.45}.galleryDangerNote{color:#d7a0a0;font-size:10px;line-height:1.45}
     .galleryRenderError{display:grid;gap:9px;padding:12px;border:1px solid rgba(209,139,139,.45);border-radius:10px;background:rgba(209,139,139,.06);font-size:10px;line-height:1.5}
     @media(max-width:520px){.galleryAssetRow{grid-template-columns:54px minmax(0,1fr)}.galleryAssetRow .adminButton{grid-column:1/-1}.galleryEntryGrid{grid-template-columns:1fr}}
   `;
@@ -1356,9 +1365,10 @@ function setAdminWorkspaceSection(section, { skipConfirm = false } = {}) {
   if (saveStateButton) saveStateButton.style.display = next === "exhibitions" ? "" : "none";
   if (next === "galleries") {
     updateGalleryUrl(selectedGalleryDetail && selectedGalleryDetail.venue ? selectedGalleryDetail.venue.id : getGalleryRequestedId());
-    if (session) void loadGalleryCatalog().catch((error) => showToast(error.message || String(error)));
+    if (session) void loadGalleryCatalog().then(() => previewSelectedGallery("admin-gallery-section")).catch((error) => showToast(error.message || String(error)));
   } else {
     clearGalleryUrl();
+    void restoreSelectedExhibitionPreview("admin-exhibition-section").catch((error) => showToast(error.message || String(error)));
   }
   return true;
 }
@@ -1452,6 +1462,61 @@ function renderGalleryCatalog() {
   });
 }
 
+function createGalleryAuthoringPreviewAdapter(runtime) {
+  const exhibition = runtime.exhibition;
+  return Object.freeze({
+    setMode() {},
+    async list() { return [exhibition]; },
+    async resolve() { return exhibition; },
+    async loadState() { return null; },
+    async saveState() { throw new Error("Gallery authoring preview is read-only for Exhibition state."); },
+    async updateMetadata() { throw new Error("Gallery authoring preview does not edit Exhibition metadata."); },
+    async create() { throw new Error("Gallery authoring preview cannot create Exhibitions."); }
+  });
+}
+
+function buildGalleryAuthoringPreviewRuntime(detail) {
+  if (!detail || !detail.venue) throw new Error("Gallery preview requires Gallery details.");
+  const version = galleryWorkingVersion(detail);
+  if (!version) throw new Error("Gallery has no Draft or Published Version to preview.");
+  const spaceDefinition = buildAuthoringSpaceDefinition({
+    supabase, venue: detail.venue, venueVersion: version, manifest: version.manifest || {}, assets: Array.isArray(version.assets) ? version.assets : []
+  });
+  const exhibition = {
+    id: `gallery-preview-${detail.venue.id}`, name: `${detail.venue.name || detail.venue.slug || "Gallery"} preview`,
+    slug: `gallery-preview-${detail.venue.slug || detail.venue.id}`, description: "", cover_path: null, is_published: false, sort_order: 0,
+    storage_prefix: `gallery-preview/${detail.venue.id}`, space_id: detail.venue.slug || spaceDefinition.id, venue_id: detail.venue.id,
+    venue_version_id: version.id, venue_version_number: version.version_number || spaceDefinition.version
+  };
+  return { context: "gallery-authoring", mode: "admin", exhibition, venue: detail.venue, venueVersion: version, spaceDefinition };
+}
+
+async function previewSelectedGallery(reason = "admin-gallery-selection") {
+  if (!engineReady || !sceneLifecycleController || !selectedGalleryDetail) return false;
+  const runtime = buildGalleryAuthoringPreviewRuntime(selectedGalleryDetail);
+  const adapter = createGalleryAuthoringPreviewAdapter(runtime);
+  const venue = selectedGalleryDetail.venue;
+  const version = galleryWorkingVersion(selectedGalleryDetail);
+  setViewportStatus(`${venue.name || venue.slug} · ${version ? version.version_number : "preview"} · Gallery Draft preview`);
+  const result = await sceneLifecycleController.switchTo(runtime.exhibition.id, {
+    runtime, forceRemote: false, reason,
+    sceneOptions: { adminWorkspace: false, authoringSpacePreview: true, exhibitionData: adapter }
+  });
+  if (!result || !result.ok) return false;
+  galleryAuthoringPreviewActive = true;
+  scene = sceneLifecycleController.getActiveScene();
+  if (inlineRuntimeContext) inlineRuntimeContext.scene = scene;
+  if (engine && engine.resize) engine.resize();
+  return true;
+}
+
+async function restoreSelectedExhibitionPreview(reason = "admin-gallery-exit") {
+  if (!galleryAuthoringPreviewActive || !selectedExhibition || !engineReady || !sceneLifecycleController) return true;
+  galleryAuthoringPreviewActive = false;
+  await selectAndSwitchExhibition(selectedExhibition.id);
+  return true;
+}
+
 async function selectGallery(venueId, { skipConfirm = false } = {}) {
   syncGalleryMetadataDirty();
   syncGalleryEntryDirty();
@@ -1462,6 +1527,9 @@ async function selectGallery(venueId, { skipConfirm = false } = {}) {
   renderGalleryDetail(selectedGalleryDetail);
   renderGalleryCatalog();
   updateGalleryUrl(venueId);
+  if (engineReady && adminWorkspaceSection === "galleries") {
+    try { await previewSelectedGallery("admin-gallery-select"); } catch (error) { showToast(`Gallery preview failed: ${error.message || error}`); }
+  }
 }
 
 function renderGalleryDetailError(body, error) {
@@ -1703,6 +1771,9 @@ async function refreshSelectedGallery() {
   galleryCatalog = await galleryManagement.list();
   renderGalleryCatalog();
   renderGalleryDetail(selectedGalleryDetail);
+  if (engineReady && adminWorkspaceSection === "galleries") {
+    try { await previewSelectedGallery("admin-gallery-refresh"); } catch (error) { showToast(`Gallery preview failed: ${error.message || error}`); }
+  }
 }
 
 async function handleRefreshGalleries() {
@@ -1993,6 +2064,7 @@ async function initializeWorkspace() {
     if (!initialRuntime) initialRuntime = await resolveInitialAdminRuntime(supabase, initial.id);
     const navigationHandoff = readNavigationHandoff(initial.id, initialRuntime.spaceDefinition.id, getRuntimeVenueVersionKey(initialRuntime));
     await startEngine(initial.id, navigationHandoff);
+    if (adminWorkspaceSection === "galleries" && selectedGalleryDetail) await previewSelectedGallery("admin-initial-gallery-section");
   } catch (error) {
     startupError.textContent = error.message || String(error);
     startupError.style.display = "grid";

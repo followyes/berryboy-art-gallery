@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createSceneLifecycleController, getRuntimeVenueVersionKey, areRuntimesSameVenueVersion } from '../src/runtime/scene-lifecycle-controller.js';
+import { buildAuthoringSpaceDefinition, buildSpaceDefinition } from '../src/runtime/space-definition-resolver.js';
 
 if (!globalThis.window) globalThis.window = new EventTarget();
 if (!window.setTimeout) window.setTimeout = setTimeout;
@@ -213,4 +214,30 @@ assert.ok(api.includes('const runtimeKey = (modeValue, id) =>'), 'Public/Admin r
 assert.ok(api.includes('public:<') === false); // implementation uses dynamic canonical key, not hard-coded one-off values
 assert.ok(api.includes('requestedMode'), 'mode-specific runtime cache lookup missing');
 
-console.log('C6C8C25 Cross-Space Runtime executable regression invariants passed.');
+
+
+// C6C8C25.2 — Gallery authoring preview is allowed to be structurally partial,
+// while the public/publish Space resolver remains strict.
+const fakeSupabase = { storage: { from(bucket) { return { getPublicUrl(path) { return { data: { publicUrl: `https://example.test/${bucket}/${path}` } }; } }; } } };
+const previewVenue = { id: 'venue-preview', slug: 'preview-gallery', name: 'Preview Gallery' };
+const previewVersion = { id: 'version-preview', version_number: 'v1', manifest: { schema:'exhibition-platform-venue-manifest.v1', venueId:'preview-gallery', versionId:'v1', coordinateSystem:{upAxis:'Y',units:'meters'}, spawnPoints:[] } };
+const emptyPreviewSpace = buildAuthoringSpaceDefinition({ supabase: fakeSupabase, venue: previewVenue, venueVersion: previewVersion, manifest: previewVersion.manifest, assets: [] });
+assert.equal(emptyPreviewSpace.authoringPartial, true);
+assert.deepEqual(Object.keys(emptyPreviewSpace.assets), []);
+const floorOnlyPreviewSpace = buildAuthoringSpaceDefinition({ supabase: fakeSupabase, venue: previewVenue, venueVersion: previewVersion, manifest: previewVersion.manifest, assets: [{ role:'floor', storage_bucket:'venue-runtime', storage_path:'venues/v/floor.glb' }] });
+assert.deepEqual(Object.keys(floorOnlyPreviewSpace.assets), ['floor']);
+assert.throws(() => buildSpaceDefinition({ supabase: fakeSupabase, venue: previewVenue, venueVersion: previewVersion, manifest: previewVersion.manifest }), /requires exactly one floor asset/);
+assert.ok(admin.includes('buildGalleryAuthoringPreviewRuntime'));
+assert.ok(admin.includes('context: "gallery-authoring"'));
+assert.ok(admin.includes('authoringSpacePreview: true'));
+assert.ok(admin.includes('Gallery authoring preview is read-only for Exhibition state.'));
+assert.ok(admin.includes('restoreSelectedExhibitionPreview'));
+assert.ok(admin.includes('--gallery-admin-text'));
+assert.ok(admin.includes('--gallery-visual-viewport-height'));
+assert.ok(source.includes('var galleryAuthoringSpacePreview = runtimeOptions.authoringSpacePreview === true'));
+assert.ok(source.includes('var galleryStrictCriticalAssetNames = ["floor", "wall", "ceiling"]'));
+assert.ok(source.includes('galleryCriticalAssetNames = galleryAuthoringSpacePreview ? [] : galleryStrictCriticalAssetNames.slice()'));
+assert.ok(source.includes('galleryAuthoringSpacePreview ? optionalGallerySpaceAsset("floor") : requireGallerySpaceAsset("floor")'));
+assert.ok(viewer.includes('currentRuntime && currentRuntime.context === "gallery-authoring" ? activePublicRuntime : currentRuntime'));
+
+console.log('C6C8C25/C25.2 Cross-Space + Admin Gallery preview regression invariants passed.');

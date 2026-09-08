@@ -1,6 +1,6 @@
 # Exhibition Platform
 
-Current repository release: **C6C8C25.1 — Main-page Exhibition Entry / Admin Direct Access**.
+Current repository release: **C6C8C25.2 — Admin Gallery Partial Preview / UI Fixes**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
@@ -164,6 +164,16 @@ Choosing a card is the single visitor action: it starts loading/Babylon and ente
 
 C25 replaces the former fresh-document cross-Gallery boundary with same-session Scene lifecycle switching. Same exact Venue Version keeps the accepted resident/delta Exhibition path; another exact Venue Version recreates the Scene on the same Engine/canvas.
 
+## C6C8C25.2 Admin Gallery Partial Preview / UI Fixes
+
+C25.2 adds a separate Gallery **authoring preview** policy without weakening normal Published/Public Space validation. Selecting a Gallery in Admin now drives the right-side Babylon viewport. A working Venue Version may be previewed with zero or partial building assets; only assigned assets are loaded.
+
+Gallery authoring preview is deliberately isolated from real Exhibition content through a read-only synthetic Exhibition adapter. It cannot load/save the previously selected Exhibition's artwork, sculpture, lighting or editor state. Crossing between a normal Exhibition runtime and Gallery authoring preview forces a Scene lifecycle boundary even when the exact `venue_version_id` matches.
+
+Returning `GALLERIES -> EXHIBITIONS` restores the selected Exhibition Draft runtime. Closing inline Admin from Gallery preview restores the remembered Published public runtime.
+
+The strict publication contract is unchanged: Floor + Walls + Ceiling remain required and must pass C23 validation; Props remains optional. C25.2 also scopes Gallery Management text tokens to the dark Admin surface, hides normal runtime diagnostics from the standard Admin toolbar and constrains the in-scene editor panel to the actual 3D stage height.
+
 ## C6C8C25.1 Main-page Exhibition Entry / Admin Direct Access
 
 C25.1 is a browser-flow correction over the C25 Scene lifecycle. It removes the obsolete double-entry path where visitors first saw `Enter gallery` and only then chose an Exhibition. Exhibition choice is now the entry gesture.
@@ -233,7 +243,7 @@ SQL package verification is separate:
 node OUTSIDE_REPO/TOOLS/verify-sql-package.mjs
 ```
 
-The SQL/package verifier is static. C25 has no SQL migration; production closure requires REPO deployment through GitHub / GitHub Pages and the C25 browser smoke.
+The SQL/package verifier is static. C25.2 has no SQL migration; production closure requires REPO deployment through GitHub / GitHub Pages and the C25.2 browser smoke.
 
 ## Documentation
 
