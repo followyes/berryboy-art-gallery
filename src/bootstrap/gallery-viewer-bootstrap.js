@@ -111,6 +111,28 @@ function hasExplicitExhibitionSelection() {
   } catch (_error) { return false; }
 }
 
+function isHardDocumentReload() {
+  try {
+    const entries = performance && typeof performance.getEntriesByType === "function"
+      ? performance.getEntriesByType("navigation")
+      : [];
+    if (entries && entries.length) return entries[0].type === "reload";
+  } catch (_error) {}
+  try {
+    return !!(performance && performance.navigation && performance.navigation.type === 1);
+  } catch (_error) { return false; }
+}
+
+function resetPublicEntryToHomepageOnReload() {
+  if (!isHardDocumentReload()) return false;
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("exhibition");
+    history.replaceState({ exhibition: null, homepage: true, reason: "document-reload" }, "", url);
+  } catch (_error) {}
+  return true;
+}
+
 function publicDiscoveryAssetUrl(value) {
   const path = String(value || "").trim();
   if (!path) return "";
@@ -1307,7 +1329,8 @@ initializeAuthRuntime().catch(function (error) {
 });
 
 try {
-  initialPublicExhibitionReference = await ensurePublicExhibitionSelection();
+  const resetToHomepageAfterReload = resetPublicEntryToHomepageOnReload();
+  initialPublicExhibitionReference = await ensurePublicExhibitionSelection({ force: resetToHomepageAfterReload });
   if (bootGuard && typeof bootGuard.start === "function" && (!bootGuard.getState || bootGuard.getState() === "prestart")) bootGuard.start();
   await bootGuard.waitForStart();
   await startGalleryRuntime();

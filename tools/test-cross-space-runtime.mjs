@@ -203,7 +203,7 @@ assert.ok(viewer.includes('const scene = activeScene;'), 'viewer render loop mus
 assert.ok(viewer.includes('switchPublicExhibition(reference'));
 assert.ok(viewer.includes('window.ExhibitionPlatformSceneLifecycle = sceneLifecycleController'));
 assert.ok(viewer.includes('sceneLifecycleController.adoptRuntime(publicRuntime'), 'same-scene Admin→Public must update lifecycle runtime identity');
-assert.ok(viewer.includes('initialPublicExhibitionReference = await ensurePublicExhibitionSelection()'), 'initial discovery selection must actually drive startup');
+assert.ok(viewer.includes('initialPublicExhibitionReference = await ensurePublicExhibitionSelection({ force: resetToHomepageAfterReload })'), 'initial discovery selection must actually drive startup');
 assert.ok(admin.includes('createSceneLifecycleController'));
 assert.ok(admin.includes('sceneLifecycleController.switchTo'), 'Admin Exhibition selection must use lifecycle controller');
 assert.ok(source.includes('venueVersionId: galleryActiveVenueVersionId'), 'serialized/runtime identity must retain exact Venue Version');
@@ -274,6 +274,9 @@ assert.equal(viewer.includes('c25HomepageExhibitionGrid'), false, 'temporary C25
 assert.ok(viewer.includes('c26ExhibitionCard--titleOnly'), 'coverless title-only card missing');
 assert.ok(viewer.includes('touch-action:pan-x pan-y'), 'mobile swipe contract missing');
 assert.ok(viewer.includes('event.key === "ArrowRight"') && viewer.includes('event.key === "ArrowLeft"'), 'carousel keyboard navigation missing');
+assert.ok(viewer.includes('justify-content:center') && viewer.includes('width:max-content;min-width:100%'), 'carousel does not dynamically center a fitting card set');
+assert.ok(viewer.includes('function isHardDocumentReload()') && viewer.includes('entries[0].type === "reload"'), 'hard document reload detection missing');
+assert.ok(viewer.includes('url.searchParams.delete("exhibition")') && viewer.includes('ensurePublicExhibitionSelection({ force: resetToHomepageAfterReload })'), 'hard reload does not return to Exhibition homepage');
 console.log('C6C8C26 carousel + public Space intro policy invariants passed.');
 
 // C6C8C25.4 — Same-Space Exhibition media hydration must finish before transition-complete.
