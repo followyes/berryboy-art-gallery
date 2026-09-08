@@ -13,7 +13,7 @@ import { createSceneLifecycleController, getRuntimeVenueVersionKey } from "../ru
 import { shouldShowPublicSpaceIntro } from "../runtime/public-space-entry-policy.js?v=c6c8c26_multi_space_closure";
 
 const STAGE = "C6C8C26";
-const ENGINE_CACHE_KEY = "c6c8c26_multi_space_closure_20260908";
+const ENGINE_CACHE_KEY = "c6c8c26_dynamic_carousel_20260908";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
 
@@ -132,7 +132,7 @@ function ensurePublicDiscoveryStyles() {
     #c26HomepageExhibitionCarousel{position:relative;min-height:0;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;padding:24px clamp(16px,4vw,56px) 42px;overflow:hidden}
     #c26HomepageExhibitionViewport{min-width:0;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-padding-inline:clamp(0px,7vw,90px);overscroll-behavior-inline:contain;touch-action:pan-x pan-y;scrollbar-width:none}
     #c26HomepageExhibitionViewport::-webkit-scrollbar{display:none}
-    #c26HomepageExhibitionTrack{display:flex;align-items:stretch;gap:18px;width:max-content;min-width:100%;padding:4px 1px 14px}
+    #c26HomepageExhibitionTrack{display:flex;align-items:stretch;justify-content:center;gap:clamp(14px,1.2vw,22px);width:max-content;min-width:100%;box-sizing:border-box;padding:4px 1px 14px}
     .c26ExhibitionCard{position:relative;flex:0 0 clamp(270px,34vw,430px);min-height:clamp(320px,54vh,600px);display:flex;align-items:flex-end;scroll-snap-align:center;border:1px solid rgba(255,255,255,.14);border-radius:16px;overflow:hidden;background:#131614;color:inherit;text-align:left;cursor:pointer;padding:0;font:inherit;transition:transform 180ms ease,border-color 180ms ease,opacity 180ms ease;opacity:.72}
     .c26ExhibitionCard:hover,.c26ExhibitionCard:focus-visible,.c26ExhibitionCard.is-active{border-color:rgba(240,234,222,.54);opacity:1;transform:translateY(-2px);outline:none}
     .c26ExhibitionCover{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
