@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
 import { createSceneLifecycleController, getRuntimeVenueVersionKey, areRuntimesSameVenueVersion } from '../src/runtime/scene-lifecycle-controller.js';
 import { buildAuthoringSpaceDefinition, buildSpaceDefinition } from '../src/runtime/space-definition-resolver.js';
 
@@ -241,3 +242,118 @@ assert.ok(source.includes('galleryAuthoringSpacePreview ? optionalGallerySpaceAs
 assert.ok(viewer.includes('currentRuntime && currentRuntime.context === "gallery-authoring" ? activePublicRuntime : currentRuntime'));
 
 console.log('C6C8C25/C25.2 Cross-Space + Admin Gallery preview regression invariants passed.');
+
+// C6C8C25.4 — Same-Space Exhibition media hydration must finish before transition-complete.
+function extractRuntimeFunction(text, name) {
+  const markers = [`async function ${name}(`, `function ${name}(`];
+  let start = -1;
+  for (const marker of markers) {
+    start = text.indexOf(marker);
+    if (start >= 0) break;
+  }
+  assert.ok(start >= 0, `Missing function ${name}`);
+  const brace = text.indexOf('{', start);
+  let depth = 0;
+  let state = 'code';
+  let quote = null;
+  for (let i = brace; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1] || '';
+    if (state === 'code') {
+      if (char === '"' || char === "'" || char === '`') { state = 'string'; quote = char; }
+      else if (char === '/' && next === '/') { state = 'line'; i += 1; }
+      else if (char === '/' && next === '*') { state = 'block'; i += 1; }
+      else if (char === '{') depth += 1;
+      else if (char === '}') { depth -= 1; if (depth === 0) return text.slice(start, i + 1); }
+    } else if (state === 'string') {
+      if (char === '\\') i += 1;
+      else if (char === quote) { state = 'code'; quote = null; }
+    } else if (state === 'line') {
+      if (char === '\n') state = 'code';
+    } else if (state === 'block') {
+      if (char === '*' && next === '/') { state = 'code'; i += 1; }
+    }
+  }
+  throw new Error(`Unterminated function ${name}`);
+}
+
+const previewGateSource = extractRuntimeFunction(source, 'waitForGallerySameSpaceArtworkPreviews');
+const engineSwitchSource = extractRuntimeFunction(source, 'switchGalleryExhibition');
+
+function createPreviewGateHarness(snapshotSequence, { ownerActive = true, stepMs = 250 } = {}) {
+  let snapshotIndex = 0;
+  let now = 0;
+  let prepares = 0;
+  let drains = 0;
+  let yields = 0;
+  const runtimeState = {
+    lastError: null,
+    foregroundReady: false,
+    foregroundReadyReason: 'exhibition-switch-start',
+    foregroundReadyAt: 0,
+    foregroundReadinessLast: null
+  };
+  const context = {
+    console,
+    Date,
+    Math,
+    Error,
+    galleryExhibitionRuntime: runtimeState,
+    galleryFastStartRuntime: { backgroundDrainActive: false },
+    getActiveGalleryExhibitionId: () => 'ex-main',
+    getGalleryPerformanceNow: () => { now += stepMs; return now; },
+    prepareGalleryForegroundArtworkBudget: () => { prepares += 1; },
+    countGalleryForegroundArtworkQueue: () => {
+      const snap = snapshotSequence[Math.min(snapshotIndex, snapshotSequence.length - 1)] || {};
+      return Number(snap.foregroundArtworkQueue) || 0;
+    },
+    drainGalleryFastStartBackgroundQueue: () => { drains += 1; },
+    getGalleryForegroundPendingSnapshot: () => {
+      const snap = snapshotSequence[Math.min(snapshotIndex, snapshotSequence.length - 1)] || {};
+      snapshotIndex += 1;
+      return { foregroundArtworkQueue:0, criticalTextures:0, visibleTextures:0, loadingPreviews:0, missingPreviews:0, readyPreviews:0, requiredPreviews:0, ...snap };
+    },
+    isGalleryExhibitionOwnerActive: () => ownerActive,
+    yieldGalleryForegroundFrame: async () => { yields += 1; },
+    sweepGalleryInactiveExhibitionOwners: () => {}
+  };
+  vm.createContext(context);
+  vm.runInContext(previewGateSource, context);
+  return { context, runtimeState, stats: () => ({ prepares, drains, yields }) };
+}
+
+{
+  const { context, runtimeState, stats } = createPreviewGateHarness([
+    { foregroundArtworkQueue: 2, missingPreviews: 2, requiredPreviews: 2, readyPreviews: 0 },
+    { criticalTextures: 2, loadingPreviews: 2, requiredPreviews: 2, readyPreviews: 0 },
+    { criticalTextures: 1, loadingPreviews: 1, requiredPreviews: 2, readyPreviews: 1 },
+    { requiredPreviews: 2, readyPreviews: 2 }
+  ]);
+  const ready = await context.waitForGallerySameSpaceArtworkPreviews('same-space-test', { timeoutMs: 6000, pollMs: 20 });
+  assert.equal(ready.ok, true);
+  assert.equal(ready.readyPreviews, 2);
+  assert.equal(runtimeState.foregroundReady, true);
+  assert.ok(stats().prepares >= 1);
+  assert.ok(stats().drains >= 1);
+  assert.ok(stats().yields >= 1);
+}
+
+{
+  const { context, runtimeState } = createPreviewGateHarness([
+    { foregroundArtworkQueue: 1, missingPreviews: 1, requiredPreviews: 1, readyPreviews: 0 }
+  ], { stepMs: 1200 });
+  await assert.rejects(
+    context.waitForGallerySameSpaceArtworkPreviews('same-space-timeout-test', { timeoutMs: 5000, pollMs: 20 }),
+    /Same-Space artwork Preview hydration failed/
+  );
+  assert.equal(runtimeState.foregroundReady, false);
+}
+
+const previewAwaitOffset = engineSwitchSource.indexOf('await waitForGallerySameSpaceArtworkPreviews(');
+const transitionCompleteOffset = engineSwitchSource.indexOf('gallery-exhibition-transition-complete');
+assert.ok(previewAwaitOffset >= 0, 'same-space switch does not await artwork Preview hydration');
+assert.ok(transitionCompleteOffset > previewAwaitOffset, 'transition completes before artwork Preview hydration');
+assert.ok(engineSwitchSource.includes('same-space-exhibition-rollback-preview-ready'), 'rollback does not restore artwork Preview readiness');
+
+console.log('C6C8C25.4 same-space media hydration invariants passed.');
+

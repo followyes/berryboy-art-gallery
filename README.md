@@ -1,6 +1,6 @@
 # Exhibition Platform
 
-Current repository release: **C6C8C25.3 — Exhibition Publish / Optional Cover**.
+Current repository release: **C6C8C25.4 — Same-Space Exhibition Media Hydration**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
@@ -165,6 +165,11 @@ Choosing a card is the single visitor action: it starts loading/Babylon and ente
 C25 replaces the former fresh-document cross-Gallery boundary with same-session Scene lifecycle switching. Same exact Venue Version keeps the accepted resident/delta Exhibition path; another exact Venue Version recreates the Scene on the same Engine/canvas.
 
 
+
+## C6C8C25.4 Same-Space Exhibition Media Hydration
+
+Same exact `venue_version_id` Exhibition switches continue to reuse the live Babylon Scene, but transition completion now waits for every assigned artwork Preview/Full texture to be materially present. State application may queue Preview loads; C25.4 explicitly primes/drains that queue and treats missing assigned Previews as a transition failure instead of exposing persistent gray placeholders. The rollback path uses the same readiness rule. Full texture upgrades and sculpture/model hydration remain background work.
+
 ## C6C8C25.3 Exhibition Publish / Optional Cover
 
 - Poster/Cover is optional for Exhibition publication.
@@ -252,7 +257,7 @@ SQL package verification is separate:
 node OUTSIDE_REPO/TOOLS/verify-sql-package.mjs
 ```
 
-The SQL/package verifier is static. C25.2 has no SQL migration; production closure requires REPO deployment through GitHub / GitHub Pages and the C25.2 browser smoke.
+The SQL/package verifier is static. C25.4 adds no new SQL; it inherits the C25.3 database contract. Production closure requires GitHub / GitHub Pages deployment and C25.4 browser smoke.
 
 ## Documentation
 

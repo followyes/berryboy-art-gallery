@@ -1,8 +1,8 @@
 {
   "name": "exhibition-platform",
-  "version": "0.11.94-c6c8c25_3-exhibition-publish-optional-cover",
+  "version": "0.11.95-c6c8c25_4-same-space-media-hydration",
   "private": true,
-  "description": "Exhibition Platform — C6C8C25.3 Exhibition Publish / Optional Cover",
+  "description": "Exhibition Platform — C6C8C25.4 Same-Space Exhibition Media Hydration",
   "type": "module",
   "scripts": {
     "build": "node tools/build-current.mjs",

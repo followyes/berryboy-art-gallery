@@ -119,6 +119,7 @@
   - Stage 12C66C6C8C13: Instant Workspace Mode Switch — same-runtime Admin↔Public transitions preserve foreground readiness and touch only UI/camera controls; owner sweeps and Space integrity checks move to idle background audits so returning to Public does not re-run gallery readiness work.
   - Stage 12C66C6C8C14: Zero-Work Public Return — clean Admin→Public transitions no longer run full placeholder/sculpture visual refreshes or selection UI rebuilds; viewer presentation toggles only existing nodes, collision proxies are reused without bounds recomputation, and any repair work is deferred/chunked after the public frame is visible.
   - Stage 12C66C6C8C15: Persistent Draft / Instant Public Preview — PUBLIC PAGE becomes an in-memory preview of the current Admin draft: unsaved scene state is not discarded or reapplied, the same live scene is shown immediately, and returning to Admin resumes the preserved draft while unload protection remains active.
+  - C6C8C25.4: Same-Space Exhibition Preview Hydration — Exhibition switches that reuse the same immutable Gallery Version now wait for every assigned artwork Preview to materialize before reporting transition complete; gray placeholders can no longer leak through the fast path.
   - Stage 12C66C6C8C16: Mobile UI Polish / Inspect Layout / Cursor Refresh — mobile intro keeps Start exploring pinned outside the scrollable instructions, Inspect navigation floats on the popup edge without stealing metadata width, and the desktop floor cursor uses a smaller/thinner low-glow SDF ring and lighter click ripple.
   - C6C8C21: Multi-Space Foundation — production Viewer/Admin resolve canonical Exhibition → Venue Version → Venue assets before scene creation; the engine receives a neutral Space definition while legacy single-space table/config paths remain rollback-only compatibility.
   - C6C8C22: Gallery Management — adds only a read-only camera-pose bridge for isolated Test Gallery Entry capture; Gallery CRUD/versioning remains outside the Babylon engine.
@@ -44086,6 +44087,79 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         if (galleryZoneStreamingRuntime && galleryZoneStreamingRuntime.started) scheduleGalleryZoneStreamingPump("atomic-exhibition-hydration", 40);
     }
 
+    // C6C8C25.4 — SAME-SPACE EXHIBITION PREVIEW HYDRATION GATE
+    // A same Venue Version switch reuses the live Babylon Scene, so createScene() cannot
+    // provide the normal startup readiness gate. State application intentionally queues
+    // artwork Preview textures while stateApplyActive is true. Do not report the switch as
+    // complete until every assigned Preview (or Full texture) is materially present.
+    // Full-resolution upgrades and sculpture/model hydration remain background work.
+    async function waitForGallerySameSpaceArtworkPreviews(reason, options) {
+        options = options || {};
+        var activeId = getActiveGalleryExhibitionId();
+        var startedAt = getGalleryPerformanceNow();
+        var timeoutMs = Math.max(5000, Number(options.timeoutMs) || 18000);
+        var pollMs = Math.max(20, Number(options.pollMs) || 45);
+
+        prepareGalleryForegroundArtworkBudget(reason || "same-space-preview-hydration");
+        if (!galleryFastStartRuntime.backgroundDrainActive && countGalleryForegroundArtworkQueue() > 0) {
+            drainGalleryFastStartBackgroundQueue("C6C8C25.4-same-space-preview-prime");
+        }
+
+        var snapshot = getGalleryForegroundPendingSnapshot();
+        while (
+            snapshot.foregroundArtworkQueue > 0 ||
+            snapshot.criticalTextures > 0 ||
+            snapshot.visibleTextures > 0 ||
+            snapshot.loadingPreviews > 0 ||
+            snapshot.missingPreviews > 0 ||
+            snapshot.readyPreviews < snapshot.requiredPreviews
+        ) {
+            if (!isGalleryExhibitionOwnerActive(activeId)) {
+                throw new Error("Same-Space Preview hydration owner changed before completion.");
+            }
+            if (snapshot.missingPreviews > 0) {
+                prepareGalleryForegroundArtworkBudget(reason || "same-space-preview-requeue");
+            }
+            if (!galleryFastStartRuntime.backgroundDrainActive && countGalleryForegroundArtworkQueue() > 0) {
+                drainGalleryFastStartBackgroundQueue("C6C8C25.4-same-space-preview-drain");
+            }
+            if ((getGalleryPerformanceNow() - startedAt) >= timeoutMs) break;
+            await yieldGalleryForegroundFrame(pollMs);
+            sweepGalleryInactiveExhibitionOwners(activeId, "same-space-preview-hydration");
+            snapshot = getGalleryForegroundPendingSnapshot();
+        }
+
+        if (
+            snapshot.readyPreviews < snapshot.requiredPreviews ||
+            snapshot.loadingPreviews > 0 ||
+            snapshot.missingPreviews > 0
+        ) {
+            var previewError = new Error(
+                "Same-Space artwork Preview hydration failed: " +
+                snapshot.readyPreviews + "/" + snapshot.requiredPreviews +
+                " ready, " + snapshot.loadingPreviews + " loading, " + snapshot.missingPreviews + " missing."
+            );
+            galleryExhibitionRuntime.lastError = previewError.message;
+            throw previewError;
+        }
+
+        var result = {
+            ok: true,
+            reason: reason || "same-space-preview-hydration",
+            exhibitionId: activeId,
+            requiredPreviews: snapshot.requiredPreviews,
+            readyPreviews: snapshot.readyPreviews,
+            loadingPreviews: snapshot.loadingPreviews,
+            missingPreviews: snapshot.missingPreviews,
+            totalMs: Math.round((getGalleryPerformanceNow() - startedAt) * 100) / 100
+        };
+        galleryExhibitionRuntime.foregroundReady = true;
+        galleryExhibitionRuntime.foregroundReadyReason = result.reason;
+        galleryExhibitionRuntime.foregroundReadyAt = Date.now();
+        galleryExhibitionRuntime.foregroundReadinessLast = result;
+        return result;
+    }
+
     async function applyGallerySameSpaceExhibitionState(state, reason) {
         var applyResult = { ok: true, usedFallback: false };
         var previousStateApplyActive = !!galleryFastStartRuntime.stateApplyActive;
@@ -44392,6 +44466,14 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 throw new Error("Cross-Space Exhibition switch requires C6C8C25 Scene lifecycle recreation for Venue Version " + getGalleryExhibitionVenueVersionId(exhibition) + ".");
             }
 
+            var sameSpacePreviewReadiness = await waitForGallerySameSpaceArtworkPreviews(
+                targetLayerRestored ? "resident-exhibition-preview-ready" : "same-space-exhibition-preview-ready",
+                { timeoutMs: 18000, pollMs: 45 }
+            );
+            if (galleryExhibitionRuntime.lastHydrationProfile) {
+                galleryExhibitionRuntime.lastHydrationProfile.previewReadiness = cloneGalleryJson(sameSpacePreviewReadiness);
+            }
+
             verifyGallerySpaceIntegrity(spaceIntegrityBefore, "after-exhibition-switch-" + transitionEpoch);
             verifyGalleryCanonicalSpaceIntegrity("canonical-after-exhibition-switch-" + transitionEpoch);
             pruneGalleryExhibitionLayerResidency(exhibition.id);
@@ -44434,6 +44516,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                     if (previousResident) applyGalleryResidentLayerPresentation(previousRuntimeState, "resident-exhibition-rollback");
                     else if (rollbackSameSpace) await applyGallerySameSpaceExhibitionState(previousRuntimeState, "same-space-exhibition-rollback");
                     else { resetGalleryRuntimeToBlankExhibition(); tryApplyGalleryStateSafely(previousRuntimeState); }
+                    if (rollbackSameSpace) {
+                        await waitForGallerySameSpaceArtworkPreviews("same-space-exhibition-rollback-preview-ready", { timeoutMs: 18000, pollMs: 45 });
+                    }
                     verifyGallerySpaceIntegrity(spaceIntegrityBefore, "after-exhibition-switch-rollback-" + transitionEpoch);
                     verifyGalleryCanonicalSpaceIntegrity("canonical-after-exhibition-switch-rollback-" + transitionEpoch);
                     setGalleryPublishedStateBaseline(serializeGalleryState(), { serverState: previousRuntimeState, revision: previousBaseline.publishedRevision, confirmed: previousBaseline.publishedStateConfirmed, serverRowExists: previousBaseline.publishedServerRowExists, reason: "exhibition-switch-rollback" });

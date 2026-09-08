@@ -1,5 +1,5 @@
 /*
-  Exhibition Platform — C6C8C25.3 Admin Workspace / Cross-Space Runtime
+  Exhibition Platform — C6C8C25.4 Admin Workspace / Cross-Space Runtime
   Authenticated exhibition management + constrained 3D editor viewport.
 */
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
@@ -22,8 +22,8 @@ import {
   summarizeGalleryMigrationImpact
 } from "../data/exhibition-gallery-assignment.js?v=c6c8c25_cross_space_runtime";
 
-const STAGE = "C6C8C25.3";
-const ENGINE_CACHE_KEY = "c6c8c25_3_exhibition_publish_20260908";
+const STAGE = "C6C8C25.4";
+const ENGINE_CACHE_KEY = "c6c8c25_4_same_space_media_20260908";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
 const inlineRuntimeContext = window.__EXHIBITION_INLINE_ADMIN_CONTEXT__ || null;

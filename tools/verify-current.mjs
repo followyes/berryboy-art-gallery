@@ -26,11 +26,11 @@ function count(h,n){return h.split(n).length-1}
 function sha(t){return crypto.createHash('sha256').update(t).digest('hex')}
 function extractFunction(text,name){const ms=[`async function ${name}(`,`function ${name}(`];let st=-1;for(const m of ms){st=text.indexOf(m);if(st>=0)break}assert(st>=0,`Missing ${name}`);const b=text.indexOf('{',st);let d=0,s='c',q='';for(let i=b;i<text.length;i++){const c=text[i],n=text[i+1]||'';if(s==='c'){if(c==='"'||c==="'"||c==='`'){s='s';q=c}else if(c==='/'&&n==='/'){s='l';i++}else if(c==='/'&&n==='*'){s='b';i++}else if(c==='{')d++;else if(c==='}'&&--d===0)return text.slice(st,i+1)}else if(s==='s'){if(c==='\\')i++;else if(c===q)s='c'}else if(s==='l'&&c==='\n')s='c';else if(s==='b'&&c==='*'&&n==='/'){s='c';i++}}throw new Error(`Unterminated ${name}`)}
 
-assert(index.includes('stage: "C6C8C25.3"'),'Index stage identity missing');
-assert(bootstrap.includes('const STAGE = "C6C8C25.3"'),'Viewer stage identity missing');
-assert(adminBootstrap.includes('const STAGE = "C6C8C25.3"'),'Admin stage identity missing');
-assert(bootstrap.includes('c6c8c25_3_exhibition_publish_20260908'),'Current cache key missing');
-assert(index.includes('gallery-viewer-bootstrap.js?v=c6c8c25_3_exhibition_publish_20260908'),'Index cache key missing');
+assert(index.includes('stage: "C6C8C25.4"'),'Index stage identity missing');
+assert(bootstrap.includes('const STAGE = "C6C8C25.4"'),'Viewer stage identity missing');
+assert(adminBootstrap.includes('const STAGE = "C6C8C25.4"'),'Admin stage identity missing');
+assert(bootstrap.includes('c6c8c25_4_same_space_media_20260908'),'Current cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=c6c8c25_4_same_space_media_20260908'),'Index cache key missing');
 assert(!index.includes('id="galleryBootStart"')&&!index.includes('id="galleryBootAbout"'),'Legacy prestart Enter Gallery popup remains');
 assert(index.includes('class="is-hidden" data-state="prestart"'),'Boot guard must be hidden before Exhibition selection');
 assert(bootstrap.includes('c25HomepageExhibitionSelection')&&bootstrap.includes('bootGuard.start();'),'Homepage Exhibition selection/start bridge missing');
@@ -59,6 +59,8 @@ assert(source.includes('REPAIR MEDIA')&&source.includes('AUDIT & CLEAN MEDIA'),'
 assert(source.includes('var galleryAvifEncoderModuleUrl = "src/vendor/gallery-avif-encoder.mjs"'),'AVIF entrypoint missing');
 assert(worker.includes('import(moduleUrl)')&&adapter.includes('ImageEncoder'),'AVIF worker/adapter missing');
 assert(source.includes('function switchGalleryExhibition(')&&source.includes('function createGalleryExhibition('),'Multi-exhibition runtime missing');
+assert(source.includes('function waitForGallerySameSpaceArtworkPreviews('),'C6C8C25.4 same-space Preview hydration gate missing');
+assert(source.includes('same-space-exhibition-preview-ready')&&source.includes('same-space-exhibition-rollback-preview-ready'),'C6C8C25.4 switch/rollback Preview readiness wiring missing');
 assert(!source.includes('.eq("id", "main")'),'Hard-coded gallery_state main query remains');
 assert(spaceFixture.includes('Floor_segment.glb')&&spaceFixture.includes('Wall_segments.glb')&&spaceFixture.includes('Ceiling.glb')&&spaceFixture.includes('Props.glb'),'Development Space fixture missing current geometry');
 assert(spaceResolver.includes('exhibition-platform-venue-manifest.v1')&&spaceResolver.includes('REQUIRED_SPACE_ASSET_ROLES'),'Canonical Space resolver missing');

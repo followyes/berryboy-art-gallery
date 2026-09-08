@@ -1,5 +1,5 @@
 /*
-  Exhibition Platform — C6C8C25.3 — Main-page Exhibition Entry + Cross-Space Runtime
+  Exhibition Platform — C6C8C25.4 — Main-page Exhibition Entry + Cross-Space Runtime
   Save Integrity Repair / Correct Startup Rebuild.
   Babylon, GLB loaders and the gallery engine start only after an explicit visitor click.
   The engine-owned instructional popup is shown after true interaction readiness; C6C8C16 keeps its mobile CTA pinned.
@@ -11,8 +11,8 @@ import { beginTransitionGuard, endTransitionGuard, isTransitionGuardActive } fro
 import { createExhibitionDataAdapter, resolveInitialPublicRuntime, listPublicExhibitionCards } from "../data/exhibition-api.js?v=c6c8c25_cross_space_runtime";
 import { createSceneLifecycleController, getRuntimeVenueVersionKey } from "../runtime/scene-lifecycle-controller.js?v=c6c8c25_2_admin_gallery_preview";
 
-const STAGE = "C6C8C25.3";
-const ENGINE_CACHE_KEY = "c6c8c25_3_exhibition_publish_20260908";
+const STAGE = "C6C8C25.4";
+const ENGINE_CACHE_KEY = "c6c8c25_4_same_space_media_20260908";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
 
