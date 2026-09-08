@@ -1,6 +1,6 @@
 # Exhibition Platform
 
-Current repository release: **C6C8C25 — Cross-Space Runtime**.
+Current repository release: **C6C8C25.1 — Main-page Exhibition Entry / Admin Direct Access**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
@@ -20,7 +20,7 @@ Specific Gallery names are data. They are not platform/runtime branding.
 
 ## Main entries
 
-- `index.html` — Public Viewer + Exhibition discovery + C25 same-session cross-space switching.
+- `index.html` — project homepage + in-page Exhibition choice + Public Viewer + C25 same-session cross-space switching.
 - `admin.html` — direct/fallback Admin Workspace.
 - `gallery-test.html` — authenticated isolated preview of one Gallery Version.
 - `src/Gallery_V0_11.js` — main Babylon.js runtime source.
@@ -158,11 +158,19 @@ Historical raw assignment and raw state-only publication functions are not brows
 
 ### Public discovery
 
-With no explicit `?exhibition=` query, the Viewer requests canonical published Exhibition cards **before** starting Babylon and shows a selection surface. Card Gallery name comes from the Published Venue Version. A missing cover uses a neutral fallback.
+With no explicit `?exhibition=` query, the homepage requests canonical Published Exhibition cards **before** starting Babylon and renders them directly inside the homepage 3D stage. The legacy prestart `Enter gallery / About project` popup is not part of the current flow. Card Gallery name comes from the Published Venue Version and a missing cover uses a neutral fallback.
 
-Choosing a card sets `?exhibition=<slug>` and continues the normal startup. Explicit deep links bypass discovery.
+Choosing a card is the single visitor action: it starts loading/Babylon and enters that Exhibition immediately. Explicit deep links already identify the Exhibition and start directly. The `ADMIN` link is available before Gallery startup; `admin.html` owns direct authentication, while an authenticated already-live runtime can still use the C25 inline Admin fast path.
 
 C25 replaces the former fresh-document cross-Gallery boundary with same-session Scene lifecycle switching. Same exact Venue Version keeps the accepted resident/delta Exhibition path; another exact Venue Version recreates the Scene on the same Engine/canvas.
+
+## C6C8C25.1 Main-page Exhibition Entry / Admin Direct Access
+
+C25.1 is a browser-flow correction over the C25 Scene lifecycle. It removes the obsolete double-entry path where visitors first saw `Enter gallery` and only then chose an Exhibition. Exhibition choice is now the entry gesture.
+
+The loading/error BootGuard remains, but it is hidden during homepage prestart and appears only after an Exhibition has been chosen (or an explicit Exhibition deep link begins startup). Public `EXHIBITIONS` reopens the in-page selector without locking the whole document.
+
+Admin access is independent from Babylon startup: the static `ADMIN` link can always open `admin.html`; only authenticated sessions with a live runtime intercept that link for the inline Admin fast path.
 
 ## C6C8C25 Cross-Space Runtime
 

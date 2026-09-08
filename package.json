@@ -1,8 +1,8 @@
 {
   "name": "exhibition-platform",
-  "version": "0.11.91-c6c8c25-cross-space-runtime",
+  "version": "0.11.92-c6c8c25_1-home-entry-flow",
   "private": true,
-  "description": "Exhibition Platform — C6C8C25 Cross-Space Runtime",
+  "description": "Exhibition Platform — C6C8C25.1 Main-page Exhibition Entry / Admin Direct Access",
   "type": "module",
   "scripts": {
     "build": "node tools/build-current.mjs",
