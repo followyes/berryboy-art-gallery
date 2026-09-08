@@ -136,8 +136,19 @@ assert.ok(viewer.includes('exhibitionsButton'));
 assert.ok(index.includes('id="exhibitionsButton"'));
 assert.ok(index.includes('href="./index.html"'));
 
-assert.equal(pkg.version, '0.11.93-c6c8c25_2-admin-gallery-preview');
-assert.ok(pkg.description.includes('C6C8C25.2'));
+
+// C25.3 publication UI contract: Poster/Cover optional and publication is explicit.
+assert.ok(!admin.includes('id="exhibitionPublished"'));
+assert.ok(admin.includes('exhibitionPublicationStatus'));
+assert.ok(admin.includes('UNPUBLISH EXHIBITION'));
+assert.ok(admin.includes('Poster / cover is optional'));
+assert.ok(admin.includes('c25PublishValidation'));
+assert.ok(api.includes('async unpublish(reference)'));
+assert.ok(api.includes('p_published: false'));
+assert.ok(!api.includes('patch.is_published'));
+
+assert.equal(pkg.version, '0.11.94-c6c8c25_3-exhibition-publish-optional-cover');
+assert.ok(pkg.description.includes('C6C8C25.3'));
 assert.ok(pkg.scripts.test.includes('test:gallery-assignment'));
 
 console.log('C6C8C24 Exhibition ↔ Gallery Assignment regression invariants passed under C6C8C25.');

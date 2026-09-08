@@ -325,13 +325,6 @@ export function createExhibitionDataAdapter({ supabase, mode = "public", initial
         });
         rpcOne(response);
       }
-      if (patch.is_published !== undefined && !!patch.is_published !== !!runtime.exhibition.is_published) {
-        const response = await supabase.rpc("admin_set_exhibition_runtime_visibility", {
-          p_exhibition_id: runtime.exhibition.id,
-          p_published: !!patch.is_published
-        });
-        rpcOne(response);
-      }
       const refreshed = await loadAdminRuntime(supabase, runtime.exhibition.id);
       cacheRuntime(refreshed, "admin");
       return { ...refreshed.exhibition };
@@ -384,6 +377,18 @@ export function createExhibitionDataAdapter({ supabase, mode = "public", initial
       }));
       if (!response) throw new Error("Exhibition publish returned no result.");
       runtimeByKey.delete(runtimeKey("admin", detail.exhibition.id));
+      return response;
+    },
+    async unpublish(reference) {
+      if (modeName !== "admin") throw new Error("Public Viewer cannot unpublish Exhibitions.");
+      const runtime = await resolve(reference, true);
+      const response = rpcOne(await supabase.rpc("admin_set_exhibition_runtime_visibility", {
+        p_exhibition_id: runtime.exhibition.id,
+        p_published: false
+      }));
+      if (!response) throw new Error("Exhibition unpublish returned no result.");
+      runtimeByKey.delete(runtimeKey("admin", runtime.exhibition.id));
+      runtimeByKey.delete(runtimeKey("public", runtime.exhibition.id));
       return response;
     },
     async rollbackBundle(reference) {

@@ -1,6 +1,6 @@
 # Exhibition Platform
 
-Current repository release: **C6C8C25.2 — Admin Gallery Partial Preview / UI Fixes**.
+Current repository release: **C6C8C25.3 — Exhibition Publish / Optional Cover**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
@@ -163,6 +163,15 @@ With no explicit `?exhibition=` query, the homepage requests canonical Published
 Choosing a card is the single visitor action: it starts loading/Babylon and enters that Exhibition immediately. Explicit deep links already identify the Exhibition and start directly. The `ADMIN` link is available before Gallery startup; `admin.html` owns direct authentication, while an authenticated already-live runtime can still use the C25 inline Admin fast path.
 
 C25 replaces the former fresh-document cross-Gallery boundary with same-session Scene lifecycle switching. Same exact Venue Version keeps the accepted resident/delta Exhibition path; another exact Venue Version recreates the Scene on the same Engine/canvas.
+
+
+## C6C8C25.3 Exhibition Publish / Optional Cover
+
+- Poster/Cover is optional for Exhibition publication.
+- Generic Exhibition Details save does not change public visibility.
+- Publication is explicit through `PUBLISH EXHIBITION`; hiding is explicit through `UNPUBLISH EXHIBITION`.
+- Admin shows canonical publication blockers/warnings from `admin_validate_exhibition()`.
+- Public discovery supports coverless title-only cards.
 
 ## C6C8C25.2 Admin Gallery Partial Preview / UI Fixes
 

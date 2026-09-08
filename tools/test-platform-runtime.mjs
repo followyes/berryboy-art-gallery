@@ -106,7 +106,7 @@ function expect(label, condition) {
 
 expect('Admin Workspace stage identity exists',
   source.includes('Stage 12C66C6C7C8B: Admin Workspace') &&
-  adminBootstrap.includes('const STAGE = "C6C8C25"'));
+  adminBootstrap.includes('const STAGE = "C6C8C25.3"'));
 
 expect('Exhibition manager was removed from the in-scene editor',
   !source.includes('createEditorSection("EXHIBITIONS")') &&
@@ -123,7 +123,7 @@ expect('Admin page contains constrained viewport and exhibition metadata control
   admin.includes('id="exhibitionList"') &&
   admin.includes('id="exhibitionName"') &&
   admin.includes('id="posterFileInput"') &&
-  admin.includes('id="exhibitionPublished"'));
+  admin.includes('id="exhibitionPublicationStatus"'));
 
 expect('Admin bootstrap manages canonical catalog, metadata and poster Storage',
   adminBootstrap.includes('createExhibitionDataAdapter') &&

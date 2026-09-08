@@ -1,5 +1,5 @@
 /*
-  Exhibition Platform — C6C8C25 Admin Workspace / Cross-Space Runtime
+  Exhibition Platform — C6C8C25.3 Admin Workspace / Cross-Space Runtime
   Authenticated exhibition management + constrained 3D editor viewport.
 */
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
@@ -22,8 +22,8 @@ import {
   summarizeGalleryMigrationImpact
 } from "../data/exhibition-gallery-assignment.js?v=c6c8c25_cross_space_runtime";
 
-const STAGE = "C6C8C25";
-const ENGINE_CACHE_KEY = "c6c8c25_2_admin_gallery_preview_20260908";
+const STAGE = "C6C8C25.3";
+const ENGINE_CACHE_KEY = "c6c8c25_3_exhibition_publish_20260908";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
 const inlineRuntimeContext = window.__EXHIBITION_INLINE_ADMIN_CONTEXT__ || null;
@@ -57,7 +57,7 @@ const exhibitionName = el("exhibitionName");
 const exhibitionDescription = el("exhibitionDescription");
 const exhibitionSlug = el("exhibitionSlug");
 const exhibitionSortOrder = el("exhibitionSortOrder");
-const exhibitionPublished = el("exhibitionPublished");
+const exhibitionPublicationStatus = el("exhibitionPublicationStatus");
 const exhibitionSpaceId = el("exhibitionSpaceId");
 const saveMetadataButton = el("saveMetadataButton");
 const choosePosterButton = el("choosePosterButton");
@@ -223,7 +223,6 @@ function getMetadataDraftPayload() {
   return {
     name: exhibitionName ? exhibitionName.value.trim() : "",
     description: exhibitionDescription ? exhibitionDescription.value : "",
-    is_published: !!(exhibitionPublished && exhibitionPublished.checked),
     sort_order: Number(exhibitionSortOrder && exhibitionSortOrder.value) || 0
   };
 }
@@ -405,6 +404,10 @@ function ensureExhibitionGalleryAssignmentUi() {
       #exhibitionGalleryAssignment .c24Migration{padding:8px;border-radius:8px;background:rgba(255,196,92,.08);color:rgba(255,220,153,.92);font-size:10px;line-height:1.45}
       #exhibitionGalleryAssignment .c24Migration.resolved{background:rgba(125,169,130,.08);color:rgba(180,220,184,.9)}
       #exhibitionGalleryAssignment .c24AssignmentActions{display:flex;flex-wrap:wrap;gap:7px}
+      #exhibitionGalleryAssignment .c25PublishValidation{display:grid;gap:5px;padding:9px;border-radius:8px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);font-size:10px;line-height:1.45}
+      #exhibitionGalleryAssignment .c25PublishValidation.valid{background:rgba(125,169,130,.08);color:rgba(180,220,184,.92)}
+      #exhibitionGalleryAssignment .c25PublishValidation.blocked{background:rgba(214,96,96,.08);color:rgba(255,185,185,.94)}
+      #exhibitionGalleryAssignment .c25PublishValidation .warning{color:rgba(255,220,153,.92)}
       #exhibitionGalleryTarget{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-radius:10px;background:#171a18;color:rgba(255,255,255,.92);padding:0 9px;font:inherit}
     `;
     document.head.appendChild(style);
@@ -419,24 +422,66 @@ function ensureExhibitionGalleryAssignmentUi() {
       <div class="c24BindingRow"><span>Previous</span><strong id="c24PreviousGallery">—</strong></div>
     </div>
     <div id="c24GalleryMigration" class="c24Migration resolved">No pending Gallery migration.</div>
+    <div id="c25PublishValidation" class="c25PublishValidation">Checking publication readiness…</div>
     <label class="fieldLabel">Assign Draft to Gallery<select id="exhibitionGalleryTarget"><option value="">Loading available Galleries…</option></select></label>
     <div class="c24AssignmentActions">
       <button id="assignExhibitionGalleryButton" class="adminButton" type="button">ASSIGN DRAFT</button>
       <button id="confirmExhibitionGalleryLayoutButton" class="adminButton" type="button">CONFIRM LAYOUT</button>
       <button id="publishExhibitionBundleButton" class="adminButton primary" type="button">PUBLISH EXHIBITION</button>
+      <button id="unpublishExhibitionButton" class="adminButton danger" type="button">UNPUBLISH EXHIBITION</button>
       <button id="rollbackExhibitionBundleButton" class="adminButton" type="button">ROLLBACK PUBLICATION</button>
     </div>
-    <div class="fieldMeta">Assignment changes the private Draft only. The current public Exhibition keeps its Published Gallery until you explicitly publish the Exhibition.</div>`;
+    <div class="fieldMeta">Poster / cover is optional. Without one, public discovery uses the Exhibition title. Assignment changes the private Draft only; public cutover happens only through PUBLISH EXHIBITION.</div>`;
   anchor.insertAdjacentElement("afterend", wrap);
   document.getElementById("assignExhibitionGalleryButton")?.addEventListener("click", handleAssignExhibitionGallery);
   document.getElementById("confirmExhibitionGalleryLayoutButton")?.addEventListener("click", handleConfirmExhibitionGalleryLayout);
   document.getElementById("publishExhibitionBundleButton")?.addEventListener("click", handlePublishExhibitionBundle);
+  document.getElementById("unpublishExhibitionButton")?.addEventListener("click", handleUnpublishExhibition);
   document.getElementById("rollbackExhibitionBundleButton")?.addEventListener("click", handleRollbackExhibitionBundle);
   return wrap;
 }
 
 function c24Binding(detail, channel) {
   return detail && detail.galleryBindings ? detail.galleryBindings[channel] || null : null;
+}
+
+function renderExhibitionPublishValidation(detail) {
+  const box = document.getElementById("c25PublishValidation");
+  if (!box) return;
+  const validation = detail && detail.validation ? detail.validation : null;
+  const blockers = validation && Array.isArray(validation.blockers) ? validation.blockers : [];
+  const warnings = validation && Array.isArray(validation.warnings) ? validation.warnings : [];
+  box.replaceChildren();
+  box.classList.toggle("valid", !!(validation && validation.valid));
+  box.classList.toggle("blocked", !!(validation && !validation.valid));
+
+  const headline = document.createElement("strong");
+  headline.textContent = validation && validation.valid ? "READY TO PUBLISH" : "PUBLICATION BLOCKED";
+  box.appendChild(headline);
+
+  if (!validation) {
+    const line = document.createElement("div");
+    line.textContent = "Publication validation is unavailable.";
+    box.appendChild(line);
+    return;
+  }
+
+  for (const blocker of blockers) {
+    const line = document.createElement("div");
+    line.textContent = `• ${String(blocker)}`;
+    box.appendChild(line);
+  }
+  for (const warning of warnings) {
+    const line = document.createElement("div");
+    line.className = "warning";
+    line.textContent = `• ${String(warning)}`;
+    box.appendChild(line);
+  }
+  if (!blockers.length && !warnings.length) {
+    const line = document.createElement("div");
+    line.textContent = "No publication blockers.";
+    box.appendChild(line);
+  }
 }
 
 function renderExhibitionGalleryAssignment(detail) {
@@ -461,6 +506,7 @@ function renderExhibitionGalleryAssignment(detail) {
       ? "Gallery changed: spatial placement was reset. Rebuild/save the layout in this Gallery, then CONFIRM LAYOUT before publishing."
       : (migration && migration.status === "resolved" ? "Gallery migration layout confirmed." : "No pending Gallery migration.");
   }
+  renderExhibitionPublishValidation(detail);
 
   const select = document.getElementById("exhibitionGalleryTarget");
   if (select) {
@@ -487,10 +533,12 @@ function renderExhibitionGalleryAssignment(detail) {
   const assign = document.getElementById("assignExhibitionGalleryButton");
   const confirm = document.getElementById("confirmExhibitionGalleryLayoutButton");
   const publish = document.getElementById("publishExhibitionBundleButton");
+  const unpublish = document.getElementById("unpublishExhibitionButton");
   const rollback = document.getElementById("rollbackExhibitionBundleButton");
   if (assign) assign.disabled = exhibitionGalleryMutationInFlight || !selectedOption || !selectedOption.dataset.venueId || sameTarget;
   if (confirm) confirm.disabled = exhibitionGalleryMutationInFlight || !pending;
   if (publish) publish.disabled = exhibitionGalleryMutationInFlight || pending || !(detail.validation && detail.validation.valid);
+  if (unpublish) unpublish.disabled = exhibitionGalleryMutationInFlight || !selectedExhibition || !selectedExhibition.is_published;
   if (rollback) rollback.disabled = exhibitionGalleryMutationInFlight || !(detail.state && detail.state.previous_state && detail.card && detail.card.previous_value);
 }
 
@@ -573,6 +621,22 @@ async function handlePublishExhibitionBundle() {
   try {
     await exhibitionData.publishBundle(selectedExhibition.id);
     showToast("Exhibition published.");
+    await fetchCatalog();
+    syncSelectedFromCatalog(selectedExhibition.id);
+    await refreshExhibitionGalleryAssignment(selectedExhibition.id);
+  } catch (error) { showToast(error.message || String(error)); }
+  finally { exhibitionGalleryMutationInFlight = false; if (exhibitionGalleryDetail) renderExhibitionGalleryAssignment(exhibitionGalleryDetail); }
+}
+
+async function handleUnpublishExhibition() {
+  if (!selectedExhibition || exhibitionGalleryMutationInFlight || !selectedExhibition.is_published) return;
+  if (!window.confirm("Hide this Exhibition from the public site? Draft, Published and Previous snapshots remain stored; this only changes public visibility/status.")) return;
+  exhibitionGalleryMutationInFlight = true;
+  if (exhibitionGalleryDetail) renderExhibitionGalleryAssignment(exhibitionGalleryDetail);
+  try {
+    if (!exhibitionData || typeof exhibitionData.unpublish !== "function") throw new Error("Explicit unpublish action is unavailable.");
+    await exhibitionData.unpublish(selectedExhibition.id);
+    showToast("Exhibition unpublished.");
     await fetchCatalog();
     syncSelectedFromCatalog(selectedExhibition.id);
     await refreshExhibitionGalleryAssignment(selectedExhibition.id);
@@ -673,7 +737,7 @@ function setSelectedExhibition(record) {
   exhibitionDescription.value = selectedExhibition.description;
   exhibitionSlug.value = selectedExhibition.slug;
   exhibitionSortOrder.value = String(selectedExhibition.sort_order);
-  exhibitionPublished.checked = !!selectedExhibition.is_published;
+  if (exhibitionPublicationStatus) exhibitionPublicationStatus.textContent = selectedExhibition.is_published ? "PUBLISHED / PUBLIC" : "DRAFT / NOT PUBLIC";
   exhibitionSpaceId.textContent = selectedExhibition.space_id;
   const posterUrl = publicUrlFor(selectedExhibition.cover_path);
   posterPreview.src = posterUrl || "";
@@ -1993,7 +2057,6 @@ ensureGalleryManagementUi();
 [exhibitionName, exhibitionDescription, exhibitionSortOrder].forEach((field) => {
   if (field) field.addEventListener("input", syncMetadataDirtyState);
 });
-if (exhibitionPublished) exhibitionPublished.addEventListener("change", syncMetadataDirtyState);
 
 if (publicPageButton) {
   publicPageButton.addEventListener("click", async (event) => {
