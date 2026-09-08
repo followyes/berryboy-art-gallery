@@ -1,50 +1,59 @@
 # Exhibition Platform
 
-Current repository release: **C6C8C21 — Multi-Space Foundation**.
+Current repository release: **C6C8C25 — Cross-Space Runtime**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
 ## Product model
 
 - **Venue / Gallery** is the reusable physical 3D environment.
-- **Venue Version** is an immutable published version of that environment and its runtime manifest/assets.
-- **Space** is the runtime representation of the resolved Venue Version passed into the Babylon scene.
-- **Exhibition** is the content/publication layer shown inside a Venue.
-- Multiple Exhibitions can belong to one Venue.
-- A future cross-Venue transition is a Babylon Scene lifecycle boundary; same-Venue Exhibition switching retains the existing fast/resident path.
+- **Venue Version** is an immutable published/history version of that environment and its runtime manifest/assets.
+- **Space** is the runtime representation of the resolved Venue Version passed into Babylon.
+- **Exhibition** is the content/publication layer shown inside a Gallery.
+- An Exhibition has independent Draft, Published and Previous state/card/ exact Venue Version channels.
+- `exhibitions.venue_id` / `exhibition_states.venue_id` describe the current **Draft authoring Gallery**.
+- Public Gallery identity is derived from `published_venue_version_id -> venue_versions.venue_id`, not from the current Draft authoring Gallery.
+- Publishing a new Gallery Version does not automatically migrate Exhibitions.
+- Different immutable Venue Versions can now switch in one browser session through the C25 Scene lifecycle controller.
 
-Specific gallery names are data. They are not platform/runtime branding.
+Specific Gallery names are data. They are not platform/runtime branding.
 
 ## Main entries
 
-- `index.html` — Public Viewer.
+- `index.html` — Public Viewer + Exhibition discovery + C25 same-session cross-space switching.
 - `admin.html` — direct/fallback Admin Workspace.
+- `gallery-test.html` — authenticated isolated preview of one Gallery Version.
 - `src/Gallery_V0_11.js` — main Babylon.js runtime source.
 - `src/Gallery_V0_11.min.js` — generated production runtime.
 - `src/data/exhibition-api.js` — canonical Venue/Exhibition data adapter.
-- `src/runtime/space-definition-resolver.js` — validates/resolves a canonical Venue Version manifest into the small Space contract consumed by the engine.
-- `src/config/space-fixture.js` — local/login-disabled test fixture only; it is not the production Space source.
+- `src/data/exhibition-gallery-assignment.js` — pure C24 binding/migration helpers and executable reference rebind for QA.
+- `src/data/gallery-management-api.js` — controlled Gallery lifecycle/Storage adapter.
+- `src/runtime/space-definition-resolver.js` — resolves a canonical Venue Version into the small Space contract consumed by the engine.
+- `src/runtime/scene-lifecycle-controller.js` — C25 owner of one mutable Babylon Scene on the persistent Engine/canvas.
+- `src/validation/gallery-model-validation.js` — C23 browser coordinator for technical Gallery model validation.
+- `src/workers/gallery-glb-validator-worker.js` — streaming GLB/glTF validator + incremental SHA-256 worker.
+- `src/config/space-fixture.js` — local/login-disabled test fixture only.
+- `src/bootstrap/gallery-test-bootstrap.js` — Test Gallery resolver/startup and Entry Point capture.
 - `src/bootstrap/` — Viewer/Admin/editor/cache/transition bootstraps.
 - `asset-cache-sw.js` — persistent asset cache / delivery layer.
-- `src/workers/` + `src/vendor/gallery-avif-encoder.mjs` — artwork/media AVIF processing.
 - `tools/` — repository build, verifier and consolidated regression suites.
 
-## C6C8C21 canonical startup path
+## Canonical runtime path
 
-Production startup no longer imports a static building config. The canonical flow is:
+Public Viewer resolves:
 
 ```text
-Exhibition
-  -> Venue
-  -> Venue Version
+Published Exhibition
+  -> published_venue_version_id
+  -> exact Venue / Gallery + Venue Version
   -> Venue Manifest / Venue Assets
   -> Space Definition
   -> Gallery_V0_11 createScene()
 ```
 
-The engine receives `runtimeOptions.spaceDefinition`; it does not need to know Supabase table names or fixed production GLB URLs.
+Admin authoring resolves the Exhibition's explicit Draft Venue Version. The engine receives `runtimeOptions.spaceDefinition`; it does not need Supabase table names, assignment SQL or model-validation SQL.
 
-The active canonical database model is:
+Canonical database model:
 
 ```text
 venues
@@ -56,79 +65,168 @@ exhibitions
   -> exhibition_cards
 ```
 
-The C6C8C20 `gallery_exhibitions` / `gallery_state` model is no longer a normal runtime dependency in this repository. Those production tables are deliberately retained only as C21 rollback evidence until later Multi-Space closure.
+No parallel Exhibition/Gallery assignment table is introduced. Legacy `gallery_exhibitions` / `gallery_state` are not normal runtime dependencies.
 
-## Venue manifest / Space contract
+## Gallery Management baseline
 
-C6C8C21 uses the neutral manifest identifier:
+C6C8C22 / C6C8C22.1 Gallery Management is PASS/CLOSED. Admin Workspace separates:
 
-`exhibition-platform-venue-manifest.v1`
+```text
+EXHIBITIONS | GALLERIES
+```
 
-The current required building roles are exactly:
+Gallery lifecycle remains:
+
+```text
+Create Gallery
+-> initial Draft Version
+-> building assets
+-> Entry Point
+-> Validate
+-> Test Gallery
+-> Publish immutable Version
+-> Create/Open Next Draft
+-> safe Rollback / Archive / Restore
+```
+
+A Gallery may have at most one active Draft Version. Next Draft creation is copy-on-write from current Published Version. Published/frozen Venue Versions are not edited in place.
+
+## C6C8C23 Space Model Validation baseline
+
+C23 is PASS/CLOSED and remains fully active in C25.
+
+Required Gallery roles:
 
 - `floor`
 - `walls`
 - `ceiling`
+
+Optional:
+
 - `props`
 
-The manifest also requires Y-up, meter units and a safe visitor spawn point. Bucket/path metadata is canonical; delivery URLs are resolved outside the engine.
+Missing Props cannot block Gallery validation, publication or Viewer startup. Assigned Props must pass the same technical validation as required models.
 
-The resolver can recognize the historical `berryboy-venue-manifest.v1` identifier only when an explicit legacy-compatibility option is requested. New active Venue data must use the neutral schema.
+C23 validates GLB v2 structure, self-contained dependencies, buffers/bufferViews/accessors, scene/node/mesh/material/attribute references, reachable geometry, finite transforms/bounds, runtime mesh-name collisions and streamed SHA-256. Aggregate Draft validation blocks stale/failed immutable asset reports and cross-role runtime mesh-name collisions. It deliberately does not score art quality, polygon budgets, LOD or material aesthetics.
 
-## Runtime behavior retained
+## C6C8C24 Exhibition ↔ Gallery Assignment
 
-C6C8C21 is a foundation/cutover stage, not a rendering rewrite. It retains the accepted behavior from C6C8C20, including:
+### Channel model
 
-- same-runtime Public/Admin transitions,
-- persistent draft preview,
-- same-Space Exhibition residency/delta switching,
-- hard Space/Preview readiness,
-- bounded background Full texture/model hydration,
-- persistent asset caching/egress guards,
-- frame runtime,
-- collision/lighting behavior,
-- mobile UI regressions,
-- C6C8C20 Current-Zone Model Fast Lane.
+C24 allows the three exact Exhibition Venue Version channels to belong to different Galleries:
+
+```text
+Draft      -> authoring Gallery Version
+Published  -> current public Gallery Version
+Previous   -> rollback-history Gallery Version
+```
+
+The Draft authoring Gallery remains mirrored on `exhibitions.venue_id` and `exhibition_states.venue_id`. Published/Previous are exact Version references and are not forced to match that Draft Gallery.
+
+### Draft-only reassignment
+
+Normal Admin reassignment can target only the chosen Gallery's current Published/frozen Version.
+
+Example:
+
+```text
+Before
+Draft      -> Main Gallery v2
+Published  -> Main Gallery v2
+
+ASSIGN DRAFT -> Test Gallery v1
+Draft      -> Test Gallery v1
+Published  -> Main Gallery v2   (unchanged and still public)
+```
+
+Cross-Gallery reassignment resets only Gallery-specific spatial state: wall presentation state, artwork/sculpture placement/anchor/focus-camera fields, local lights, tour order and navigation path. Exhibition identity/media/text and unrelated non-spatial data remain.
+
+A versioned `venueMigration` marker records the pending migration. If spatial items exist, the rebuilt layout must be saved after assignment before **CONFIRM LAYOUT**. An unresolved migration blocks Exhibition publication.
+
+### Explicit publication boundary
+
+**PUBLISH EXHIBITION** uses the canonical bundle publication RPC:
+
+```text
+Draft state/card/version       -> Published
+old Published state/card/version -> Previous
+```
+
+Cross-Gallery Draft runtime saves stay private. Same-Version saves for an already Published Exhibition can retain the accepted instant state-publication path only when Draft Version still equals Published Version and no migration is pending.
+
+Historical raw assignment and raw state-only publication functions are not browser-facing in C24.
+
+### Public discovery
+
+With no explicit `?exhibition=` query, the Viewer requests canonical published Exhibition cards **before** starting Babylon and shows a selection surface. Card Gallery name comes from the Published Venue Version. A missing cover uses a neutral fallback.
+
+Choosing a card sets `?exhibition=<slug>` and continues the normal startup. Explicit deep links bypass discovery.
+
+C25 replaces the former fresh-document cross-Gallery boundary with same-session Scene lifecycle switching. Same exact Venue Version keeps the accepted resident/delta Exhibition path; another exact Venue Version recreates the Scene on the same Engine/canvas.
+
+## C6C8C25 Cross-Space Runtime
+
+C25 uses the exact immutable `venue_version_id` as the physical Space identity. Two Exhibitions may share one Gallery slug but still require a full Scene lifecycle if they target different Gallery Versions.
+
+```text
+same venue_version_id
+  -> existing same-Scene Exhibition switch / residency
+
+different venue_version_id
+  -> resolve complete target runtime
+  -> dispose old Scene
+  -> create new Scene on the same Babylon Engine + canvas
+  -> wait for lifecycle-matched Interaction Ready
+```
+
+The shared `scene-lifecycle-controller.js` owns the active Scene, lifecycle generation, cross-Version cutover and rollback. The Viewer and standalone Admin render loops read the mutable active Scene instead of closing over the first Scene.
+
+Public/Admin runtime caches are mode-qualified so an Exhibition whose Published channel is Gallery A and Draft channel is Gallery B cannot reuse the wrong runtime. Per-Scene lifecycle IDs prevent stale asynchronous READY/FAIL events from completing a newer Scene.
+
+Target runtime resolution happens before current Scene disposal. If target startup fails after disposal, C25 attempts to recreate the previous canonical runtime.
+
+C25 does not change database schema/RPCs. It uses the deployed C24 assignment/publication contract.
+
+## Test Gallery
+
+`gallery-test.html?version=<venueVersionUuid>` loads one explicit Gallery Version through the authenticated test resolver. It does not resolve/load a real Exhibition state.
+
+The engine exposes the small read-only bridge:
+
+```text
+GalleryApp.getCameraPose()
+```
+
+Gallery CRUD/versioning/model validation/Exhibition assignment remain outside `Gallery_V0_11.js`.
 
 ## Backend dependency
 
-The application currently uses **Supabase** for Auth, Postgres/RLS/RPC data access and Storage. C6C8C21 does not migrate the project to Cloudflare.
+The application uses **Supabase** for Auth, Postgres/RLS/RPC data access and Storage.
 
-Release SQL, migrations, prechecks/postchecks, rollback synchronizer and operator queries are not repository runtime files. In the release package they live under:
-
-`OUTSIDE_REPO/SQL/`
+Release SQL, migrations, prechecks/postchecks, rollback synchronizer and operator queries live under `OUTSIDE_REPO/SQL/` in the release package, not in the deployable repository.
 
 ## Compatibility identifiers
 
-Some old internal/debug aliases, localStorage keys, CSS/DOM identifiers and historical physical Storage names still contain `Berryboy`. They are retained only where changing them would risk breaking accepted browser state, diagnostics or the existing physical asset location. They are **not** the current platform identity and must not be used for new technical contracts.
-
-Primary new globals/contracts use neutral `ExhibitionPlatform...` naming. Compatibility aliases may remain until a dedicated low-risk retirement stage.
+Some historical internal/debug aliases, localStorage keys, CSS/DOM identifiers and physical Storage names still contain `Berryboy`. They are retained only where changing them would risk accepted state/diagnostics/history and must not be used for new contracts.
 
 ## Validation
 
-Run from the repository root:
+From repository root:
 
 ```bash
 npm run check
 ```
 
-This performs:
+This performs production build, syntax, repository verification and consolidated regression suites, including C23 executable GLB worker fixtures, C24 Exhibition/Gallery assignment invariants and C25 executable cross-space Scene lifecycle tests.
 
-- production build,
-- syntax checks,
-- repository verifier,
-- core runtime regressions,
-- media regressions,
-- platform regressions including the C6C8C21 canonical Multi-Space contract,
-- performance regressions,
-- workspace regressions.
-
-SQL package validation is intentionally separate and is run from the release-package root with:
+SQL package verification is separate:
 
 ```bash
 node OUTSIDE_REPO/TOOLS/verify-sql-package.mjs
 ```
 
+The SQL/package verifier is static. C25 has no SQL migration; production closure requires REPO deployment through GitHub / GitHub Pages and the C25 browser smoke.
+
 ## Documentation
 
-`README.md` describes the current application architecture/capabilities. It is not the changelog. Release status, database procedure, QA evidence and continuation state live under `OUTSIDE_REPO/`.
+`README.md` describes current repository architecture/capabilities. It is not the changelog. Release status, production deployment procedure, QA evidence and continuation state live under `OUTSIDE_REPO/`.

@@ -332,6 +332,7 @@ await (async () => {
 const index = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const source = fs.readFileSync(new URL('../src/Gallery_V0_11.js', import.meta.url), 'utf8');
 const bootstrap = fs.readFileSync(new URL('../src/bootstrap/gallery-viewer-bootstrap.js', import.meta.url), 'utf8');
+const lifecycle = fs.readFileSync(new URL('../src/runtime/scene-lifecycle-controller.js', import.meta.url), 'utf8');
 
 function extractFunction(text, name) {
   const marker = `function ${name}(`;
@@ -382,14 +383,17 @@ assert.equal(/<script[^>]+src=["']https:\/\/cdn\.babylonjs\.com\/loaders\//.test
 assert.equal(bootstrap.includes('import { createScene }'), false);
 assert.ok(bootstrap.includes('await bootGuard.waitForStart();'));
 assert.ok(bootstrap.includes('await loadClassicScript("https://cdn.babylonjs.com/babylon.js"'));
-assert.ok(bootstrap.includes('const engineModule = await import(`../Gallery_V0_11.min.js?v=${ENGINE_CACHE_KEY}`)'));
+assert.ok(bootstrap.includes('galleryEngineModule = await import(`../Gallery_V0_11.min.js?v=${ENGINE_CACHE_KEY}`)'));
+assert.ok(bootstrap.includes('createSceneLifecycleController')); 
 assert.ok(bootstrap.indexOf('await bootGuard.waitForStart();') < bootstrap.indexOf('await startGalleryRuntime();'));
 assert.equal(bootstrap.includes('const sessionResult = await supabase.auth.getSession();\n  setSession(sessionResult.data.session || null);\n  if (currentSession) await loadEditorModule();\n\n  supabase.auth.onAuthStateChange'), false);
 assert.ok(bootstrap.includes('initializeAuthRuntime().catch(function (error)'));
 assert.ok(bootstrap.indexOf('initializeAuthRuntime().catch(function (error)') < bootstrap.indexOf('await bootGuard.waitForStart();'));
 
 // Readiness is the real interaction gate, not the old synchronous gallery-ready event.
-assert.ok(bootstrap.includes('window.addEventListener("gallery-interaction-ready"'));
+assert.ok(lifecycle.includes('window.addEventListener("gallery-interaction-ready"'));
+assert.ok(lifecycle.includes('window.addEventListener("gallery-startup-failure"'));
+assert.ok(lifecycle.includes('text(detail.lifecycleId) === text(lifecycleId)'));
 assert.equal(bootstrap.includes('window.addEventListener("gallery-ready", onReady'), false);
 assert.ok(source.includes('window.dispatchEvent(new CustomEvent("gallery-interaction-ready"'));
 assert.equal(extractFunction(source, 'finishGalleryStartup').includes('showViewerIntroOverlay'), false);

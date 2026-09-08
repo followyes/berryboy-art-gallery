@@ -1,10 +1,11 @@
 /*
-  Exhibition Platform — C6C8C21 Multi-Space Foundation
+  Exhibition Platform — C6C8C25 Cross-Space Runtime / Exhibition ↔ Gallery Assignment
   Canonical Exhibition/Venue data adapter. Runtime code talks to this adapter instead of
   reading/writing legacy gallery_exhibitions / gallery_state directly.
 */
 
-import { buildSpaceDefinition } from "../runtime/space-definition-resolver.js";
+import { buildSpaceDefinition } from "../runtime/space-definition-resolver.js?v=c6c8c25_cross_space_runtime";
+import { isExhibitionGalleryMigrationPending } from "./exhibition-gallery-assignment.js?v=c6c8c25_cross_space_runtime";
 
 export const EXHIBITION_STATE_SCHEMA = "exhibition-platform-exhibition-state.v1";
 
@@ -86,7 +87,8 @@ async function loadAdminRuntime(supabase, reference) {
   const s = detail.state || {};
   const venueDetail = rpcOne(await supabase.rpc("admin_get_venue", { p_venue_id: e.venue_id }));
   if (!venueDetail || !venueDetail.venue) throw new Error("Venue could not be resolved for Exhibition.");
-  const targetVersionId = s.draft_venue_version_id || venueDetail.venue.draft_version_id || venueDetail.venue.published_version_id;
+  const targetVersionId = s.draft_venue_version_id;
+  if (!targetVersionId) throw new Error("Exhibition Draft has no explicit Gallery Version assignment.");
   const versions = Array.isArray(venueDetail.versions) ? venueDetail.versions : [];
   const version = versions.find((item) => text(item.id) === text(targetVersionId)) || null;
   if (!version) throw new Error("Draft Venue Version could not be resolved for Exhibition.");
@@ -109,6 +111,11 @@ async function loadAdminRuntime(supabase, reference) {
     venue: venueDetail.venue,
     venueVersion: version,
     manifest: version.manifest || null,
+    adminDetail: detail,
+    galleryBindings: detail.galleryBindings || {},
+    availableVenues: Array.isArray(detail.availableVenues) ? detail.availableVenues : [],
+    migration: detail.migration || null,
+    migrationPending: isExhibitionGalleryMigrationPending(detail),
     spaceDefinition: buildSpaceDefinition({ supabase, venue: venueDetail.venue, venueVersion: version, manifest: version.manifest || null })
   };
 }
@@ -176,6 +183,28 @@ async function saveCanonicalState(supabase, runtime, state) {
   };
 }
 
+export async function listPublicExhibitionCards(supabase) {
+  if (!supabase) throw new Error("Supabase client is required for Exhibition discovery.");
+  return asRows(await supabase.rpc("list_public_exhibition_cards")).map((row) => ({
+    id: text(row.id),
+    slug: text(row.slug || row.id),
+    title: text(row.title || row.slug || row.id),
+    subtitle: text(row.subtitle),
+    description: text(row.short_description),
+    buttonLabel: text(row.button_label || "Enter gallery"),
+    curator: text(row.curator),
+    status: text(row.status),
+    displayOrder: Number(row.display_order) || 0,
+    venueName: text(row.venue_name),
+    startDate: row.start_date || null,
+    endDate: row.end_date || null,
+    coverUrl: row.cover_url || null,
+    mobileCoverUrl: row.mobile_cover_url || null,
+    logoUrl: row.logo_url || null,
+    theme: row.theme || {}
+  }));
+}
+
 export async function resolveInitialPublicRuntime(supabase, reference) {
   return resolvePublicRuntime(supabase, reference);
 }
@@ -186,20 +215,27 @@ export async function resolveInitialAdminRuntime(supabase, reference) {
 
 export function createExhibitionDataAdapter({ supabase, mode = "public", initialRuntime = null }) {
   if (!supabase) throw new Error("Supabase client is required for canonical Exhibition data.");
-  const runtimeById = new Map();
+  // C6C8C25: Public and Admin can legitimately resolve the same Exhibition to different
+  // immutable Venue Versions (Published vs Draft). Cache them in separate channels.
+  const runtimeByKey = new Map();
   let modeName = mode === "admin" ? "admin" : "public";
-  if (initialRuntime && initialRuntime.exhibition) runtimeById.set(initialRuntime.exhibition.id, initialRuntime);
+  const runtimeKey = (modeValue, id) => `${modeValue === "admin" ? "admin" : "public"}:${text(id)}`;
+  function cacheRuntime(runtime, modeValue = modeName) {
+    if (runtime && runtime.exhibition && runtime.exhibition.id) runtimeByKey.set(runtimeKey(modeValue, runtime.exhibition.id), runtime);
+    return runtime;
+  }
+  if (initialRuntime && initialRuntime.exhibition) cacheRuntime(initialRuntime, initialRuntime.mode || modeName);
 
   async function resolve(reference, force = false) {
     const ref = text(reference || "main") || "main";
     if (!force) {
-      for (const cached of runtimeById.values()) {
+      for (const [key, cached] of runtimeByKey.entries()) {
+        if (!key.startsWith(`${modeName}:`)) continue;
         if (cached && cached.exhibition && (cached.exhibition.id === ref || cached.exhibition.slug === ref)) return cached;
       }
     }
     const runtime = modeName === "admin" ? await loadAdminRuntime(supabase, ref) : await resolvePublicRuntime(supabase, ref);
-    runtimeById.set(runtime.exhibition.id, runtime);
-    return runtime;
+    return cacheRuntime(runtime, modeName);
   }
 
   return Object.freeze({
@@ -218,7 +254,7 @@ export function createExhibitionDataAdapter({ supabase, mode = "public", initial
         let spaceId = "";
         try {
           const detail = await loadAdminRuntime(supabase, row.id);
-          runtimeById.set(detail.exhibition.id, detail);
+          cacheRuntime(detail, "admin");
           coverPath = detail.exhibition.cover_path;
           spaceId = detail.exhibition.space_id;
         } catch (_error) {}
@@ -249,21 +285,24 @@ export function createExhibitionDataAdapter({ supabase, mode = "public", initial
     },
     async create(name) {
       if (modeName !== "admin") throw new Error("Public Viewer cannot create Exhibitions.");
-      const current = initialRuntime || Array.from(runtimeById.values())[0] || await loadAdminRuntime(supabase, "main");
+      const current = initialRuntime || Array.from(runtimeByKey.values()).find((item) => item && item.mode === "admin") || await loadAdminRuntime(supabase, "main");
       const id = globalThis.crypto && typeof globalThis.crypto.randomUUID === "function" ? globalThis.crypto.randomUUID() : null;
       const suffix = id ? id.slice(-6) : Date.now().toString(36).slice(-6);
       const base = text(name).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 56) || "exhibition";
       const slug = `${base}-${suffix}`;
+      const venueDetail = rpcOne(await supabase.rpc("admin_get_venue", { p_venue_id: current.venue.id }));
+      const publishedVersionId = venueDetail && venueDetail.venue ? text(venueDetail.venue.published_version_id) : "";
+      if (!publishedVersionId) throw new Error("Create a Published Gallery Version before creating an Exhibition.");
       const created = rpcOne(await supabase.rpc("admin_create_exhibition", {
         p_venue_id: current.venue.id,
-        p_venue_version_id: current.venueVersion.id,
+        p_venue_version_id: publishedVersionId,
         p_slug: slug,
         p_title: text(name),
         p_patch: { display_order: 0 }
       }));
       if (!created || !created.id) throw new Error("Exhibition creation returned no record.");
       const runtime = await loadAdminRuntime(supabase, created.id);
-      runtimeById.set(runtime.exhibition.id, runtime);
+      cacheRuntime(runtime, "admin");
       return { ...runtime.exhibition };
     },
     async updateMetadata(reference, patch = {}) {
@@ -286,7 +325,7 @@ export function createExhibitionDataAdapter({ supabase, mode = "public", initial
         });
         rpcOne(response);
       }
-      if (patch.is_published !== undefined) {
+      if (patch.is_published !== undefined && !!patch.is_published !== !!runtime.exhibition.is_published) {
         const response = await supabase.rpc("admin_set_exhibition_runtime_visibility", {
           p_exhibition_id: runtime.exhibition.id,
           p_published: !!patch.is_published
@@ -294,15 +333,92 @@ export function createExhibitionDataAdapter({ supabase, mode = "public", initial
         rpcOne(response);
       }
       const refreshed = await loadAdminRuntime(supabase, runtime.exhibition.id);
-      runtimeById.set(refreshed.exhibition.id, refreshed);
+      cacheRuntime(refreshed, "admin");
       return { ...refreshed.exhibition };
     },
-    getRuntime(reference) {
+    async getAdminDetail(reference) {
+      if (modeName !== "admin") throw new Error("Public Viewer cannot read Admin Exhibition detail.");
+      const id = await findAdminId(supabase, reference);
+      if (!id) throw new Error(`Exhibition not found: ${text(reference)}`);
+      const detail = rpcOne(await supabase.rpc("admin_get_exhibition", { p_exhibition_id: id }));
+      if (!detail) throw new Error("Exhibition detail returned no record.");
+      return detail;
+    },
+    async assignGallery(reference, target = {}) {
+      if (modeName !== "admin") throw new Error("Public Viewer cannot assign Galleries.");
+      const runtime = await resolve(reference, true);
+      const response = rpcOne(await supabase.rpc("admin_assign_exhibition_gallery", {
+        p_exhibition_id: runtime.exhibition.id,
+        p_venue_id: text(target.venueId),
+        p_venue_version_id: text(target.venueVersionId),
+        p_expected_draft_revision: Number(runtime.revision) || 0,
+        p_expected_lock_version: Number(runtime.lockVersion) || 0
+      }));
+      if (!response) throw new Error("Gallery assignment returned no result.");
+      runtimeByKey.delete(runtimeKey("admin", runtime.exhibition.id));
+      return response;
+    },
+    async confirmGalleryLayout(reference) {
+      if (modeName !== "admin") throw new Error("Public Viewer cannot confirm Gallery migration.");
+      const runtime = await resolve(reference, true);
+      const response = rpcOne(await supabase.rpc("admin_confirm_exhibition_gallery_layout", {
+        p_exhibition_id: runtime.exhibition.id,
+        p_expected_draft_revision: Number(runtime.revision) || 0,
+        p_expected_lock_version: Number(runtime.lockVersion) || 0
+      }));
+      if (!response) throw new Error("Gallery layout confirmation returned no result.");
+      runtimeByKey.delete(runtimeKey("admin", runtime.exhibition.id));
+      return response;
+    },
+    async publishBundle(reference) {
+      if (modeName !== "admin") throw new Error("Public Viewer cannot publish Exhibitions.");
+      const detail = await this.getAdminDetail(reference);
+      const state = detail.state || {};
+      const card = detail.card || {};
+      const response = rpcOne(await supabase.rpc("admin_publish_exhibition_bundle", {
+        p_exhibition_id: detail.exhibition.id,
+        p_expected_draft_revision: Number(state.draft_revision) || 0,
+        p_expected_card_revision: Number(card.draft_revision) || 0,
+        p_expected_state_lock_version: Number(state.lock_version) || 0,
+        p_expected_card_lock_version: Number(card.lock_version) || 0
+      }));
+      if (!response) throw new Error("Exhibition publish returned no result.");
+      runtimeByKey.delete(runtimeKey("admin", detail.exhibition.id));
+      return response;
+    },
+    async rollbackBundle(reference) {
+      if (modeName !== "admin") throw new Error("Public Viewer cannot rollback Exhibitions.");
+      const detail = await this.getAdminDetail(reference);
+      const response = rpcOne(await supabase.rpc("admin_rollback_exhibition_bundle", { p_exhibition_id: detail.exhibition.id }));
+      if (!response) throw new Error("Exhibition rollback returned no result.");
+      runtimeByKey.delete(runtimeKey("admin", detail.exhibition.id));
+      return response;
+    },
+    async resolveRuntime(reference, options = {}) {
+      return resolve(reference, options.force === true);
+    },
+    getRuntime(reference, options = {}) {
       const ref = text(reference);
-      for (const runtime of runtimeById.values()) {
+      const requestedMode = options.mode === "admin" ? "admin" : options.mode === "public" ? "public" : modeName;
+      for (const [key, runtime] of runtimeByKey.entries()) {
+        if (!key.startsWith(`${requestedMode}:`)) continue;
         if (runtime && runtime.exhibition && (runtime.exhibition.id === ref || runtime.exhibition.slug === ref)) return runtime;
       }
       return null;
+    },
+    invalidate(reference, options = {}) {
+      const ref = text(reference);
+      const modes = options.mode ? [options.mode === "admin" ? "admin" : "public"] : ["public", "admin"];
+      let removed = 0;
+      for (const modeValue of modes) {
+        for (const [key, runtime] of Array.from(runtimeByKey.entries())) {
+          if (!key.startsWith(`${modeValue}:`)) continue;
+          if (runtime && runtime.exhibition && (runtime.exhibition.id === ref || runtime.exhibition.slug === ref)) {
+            runtimeByKey.delete(key); removed += 1;
+          }
+        }
+      }
+      return removed;
     }
   });
 }
