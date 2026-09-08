@@ -390,7 +390,11 @@ assert.equal(bootstrap.includes('const sessionResult = await supabase.auth.getSe
 assert.ok(bootstrap.includes('initializeAuthRuntime().catch(function (error)'));
 assert.ok(bootstrap.indexOf('initializeAuthRuntime().catch(function (error)') < bootstrap.indexOf('await ensurePublicExhibitionSelection();'));
 assert.ok(bootstrap.includes('if (bootGuard && typeof bootGuard.start === "function"'));
-assert.ok(bootstrap.includes('c25HomepageExhibitionSelection'));
+assert.ok(bootstrap.includes('c26HomepageExhibitionCarousel'));
+assert.equal(bootstrap.includes('c25HomepageExhibitionGrid'), false);
+assert.ok(bootstrap.includes('c26ExhibitionCard--titleOnly'));
+assert.ok(bootstrap.includes('scroll-snap-type:x mandatory'));
+assert.ok(bootstrap.includes('event.key === "ArrowRight"'));
 assert.equal(bootstrap.includes('#c24PublicDiscovery{position:fixed'), false);
 assert.equal(bootstrap.includes('document.body.style.overflow = "hidden"'), false);
 
@@ -401,7 +405,7 @@ assert.ok(lifecycle.includes('text(detail.lifecycleId) === text(lifecycleId)'));
 assert.equal(bootstrap.includes('window.addEventListener("gallery-ready", onReady'), false);
 assert.ok(source.includes('window.dispatchEvent(new CustomEvent("gallery-interaction-ready"'));
 assert.equal(extractFunction(source, 'finishGalleryStartup').includes('showViewerIntroOverlay'), false);
-assert.ok(bootstrap.includes('window.GalleryApp.showViewerIntroOverlay();'));
+assert.ok(bootstrap.includes('applyPublicSpaceIntroPolicy(null, publicRuntime, { initial: true, reason: "initial-public-entry" })'));
 
 // Visitor loading UI is separate from the original post-load instruction popup.
 assert.equal(index.includes('id="galleryBootStart"'), false);

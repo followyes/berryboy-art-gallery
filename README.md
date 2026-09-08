@@ -1,6 +1,6 @@
 # Exhibition Platform
 
-Current repository release: **C6C8C25.4 — Same-Space Exhibition Media Hydration**.
+Current repository release: **C6C8C26 — Multi-Space Closure (code-side release candidate)**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
@@ -20,7 +20,7 @@ Specific Gallery names are data. They are not platform/runtime branding.
 
 ## Main entries
 
-- `index.html` — project homepage + in-page Exhibition choice + Public Viewer + C25 same-session cross-space switching.
+- `index.html` — project homepage + C26 Exhibition carousel + Public Viewer + same-session cross-space switching.
 - `admin.html` — direct/fallback Admin Workspace.
 - `gallery-test.html` — authenticated isolated preview of one Gallery Version.
 - `src/Gallery_V0_11.js` — main Babylon.js runtime source.
@@ -30,6 +30,7 @@ Specific Gallery names are data. They are not platform/runtime branding.
 - `src/data/gallery-management-api.js` — controlled Gallery lifecycle/Storage adapter.
 - `src/runtime/space-definition-resolver.js` — resolves a canonical Venue Version into the small Space contract consumed by the engine.
 - `src/runtime/scene-lifecycle-controller.js` — C25 owner of one mutable Babylon Scene on the persistent Engine/canvas.
+- `src/runtime/public-space-entry-policy.js` — C26 exact-`venue_version_id` policy for the public Gallery instruction popup.
 - `src/validation/gallery-model-validation.js` — C23 browser coordinator for technical Gallery model validation.
 - `src/workers/gallery-glb-validator-worker.js` — streaming GLB/glTF validator + incremental SHA-256 worker.
 - `src/config/space-fixture.js` — local/login-disabled test fixture only.
@@ -158,12 +159,26 @@ Historical raw assignment and raw state-only publication functions are not brows
 
 ### Public discovery
 
-With no explicit `?exhibition=` query, the homepage requests canonical Published Exhibition cards **before** starting Babylon and renders them directly inside the homepage 3D stage. The legacy prestart `Enter gallery / About project` popup is not part of the current flow. Card Gallery name comes from the Published Venue Version and a missing cover uses a neutral fallback.
+With no explicit `?exhibition=` query, the homepage requests canonical Published Exhibition cards **before** starting Babylon and renders the C26 carousel inside the homepage 3D stage. The legacy prestart `Enter gallery / About project` popup is not part of the current flow. Cover cards use their Published card media; a coverless Exhibition renders a genuine title-only card with no fake poster/fallback artwork.
 
-Choosing a card is the single visitor action: it starts loading/Babylon and enters that Exhibition immediately. Explicit deep links already identify the Exhibition and start directly. The `ADMIN` link is available before Gallery startup; `admin.html` owns direct authentication, while an authenticated already-live runtime can still use the C25 inline Admin fast path.
+Choosing the whole card is the single visitor action: it starts loading/Babylon and enters that Exhibition immediately. The carousel supports desktop previous/next controls, native touch horizontal scrolling with scroll snap, and keyboard `ArrowLeft` / `ArrowRight` / `Home` / `End` focus navigation. Explicit deep links already identify the Exhibition and start directly. The `ADMIN` link is available before Gallery startup; `admin.html` owns direct authentication, while an authenticated already-live runtime can still use the inline Admin fast path.
 
-C25 replaces the former fresh-document cross-Gallery boundary with same-session Scene lifecycle switching. Same exact Venue Version keeps the accepted resident/delta Exhibition path; another exact Venue Version recreates the Scene on the same Engine/canvas.
+C25 replaces the former fresh-document cross-Gallery boundary with same-session Scene lifecycle switching. Same exact Venue Version keeps the accepted resident/delta Exhibition path; another exact Venue Version recreates the Scene on the same Engine/canvas. C26 keeps that lifecycle and adds the public Space-entry popup policy below.
 
+## C6C8C26 Public Carousel / Space Entry Policy
+
+The accepted engine-owned instruction popup is shown by public orchestration, not by a once-per-session flag. Exact immutable `venue_version_id` is the boundary:
+
+```text
+initial public entry A       -> show
+A -> B                       -> show
+B -> A later                 -> show again
+Gallery A v1 -> Gallery A v2 -> show
+same exact version A -> B    -> do not re-show
+Admin / Gallery authoring    -> do not show
+```
+
+The decision runs only after lifecycle-matched target readiness. `window.ExhibitionPlatformPublicSpaceEntryDebug` exposes non-user-facing counters and the last decision for production smoke diagnostics.
 
 
 ## C6C8C25.4 Same-Space Exhibition Media Hydration
@@ -249,7 +264,7 @@ From repository root:
 npm run check
 ```
 
-This performs production build, syntax, repository verification and consolidated regression suites, including C23 executable GLB worker fixtures, C24 Exhibition/Gallery assignment invariants and C25 executable cross-space Scene lifecycle tests.
+This performs production build, syntax, repository verification and consolidated regression suites, including C23 executable GLB worker fixtures, C24 Exhibition/Gallery assignment invariants, C25/C25.4 cross-space/media readiness tests and C26 carousel/Space-entry policy invariants.
 
 SQL package verification is separate:
 
@@ -257,7 +272,7 @@ SQL package verification is separate:
 node OUTSIDE_REPO/TOOLS/verify-sql-package.mjs
 ```
 
-The SQL/package verifier is static. C25.4 adds no new SQL; it inherits the C25.3 database contract. Production closure requires GitHub / GitHub Pages deployment and C25.4 browser smoke.
+The SQL/package verifier is static. C26 adds no new SQL; it inherits the C25.3 database contract. C25.4 production smoke is confirmed PASS. C26 closure still requires GitHub / GitHub Pages deployment, a real second Gallery/Exhibition and the documented production browser matrix.
 
 ## Documentation
 

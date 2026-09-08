@@ -26,14 +26,19 @@ function count(h,n){return h.split(n).length-1}
 function sha(t){return crypto.createHash('sha256').update(t).digest('hex')}
 function extractFunction(text,name){const ms=[`async function ${name}(`,`function ${name}(`];let st=-1;for(const m of ms){st=text.indexOf(m);if(st>=0)break}assert(st>=0,`Missing ${name}`);const b=text.indexOf('{',st);let d=0,s='c',q='';for(let i=b;i<text.length;i++){const c=text[i],n=text[i+1]||'';if(s==='c'){if(c==='"'||c==="'"||c==='`'){s='s';q=c}else if(c==='/'&&n==='/'){s='l';i++}else if(c==='/'&&n==='*'){s='b';i++}else if(c==='{')d++;else if(c==='}'&&--d===0)return text.slice(st,i+1)}else if(s==='s'){if(c==='\\')i++;else if(c===q)s='c'}else if(s==='l'&&c==='\n')s='c';else if(s==='b'&&c==='*'&&n==='/'){s='c';i++}}throw new Error(`Unterminated ${name}`)}
 
-assert(index.includes('stage: "C6C8C25.4"'),'Index stage identity missing');
-assert(bootstrap.includes('const STAGE = "C6C8C25.4"'),'Viewer stage identity missing');
-assert(adminBootstrap.includes('const STAGE = "C6C8C25.4"'),'Admin stage identity missing');
-assert(bootstrap.includes('c6c8c25_4_same_space_media_20260908'),'Current cache key missing');
-assert(index.includes('gallery-viewer-bootstrap.js?v=c6c8c25_4_same_space_media_20260908'),'Index cache key missing');
+assert(index.includes('stage: "C6C8C26"'),'Index stage identity missing');
+assert(bootstrap.includes('const STAGE = "C6C8C26"'),'Viewer stage identity missing');
+assert(adminBootstrap.includes('const STAGE = "C6C8C26"'),'Admin stage identity missing');
+assert(bootstrap.includes('c6c8c26_multi_space_closure_20260908'),'Current cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=c6c8c26_multi_space_closure_20260908'),'Index cache key missing');
 assert(!index.includes('id="galleryBootStart"')&&!index.includes('id="galleryBootAbout"'),'Legacy prestart Enter Gallery popup remains');
 assert(index.includes('class="is-hidden" data-state="prestart"'),'Boot guard must be hidden before Exhibition selection');
-assert(bootstrap.includes('c25HomepageExhibitionSelection')&&bootstrap.includes('bootGuard.start();'),'Homepage Exhibition selection/start bridge missing');
+assert(bootstrap.includes('c26HomepageExhibitionCarousel')&&bootstrap.includes('bootGuard.start();'),'Homepage Exhibition carousel/start bridge missing');
+assert(!bootstrap.includes('c25HomepageExhibitionGrid'),'Temporary C25 discovery grid remains');
+assert(bootstrap.includes('c26ExhibitionCard--titleOnly')&&!bootstrap.includes('c25ExhibitionFallback'),'Coverless Exhibition is not a genuine title-only card');
+assert(bootstrap.includes('scroll-snap-type:x mandatory')&&bootstrap.includes('touch-action:pan-x pan-y'),'Carousel mobile swipe contract missing');
+assert(bootstrap.includes('event.key === "ArrowRight"')&&bootstrap.includes('event.key === "ArrowLeft"'),'Carousel keyboard navigation missing');
+assert(bootstrap.includes('applyPublicSpaceIntroPolicy(currentRuntime')&&bootstrap.includes('initial: true, reason: "initial-public-entry"'),'C26 public Space intro orchestration missing');
 assert(index.includes('<a id="adminWorkspaceButton" class="headerButton" href="./admin.html">ADMIN</a>'),'Static Admin entry is not directly exposed');
 assert(bootstrap.includes('adminWorkspaceButton.classList.remove("hidden")'),'Admin direct access is not kept exposed by auth UI');
 assert(bootstrap.includes('if (!currentSession || !activeEngine || !activeScene || !sceneLifecycleController) return;'),'Admin direct navigation fallback missing');

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { createSceneLifecycleController, getRuntimeVenueVersionKey, areRuntimesSameVenueVersion } from '../src/runtime/scene-lifecycle-controller.js';
+import { shouldShowPublicSpaceIntro } from '../src/runtime/public-space-entry-policy.js';
 import { buildAuthoringSpaceDefinition, buildSpaceDefinition } from '../src/runtime/space-definition-resolver.js';
 
 if (!globalThis.window) globalThis.window = new EventTarget();
@@ -242,6 +243,38 @@ assert.ok(source.includes('galleryAuthoringSpacePreview ? optionalGallerySpaceAs
 assert.ok(viewer.includes('currentRuntime && currentRuntime.context === "gallery-authoring" ? activePublicRuntime : currentRuntime'));
 
 console.log('C6C8C25/C25.2 Cross-Space + Admin Gallery preview regression invariants passed.');
+
+
+// C6C8C26 — public intro belongs to exact immutable Venue Version entry boundaries.
+{
+  const publicA1 = runtime('intro-a', 'venue-version-a1', { spaceId: 'gallery-a', mode: 'public' });
+  const publicA1OtherExhibition = runtime('intro-a-other', 'venue-version-a1', { spaceId: 'gallery-a', mode: 'public' });
+  const publicA2 = runtime('intro-a-v2', 'venue-version-a2', { spaceId: 'gallery-a', mode: 'public' });
+  const publicB1 = runtime('intro-b', 'venue-version-b1', { spaceId: 'gallery-b', mode: 'public' });
+  const adminA1 = runtime('intro-admin-a', 'venue-version-a1', { spaceId: 'gallery-a', mode: 'admin' });
+  const authoringB = { ...runtime('intro-authoring-b', 'venue-version-b1', { spaceId: 'gallery-b', mode: 'admin' }), context: 'gallery-authoring' };
+
+  assert.equal(shouldShowPublicSpaceIntro(null, publicA1, { initial: true }), true, 'initial public entry must show intro');
+  assert.equal(shouldShowPublicSpaceIntro(publicA1, publicA1OtherExhibition), false, 'same exact Venue Version Exhibition switch must not re-show intro');
+  assert.equal(shouldShowPublicSpaceIntro(publicA1, publicB1), true, 'cross-Gallery Venue Version entry must show intro');
+  assert.equal(shouldShowPublicSpaceIntro(publicB1, publicA1), true, 'return to a previously visited Space must show intro again');
+  assert.equal(shouldShowPublicSpaceIntro(publicA1, publicA2), true, 'same Gallery slug but a different immutable Venue Version must show intro');
+  assert.equal(shouldShowPublicSpaceIntro(publicA1, authoringB), false, 'Gallery authoring preview must never show public intro');
+  assert.equal(shouldShowPublicSpaceIntro(adminA1, publicA1), false, 'Admin to Public on the same exact Venue Version must not re-show intro');
+  assert.equal(shouldShowPublicSpaceIntro(authoringB, publicA1), true, 'Admin authoring return across a Space boundary must show intro');
+}
+
+const publicSwitchStart = viewer.indexOf('async function switchPublicExhibition(');
+const publicSwitchEnd = viewer.indexOf('function readNavigationHandoff', publicSwitchStart);
+const publicSwitchSource = viewer.slice(publicSwitchStart, publicSwitchEnd);
+assert.ok(publicSwitchSource.includes('applyPublicSpaceIntroPolicy(currentRuntime'), 'public switch does not use centralized C26 intro policy');
+assert.equal(publicSwitchSource.includes('hideViewerIntroOverlay'), false, 'public switch still unconditionally hides intro');
+assert.ok(viewer.includes('c26HomepageExhibitionCarousel'), 'C26 carousel missing');
+assert.equal(viewer.includes('c25HomepageExhibitionGrid'), false, 'temporary C25 grid remains');
+assert.ok(viewer.includes('c26ExhibitionCard--titleOnly'), 'coverless title-only card missing');
+assert.ok(viewer.includes('touch-action:pan-x pan-y'), 'mobile swipe contract missing');
+assert.ok(viewer.includes('event.key === "ArrowRight"') && viewer.includes('event.key === "ArrowLeft"'), 'carousel keyboard navigation missing');
+console.log('C6C8C26 carousel + public Space intro policy invariants passed.');
 
 // C6C8C25.4 — Same-Space Exhibition media hydration must finish before transition-complete.
 function extractRuntimeFunction(text, name) {

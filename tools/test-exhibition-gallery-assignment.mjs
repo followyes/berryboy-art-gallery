@@ -147,8 +147,8 @@ assert.ok(api.includes('async unpublish(reference)'));
 assert.ok(api.includes('p_published: false'));
 assert.ok(!api.includes('patch.is_published'));
 
-assert.equal(pkg.version, '0.11.95-c6c8c25_4-same-space-media-hydration');
-assert.ok(pkg.description.includes('C6C8C25.4'));
+assert.equal(pkg.version, '0.11.96-c6c8c26-multi-space-closure');
+assert.ok(pkg.description.includes('C6C8C26'));
 assert.ok(pkg.scripts.test.includes('test:gallery-assignment'));
 
-console.log('C6C8C24 Exhibition ↔ Gallery Assignment regression invariants passed under C6C8C25.');
+console.log('C6C8C24 Exhibition ↔ Gallery Assignment regression invariants passed under C6C8C26.');
