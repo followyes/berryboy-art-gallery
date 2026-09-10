@@ -102,7 +102,7 @@ export function createSceneLifecycleController(options = {}) {
   let switching = false;
   let disposed = false;
   const debug = {
-    stage: "C6C8C25",
+    stage: "V14.1.7",
     schema: "exhibition-platform-scene-lifecycle.v1",
     starts: 0,
     sameVersionSwitches: 0,
@@ -164,6 +164,10 @@ export function createSceneLifecycleController(options = {}) {
         ? (options.getCreateSceneOptions(runtime, createOptions) || {})
         : {};
       const sceneOptions = createOptions.sceneOptions && typeof createOptions.sceneOptions === "object" ? createOptions.sceneOptions : {};
+      const loadingSession = sceneOptions.loadingSession && typeof sceneOptions.loadingSession === "object" ? sceneOptions.loadingSession : null;
+      if (loadingSession && typeof loadingSession.bindSceneLifecycleId === "function") {
+        loadingSession.bindSceneLifecycleId(lifecycleId);
+      }
       const runtimeExhibitionData = sceneOptions.exhibitionData || exhibitionData;
       scene = engineModule.createScene(engine, canvas, {
         ...extraOptions,
@@ -272,21 +276,49 @@ export function createSceneLifecycleController(options = {}) {
       }
 
       // Post-dispose failure: rebuild the exact previous canonical runtime on the same Engine/canvas.
+      // V14.1.7 lets the orchestrator supply a fresh recovery loading session so the
+      // recreated previous Scene never inherits the failed target request session.
       if (previousRuntime) {
         try {
-          const rollbackCreated = await createSceneForRuntime(previousRuntime, {
+          let rollbackOptions = {
             initialSnapshot: switchOptions.rollbackSnapshot || null,
             sceneOptions: switchOptions.rollbackSceneOptions || switchOptions.sceneOptions || null,
             timeoutMs: switchOptions.timeoutMs
-          });
+          };
+          if (typeof switchOptions.createRollbackOptions === "function") {
+            const preparedRollbackOptions = await switchOptions.createRollbackOptions({
+              previousRuntime,
+              targetRuntime,
+              error,
+              previousLifecycleId,
+              previousVersionId
+            });
+            if (preparedRollbackOptions && typeof preparedRollbackOptions === "object") {
+              rollbackOptions = {
+                ...rollbackOptions,
+                ...preparedRollbackOptions,
+                sceneOptions: {
+                  ...(rollbackOptions.sceneOptions && typeof rollbackOptions.sceneOptions === "object" ? rollbackOptions.sceneOptions : {}),
+                  ...(preparedRollbackOptions.sceneOptions && typeof preparedRollbackOptions.sceneOptions === "object" ? preparedRollbackOptions.sceneOptions : {})
+                }
+              };
+            }
+          }
+          const rollbackCreated = await createSceneForRuntime(previousRuntime, rollbackOptions);
           notifySceneChanged(rollbackCreated.scene, previousRuntime, rollbackCreated.lifecycleId, "cross-space-rollback");
           debug.rollbacks += 1;
           debug.lastMode = "cross-space-rollback";
+          if (typeof switchOptions.onRollbackComplete === "function") {
+            await switchOptions.onRollbackComplete({ ok: true, scene: rollbackCreated.scene, runtime: previousRuntime, lifecycleId: rollbackCreated.lifecycleId });
+          }
         } catch (rollbackError) {
           debug.rollbackFailures += 1;
           debug.lastMode = "cross-space-rollback-failed";
           debug.lastError += ` | rollback: ${rollbackError && rollbackError.message ? rollbackError.message : rollbackError}`;
           notifySceneChanged(null, null, "", "cross-space-rollback-failed");
+          if (typeof switchOptions.onRollbackComplete === "function") {
+            try { await switchOptions.onRollbackComplete({ ok: false, scene: null, runtime: previousRuntime, lifecycleId: "", error: rollbackError }); } catch (_rollbackCallbackError) {}
+          }
         }
       }
       throw error;

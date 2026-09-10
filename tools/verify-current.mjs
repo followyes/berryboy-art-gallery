@@ -20,17 +20,80 @@ const assetCacheBootstrap=fs.readFileSync(new URL('../src/bootstrap/asset-cache-
 const assetCacheSw=fs.readFileSync(new URL('../asset-cache-sw.js',import.meta.url),'utf8');
 const transitionGuard=fs.readFileSync(new URL('../src/bootstrap/transition-guard.js',import.meta.url),'utf8');
 const sceneLifecycle=fs.readFileSync(new URL('../src/runtime/scene-lifecycle-controller.js',import.meta.url),'utf8');
+const sceneLoadingPolicies=fs.readFileSync(new URL('../src/runtime/scene-loading-policies.js',import.meta.url),'utf8');
+const sceneLoadingOrchestrator=fs.readFileSync(new URL('../src/runtime/scene-loading-orchestrator.js',import.meta.url),'utf8');
+const sharedAssetApi=fs.readFileSync(new URL('../src/data/shared-asset-api.js',import.meta.url),'utf8');
+const sharedAssetState=fs.readFileSync(new URL('../src/runtime/shared-asset-state.js',import.meta.url),'utf8');
+const sharedAssetValidation=fs.readFileSync(new URL('../src/validation/shared-asset-validation.js',import.meta.url),'utf8');
+const sculptureValidation=fs.readFileSync(new URL('../src/validation/sculpture-model-validation.js',import.meta.url),'utf8');
+const sharedAssetWorker=fs.readFileSync(new URL('../src/workers/shared-asset-glb-validator-worker.js',import.meta.url),'utf8');
+const assetWorkspace=fs.readFileSync(new URL('../src/bootstrap/admin-asset-workspace.js',import.meta.url),'utf8');
 
 function assert(c,m){if(!c)throw new Error(m)}
 function count(h,n){return h.split(n).length-1}
 function sha(t){return crypto.createHash('sha256').update(t).digest('hex')}
 function extractFunction(text,name){const ms=[`async function ${name}(`,`function ${name}(`];let st=-1;for(const m of ms){st=text.indexOf(m);if(st>=0)break}assert(st>=0,`Missing ${name}`);const b=text.indexOf('{',st);let d=0,s='c',q='';for(let i=b;i<text.length;i++){const c=text[i],n=text[i+1]||'';if(s==='c'){if(c==='"'||c==="'"||c==='`'){s='s';q=c}else if(c==='/'&&n==='/'){s='l';i++}else if(c==='/'&&n==='*'){s='b';i++}else if(c==='{')d++;else if(c==='}'&&--d===0)return text.slice(st,i+1)}else if(s==='s'){if(c==='\\')i++;else if(c===q)s='c'}else if(s==='l'&&c==='\n')s='c';else if(s==='b'&&c==='*'&&n==='/'){s='c';i++}}throw new Error(`Unterminated ${name}`)}
 
-assert(index.includes('stage: "C6C8C26"'),'Index stage identity missing');
-assert(bootstrap.includes('const STAGE = "C6C8C26"'),'Viewer stage identity missing');
-assert(adminBootstrap.includes('const STAGE = "C6C8C26"'),'Admin stage identity missing');
-assert(bootstrap.includes('c6c8c26_dynamic_carousel_20260908'),'Current engine cache key missing');
-assert(index.includes('gallery-viewer-bootstrap.js?v=c6c8c26_refresh_home_20260908'),'Index viewer cache key missing');
+assert(index.includes('stage: "V14.1.7"'),'Index stage identity missing');
+assert(bootstrap.includes('const STAGE = "V14.1.7"'),'Viewer stage identity missing');
+assert(adminBootstrap.includes('const STAGE = "V14.1.7"'),'Admin stage identity missing');
+assert(bootstrap.includes('v14_1_7_transition_session_20260910'),'Current engine cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=v14_1_7_transition_session_20260910'),'Index viewer cache key missing');
+assert(sceneLoadingPolicies.includes('SCENE_LOADING_POLICY_SCHEMA = "exhibition-platform-scene-loading-policy.v1"'),'V14.1.1 loading policy schema missing');
+assert(sceneLoadingPolicies.includes('PUBLIC_EXHIBITION: "public-exhibition"')&&sceneLoadingPolicies.includes('ADMIN_EXHIBITION: "admin-exhibition"')&&sceneLoadingPolicies.includes('GALLERY_AUTHORING: "gallery-authoring"')&&sceneLoadingPolicies.includes('TEST_GALLERY: "test-gallery"'),'V14.1.1 canonical loading contexts missing');
+assert(sceneLoadingPolicies.includes('function resolveSceneLoadingContextFromRuntimeOptions')&&sceneLoadingPolicies.includes('function createSceneLoadingPolicy')&&sceneLoadingPolicies.includes('function getSceneLoadingSpaceRolePolicy'),'V14.1.1 pure policy API missing');
+assert(!/\b(window|document|BABYLON|gallerySupabase|fetch|XMLHttpRequest)\b/.test(sceneLoadingPolicies),'V14.1.1 policy module gained runtime side effects');
+assert(source.includes('resolveSceneLoadingPolicyFromRuntimeOptions(runtimeOptions)')&&source.includes('getLegacySceneModeFlags(galleryLoadingPolicy)'),'V14.1.1 compatibility wiring missing from core');
+assert(source.includes('getSceneLoadingPolicyDebug: function ()'),'V14.1.1 policy debug surface missing');
+assert(sceneLoadingOrchestrator.includes('SCENE_LOADING_ORCHESTRATOR_SCHEMA = "exhibition-platform-scene-loading-orchestrator.v1"')&&sceneLoadingOrchestrator.includes('SCENE_LOADING_SESSION_SCHEMA = "exhibition-platform-scene-loading-session.v1"'),'V14.1.3 orchestrator/session schema missing');
+assert(sceneLoadingOrchestrator.includes('createSceneLoadingOrchestrator')&&sceneLoadingOrchestrator.includes('latestWinsEnabled: true')&&sceneLoadingOrchestrator.includes('loadingSession'),'V14.1.3 compatibility orchestrator contract missing');
+assert(sceneLifecycle.includes('loadingSession.bindSceneLifecycleId(lifecycleId)'),'V14.1.3 controller does not bind loading session to physical lifecycle');
+assert(bootstrap.includes('createSceneLoadingRuntimeHost')&&!bootstrap.includes('createSceneLifecycleController'),'V14.1.6 Viewer shared runtime host missing');
+assert(adminBootstrap.includes('createSceneLoadingRuntimeHost')&&!adminBootstrap.includes('createSceneLifecycleController'),'V14.1.6 Admin shared runtime host missing');
+assert(bootstrap.includes('window.ExhibitionPlatformSceneLoading = sceneLifecycleController')&&adminBootstrap.includes('window.ExhibitionPlatformSceneLoading = sceneLifecycleController'),'V14.1.3 orchestrator debug global missing');
+assert(galleryTestBootstrap.includes('createSceneLoadingRuntimeHost')&&!galleryTestBootstrap.includes('waitForInteractionReady')&&!galleryTestBootstrap.includes('engine.runRenderLoop'),'V14.1.6 Test Gallery still bypasses shared runtime host');
+assert(source.includes('rebindSceneLoadingContext: function (options)')&&source.includes('galleryLoadingContextRebindDebug'),'V14.1.6 dynamic Scene loading context rebind bridge missing');
+assert(sceneLoadingOrchestrator.includes('createSceneLoadingRuntimeHost')&&sceneLoadingOrchestrator.includes('SCENE_LOADING_RUNTIME_HOST_SCHEMA'),'V14.1.6 shared runtime host contract missing');
+assert(source.includes('var galleryLoadingSession = runtimeOptions.loadingSession')&&source.includes('loadingSession: loadingSessionSnapshot'),'V14.1.3 core loading-session compatibility bridge missing');
+assert(sceneLoadingOrchestrator.includes('cancel(reason, details)')&&sceneLoadingOrchestrator.includes('canContinue(lifecycleId)')&&sceneLoadingOrchestrator.includes('cancelReason'),'V14.1.3 loading session cancellation contract missing');
+assert(source.includes('function isGallerySceneWorkCurrent()')&&source.includes('cancelGallerySceneLoadingSession("scene-disposed"'),'V14.1.3 Scene-local cancellation bridge missing');
+assert(source.includes('__lifecycleId: galleryLifecycleId,\n        exportState: serializeGalleryState'),'V14.1.3 ExhibitionPlatformWebState lifecycle ownership missing');
+assert(source.includes('retry-success-cancelled:')&&source.includes('retry-failure-cancelled:')&&source.includes('deferred-optional-import-cancelled:'),'V14.1.3 startup retry/deferred cancellation guards missing');
+assert(source.includes('if (!isGallerySceneWorkCurrent()) return false;')&&source.includes('disposeStaleImportedMeshes((imported && imported.meshes) || [])'),'V14.1.3 late Frame/model import guards missing');
+assert(source.includes('galleryAuthoringPreviewBlockingAssetNames')&&source.includes('getSceneLoadingSpaceRolePolicy'),'V14.1.4 authoring assigned-Space policy bridge missing');
+assert(source.includes('galleryStartupBlockingAssetNames.indexOf(assetName) !== -1')&&source.includes('getGalleryPendingStartupBlockingAssetNames().forEach'),'V14.1.4 authoring terminal settle/watchdog gate missing');
+assert(source.includes('retry-late-success-discarded:'),'V14.1.4 late success after terminal authoring failure is not discarded');
+assert(source.includes('authoringPreviewSettle: cloneGalleryJson(galleryAuthoringPreviewSettleDebug)'),'V14.1.4 authoring settle debug snapshot missing');
+assert(adminBootstrap.includes('Gallery preview is partial. Assigned asset failed to load:'),'V14.1.4 Admin explicit authoring failure surface missing');
+assert(sceneLoadingOrchestrator.includes('registerTask(input = {})')&&sceneLoadingOrchestrator.includes('getTaskSnapshot(phase)'),'V14.1.5 loading-session lifecycle task registry missing');
+assert(source.includes('gallery-admin-visible-hydration-batch.v1')&&source.includes('waitForGalleryAdminVisibleHydrationBatch'),'V14.1.5 Admin visible hydration batch missing');
+assert(source.includes('registerGalleryLoadingSessionTask(family, key, details)')&&source.includes('galleryLoadingSession.registerTask'),'V14.1.5 core tasks are not bound to current loading session');
+assert(source.includes('registerGalleryAdminVisibleHydrationTask')&&source.includes('"frames"')&&source.includes('"shared-props"')&&source.includes('"sculpture-models"'),'V14.1.5 Frame/model/Shared Prop task families missing');
+assert(source.includes('_galleryFastStartForceImmediate: true')&&source.includes('forceImmediate: sharedPropVisibleBlocking'),'V14.1.5 Admin visible model/Prop immediate hydration bridge missing');
+assert(source.includes('gallery-admin-visible-settled')&&source.includes('getAdminVisibleHydrationDebug: function ()'),'V14.1.5 Admin visible settle event/debug surface missing');
+assert(source.includes('queueGalleryFastStartModelLoad(slot, modelState);'),'V14.1.5 Public resident model background path was removed');
+assert(sharedAssetApi.includes('SHARED_ASSET_STAGE = "V13.1"')&&sharedAssetApi.includes('admin_publish_shared_asset_version'),'V13.1 Shared Asset data adapter missing');
+assert(sharedAssetState.includes('exhibition-platform-state-assets.v1')&&sharedAssetState.includes('collectSharedAssetReferences'),'V13.1 Shared Asset state contract missing');
+assert(sharedAssetValidation.includes('exhibition-platform-shared-asset-validation.v1')&&sharedAssetWorker.includes('["prop","frame","sculpture"]'),'V13.1 Shared Asset GLB validation contract missing');
+assert(sculptureValidation.includes('exhibition-platform-sculpture-model-validation.v1')&&sculptureValidation.includes('SCULPTURE_MODEL_VALIDATOR_VERSION = "V14.1.5.1"'),'V14.1.5.1 Sculpture validation contract missing');
+assert(source.includes('if (loadedMeshes.length < 1)')&&source.includes('Sculpture/model GLB contains no renderable mesh geometry.'),'V14.1.5.1 model runtime can still report loaded without renderable geometry');
+assert(source.includes('createGalleryModel3dApplyResult(queued ? "queued" : "failed"')&&source.includes('isGalleryModel3dApplyLoaded'),'V14.1.5.1 queued/loaded model semantics missing');
+assert(source.includes('validateSculptureModelFile(file)')&&source.includes('MODEL UNAVAILABLE — reference preserved')&&source.includes('RETRY MODEL'),'V14.1.5.1 Sculpture upload/error/retry contract missing');
+assert(assetWorkspace.includes('ADMIN_ASSET_WORKSPACE_STAGE = "V13.6"')&&assetWorkspace.includes('Asset Library')&&assetWorkspace.includes('UPLOAD NEW GLB VERSION'),'V13.2 left Asset Workspace module missing');
+assert(adminBootstrap.includes('data-section=\"assets\"')&&adminBootstrap.includes('assetWorkspaceHost')&&adminBootstrap.includes('currentPreviewContextSection'),'V13.2 three-tab/host-context orchestration missing');
+assert(assetWorkspace.includes('api.uploadThumbnail')&&sharedAssetApi.includes('admin_register_shared_asset_thumbnail'),'V13.2 thumbnail management bridge missing');
+assert(assetWorkspace.includes('application/x-exhibition-shared-asset')&&assetWorkspace.includes('PLACE PROP')&&!assetWorkspace.includes('tile.addEventListener("dragstart", async'),'V13.3 synchronous Prop drag/tap placement launcher missing');
+assert(adminBootstrap.includes('beginSharedAssetPropPlacement')&&adminBootstrap.includes('venueVersionId'),'V13.3 Admin-to-live-scene placement context bridge missing');
+assert(source.includes('assetInstances: artSpheres.filter(isSharedAssetPropSlot)')&&source.includes('beginSharedAssetPropPlacement: beginSharedAssetPropPlacement'),'V13.3 Shared Prop state/runtime bridge missing');
+assert(source.includes('if (isSharedAssetPropSlot(object)) return false')&&source.includes('if (sculptureSlot && isSharedAssetPropSlot(sculptureSlot)) return null'),'V13.3 Prop Tour/Inspect semantic isolation missing');
+assert(source.includes('createEditorSection("PROP")')&&source.includes('PROP TRANSFORM'),'V13.3 contextual Prop inspector missing');
+assert(assetWorkspace.includes('exhibition-platform-frame-binding.v1')&&assetWorkspace.includes('application/x-exhibition-shared-frame'),'V13.4 Frame Browser drag/binding contract missing');
+assert(adminBootstrap.includes('exhibition-platform:open-frame-browser')&&adminBootstrap.includes('applySharedAssetFrameToSelectedArtwork'),'V13.4 Admin Frame Browser bridge missing');
+assert(source.includes('artworkFrameChangeButton.innerText = \"CHANGE\"')&&source.includes('artworkFrameRemoveButton.innerText = \"REMOVE\"')&&!source.includes('var artworkFrameGrid = document.createElement(\"div\")'),'V13.4 compact right Frame inspector missing');
+assert(source.includes('assetVersionId: frameState.assetVersionId || null')&&source.includes('runtimeMetadata: frameState.runtimeMetadata'),'V13.4 stable Frame ID state/fallback serialization missing');
+assert(source.includes('sharedAssetFrameDrop')&&source.includes('Drop the Frame directly on an artwork.'),'V13.4 artwork-only Frame drop guard missing');
+assert(source.includes('getSharedAssetIntegrityDebug')&&source.includes('MODEL UNAVAILABLE — reference preserved')&&source.includes('MODEL UNAVAILABLE — binding preserved'),'V13.5 Shared Asset unavailable-reference hardening missing');
+assert(source.includes('getV13ProductionClosureDebug')&&source.includes('exhibition-platform-v13-production-closure.v1')&&source.includes('currentSnapshotHealthy'),'V13.6 production-closure diagnostic snapshot missing');
 assert(!index.includes('id="galleryBootStart"')&&!index.includes('id="galleryBootAbout"'),'Legacy prestart Enter Gallery popup remains');
 assert(index.includes('class="is-hidden" data-state="prestart"'),'Boot guard must be hidden before Exhibition selection');
 assert(bootstrap.includes('c26HomepageExhibitionCarousel')&&bootstrap.includes('bootGuard.start();'),'Homepage Exhibition carousel/start bridge missing');
@@ -109,7 +172,7 @@ assert(source.includes('galleryExhibitionRuntime.hydrationActive = true')&&sourc
 assert(source.includes('blockedSpaceDisposals')&&source.includes('lastHydrationProfile'),'C6C8C7 diagnostics missing');
 assert(transitionGuard.includes('setTimeout(resolve, 34)'),'C6C8C7 transition paint barrier missing');
 assert(bootstrap.includes('Returning to Public Page…')&&bootstrap.includes('Opening Admin Workspace…'),'Viewer/Admin same-runtime transition feedback missing');
-assert(adminBootstrap.includes('Switching to ${target.name}…')&&adminBootstrap.includes('Keeping the current immutable Gallery Version resident.'),'Exhibition switch loading feedback missing');
+assert(adminBootstrap.includes('Switching to ${target.name}…')&&adminBootstrap.includes('Preparing the selected Gallery runtime.'),'V14.1.7 Exhibition switch loading feedback missing');
 assert(adminBootstrap.includes('void captureExhibitionTransitionDiagnostic'),'Diagnostics still block the visible exhibition transition');
 assert(source.includes('schema: "gallery-artwork-residency.v3"'),'C6C8C8 residency schema missing');
 assert(source.includes('function isGalleryViewerTextureStreamingMotionBlocked('),'C6C8C8 movement gate missing');
@@ -148,7 +211,7 @@ assert(adminBootstrap.includes('const preserveMetadataDraft = metadataDraftPrevi
 assert(bootstrap.includes('exitAdminWorkspaceMode({ discardUnsaved, preserveDraft })'),'C6C8C15 viewer close does not forward preserveDraft');
 
 assert(sceneLifecycle.includes('createSceneLifecycleController')&&sceneLifecycle.includes('getRuntimeVenueVersionKey'),'C6C8C25 Scene lifecycle controller missing');
-assert(bootstrap.includes('const scene = activeScene;')&&bootstrap.includes('switchPublicExhibition(reference'),'C6C8C25 mutable Viewer scene loop/switch missing');
+assert(bootstrap.includes('sceneRuntimeHost = await createSceneLoadingRuntimeHost')&&bootstrap.includes('switchPublicExhibition(reference'),'C6C8C25/V14.1.6 mutable Viewer host/switch missing');
 assert(adminBootstrap.includes('sceneLifecycleController.switchTo'),'C6C8C25 Admin switch does not use lifecycle controller');
 assert(source.includes('Exhibition state belongs to another Gallery Version'),'C6C8C25 exact Venue Version state guard missing');
 assert(source.includes('gallery-scene-disposed')&&source.includes('galleryDisposed = true'),'C6C8C25 disposal contract missing');
@@ -163,7 +226,11 @@ const expectedRegressionSuites=[
   'test-media-runtime.mjs',
   'test-performance-runtime.mjs',
   'test-platform-runtime.mjs',
+  'test-scene-runtime-host.mjs',
+  'test-sculpture-model-validation.mjs',
+  'test-shared-assets.mjs',
   'test-space-model-validation.mjs',
+  'test-transition-session-ownership.mjs',
   'test-workspace-ui.mjs'
 ];
 const actualRegressionSuites=fs.readdirSync(new URL('./',import.meta.url))

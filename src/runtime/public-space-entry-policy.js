@@ -1,5 +1,5 @@
 /*
-  Exhibition Platform — C6C8C26 Public Space Entry Policy
+  Exhibition Platform — V12 Public Space Entry Policy (C26 contract)
   The public instructional popup belongs to physical Space entry boundaries.
   Exact immutable Venue Version identity is authoritative; Exhibition identity is not.
 */

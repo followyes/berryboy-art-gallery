@@ -1,8 +1,32 @@
 # Exhibition Platform
 
-Current repository release: **C6C8C26 — Multi-Space Closure (code-side release candidate)**.
+Current repository release: **V14.1.7 — Unified Transition Requests + Current Loading-Session Ownership**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
+
+## V14.1.7 Unified Transition Requests + Current Loading-Session Ownership
+
+V14.1.6 is production **PASS/CLOSED** and established one shared Viewer/Admin/Test runtime host plus dynamic Public/Admin loading-context rebinding. V14.1.7 keeps that architecture and fixes transition ordering/session ownership without changing database contracts or the still-temporary Public heavy-renderable timing policy.
+
+The Scene loading orchestrator now creates switch intent identity **before** remote runtime resolution. A slower response from an older click/history target can therefore no longer overtake a newer target. One atomic physical Scene operation is allowed to finish safely, then the orchestrator reconciles directly to the newest pending target. Superseded pending targets can be skipped before remote resolution/delegation.
+
+For reused same-`venue_version_id` Scenes, each target switch now owns a **fresh current loading session**. `GalleryApp.rebindSceneLoadingSession()` binds that session to the existing physical lifecycle and retires the previous session so it cannot accept or accumulate late tasks. A failed same-Space switch restores a fresh recovery session for the previous runtime. Cross-Space rollback similarly recreates the previous Scene with its own recovery session rather than the failed target session.
+
+Public browser/history switches and Admin Exhibition selection resolve their target runtime inside the orchestrator request boundary. Public failure also reconciles URL identity back to the actually active runtime, preventing URL/Scene divergence after failed or superseded navigation. Existing same-runtime Admin→Public mode adoption remains a context-mode bridge, not a competing Gallery target switch.
+
+The three-file lifecycle/loading authority remains:
+
+```text
+scene-lifecycle-controller.js
+scene-loading-orchestrator.js
+scene-loading-policies.js
+```
+
+`Gallery_V0_11.js` remains the Babylon/editor executor. It exposes inward context/session rebind compatibility bridges but does not import or construct the orchestrator.
+
+**V14.1.7 intentionally does not yet change Public heavy-renderable timing.** Sole readiness authority is V14.1.8, complete pre-interaction Frames/Sculptures/Shared/Venue Props settle is V14.1.9, and active-visit no-reload/frame-time closure is V14.1.10.
+
+V14.1.7 requires **no SQL**.
 
 ## Product model
 
@@ -20,7 +44,7 @@ Specific Gallery names are data. They are not platform/runtime branding.
 
 ## Main entries
 
-- `index.html` — project homepage + C26 Exhibition carousel + Public Viewer + same-session cross-space switching.
+- `index.html` — project homepage + Exhibition carousel + Public Viewer + same-session cross-space switching.
 - `admin.html` — direct/fallback Admin Workspace.
 - `gallery-test.html` — authenticated isolated preview of one Gallery Version.
 - `src/Gallery_V0_11.js` — main Babylon.js runtime source.
@@ -28,13 +52,21 @@ Specific Gallery names are data. They are not platform/runtime branding.
 - `src/data/exhibition-api.js` — canonical Venue/Exhibition data adapter.
 - `src/data/exhibition-gallery-assignment.js` — pure C24 binding/migration helpers and executable reference rebind for QA.
 - `src/data/gallery-management-api.js` — controlled Gallery lifecycle/Storage adapter.
+- `src/data/shared-asset-api.js` — guarded Shared Asset catalog/version adapter, V13.2 thumbnail bridge and V13.3 Published runtime descriptor read.
+- `src/bootstrap/admin-asset-workspace.js` — canonical left Asset Manager, V13.3 Prop drag/PLACE launcher and V13.4 artwork-only Frame binding/drag Browser shared by standalone and inline Admin.
+- `src/runtime/shared-asset-state.js` — V13.1 immutable Shared Asset reference/state-manifest contract for later Exhibition dressing.
+- `src/validation/shared-asset-validation.js` — V13.1 Prop/Frame GLB validation coordinator.
+- `src/validation/sculpture-model-validation.js` — V14.1.5.1 direct Sculpture deep GLB validation coordinator.
+- `src/workers/shared-asset-glb-validator-worker.js` — hardened streaming renderable-GLB validator used by reusable Props/Frames and V14.1.5.1 Sculpture validation.
 - `src/runtime/space-definition-resolver.js` — resolves a canonical Venue Version into the small Space contract consumed by the engine.
 - `src/runtime/scene-lifecycle-controller.js` — C25 owner of one mutable Babylon Scene on the persistent Engine/canvas.
+- `src/runtime/scene-loading-policies.js` — V14.1.1 pure context/readiness policy contract.
+- `src/runtime/scene-loading-orchestrator.js` — high-level loading authority, shared Viewer/Admin/Test runtime host, latest-target switch ordering and current loading-session ownership.
 - `src/runtime/public-space-entry-policy.js` — C26 exact-`venue_version_id` policy for the public Gallery instruction popup.
 - `src/validation/gallery-model-validation.js` — C23 browser coordinator for technical Gallery model validation.
 - `src/workers/gallery-glb-validator-worker.js` — streaming GLB/glTF validator + incremental SHA-256 worker.
 - `src/config/space-fixture.js` — local/login-disabled test fixture only.
-- `src/bootstrap/gallery-test-bootstrap.js` — Test Gallery resolver/startup and Entry Point capture.
+- `src/bootstrap/gallery-test-bootstrap.js` — Test Gallery resolver/startup through the shared runtime host plus Entry Point capture.
 - `src/bootstrap/` — Viewer/Admin/editor/cache/transition bootstraps.
 - `asset-cache-sw.js` — persistent asset cache / delivery layer.
 - `tools/` — repository build, verifier and consolidated regression suites.
@@ -70,10 +102,10 @@ No parallel Exhibition/Gallery assignment table is introduced. Legacy `gallery_e
 
 ## Gallery Management baseline
 
-C6C8C22 / C6C8C22.1 Gallery Management is PASS/CLOSED. Admin Workspace separates:
+C6C8C22 / C6C8C22.1 Gallery Management is PASS/CLOSED. V13.2/V13.3/V13.4 extend the canonical left Admin Workspace without changing Gallery lifecycle:
 
 ```text
-EXHIBITIONS | GALLERIES
+EXHIBITIONS | GALLERIES | ASSETS
 ```
 
 Gallery lifecycle remains:
@@ -159,13 +191,13 @@ Historical raw assignment and raw state-only publication functions are not brows
 
 ### Public discovery
 
-With no explicit `?exhibition=` query, the homepage requests canonical Published Exhibition cards **before** starting Babylon and renders the C26 carousel inside the homepage 3D stage. The legacy prestart `Enter gallery / About project` popup is not part of the current flow. Cover cards use their Published card media; a coverless Exhibition renders a genuine title-only card with no fake poster/fallback artwork.
+With no explicit `?exhibition=` query, the homepage requests canonical Published Exhibition cards **before** starting Babylon and renders the V12 carousel inside the homepage 3D stage. The legacy prestart `Enter gallery / About project` popup is not part of the current flow. Cover cards use their Published card media; a coverless Exhibition renders a genuine title-only card with no fake poster/fallback artwork.
 
 Choosing the whole card is the single visitor action: it starts loading/Babylon and enters that Exhibition immediately. The carousel centers the complete card set when it fits the viewport and naturally becomes horizontally scrollable when it overflows; it supports desktop previous/next controls, native touch horizontal scrolling with scroll snap, and keyboard `ArrowLeft` / `ArrowRight` / `Home` / `End` focus navigation. Explicit deep links on a normal navigation still identify the Exhibition and start directly. A hard browser reload of the Public Viewer intentionally clears the active `?exhibition=` entry and returns to the main Exhibition-selection homepage; same-document card switching and browser Back/Forward remain history-managed. The `ADMIN` link is available before Gallery startup; `admin.html` owns direct authentication, while an authenticated already-live runtime can still use the inline Admin fast path.
 
-C25 replaces the former fresh-document cross-Gallery boundary with same-session Scene lifecycle switching. Same exact Venue Version keeps the accepted resident/delta Exhibition path; another exact Venue Version recreates the Scene on the same Engine/canvas. C26 keeps that lifecycle and adds the public Space-entry popup policy below.
+C25 replaces the former fresh-document cross-Gallery boundary with same-session Scene lifecycle switching. Same exact Venue Version keeps the accepted resident/delta Exhibition path; another exact Venue Version recreates the Scene on the same Engine/canvas. V12 inherits that lifecycle and the C26 public Space-entry popup policy below.
 
-## C6C8C26 Public Carousel / Space Entry Policy
+## V12 Public Carousel / Space Entry Policy
 
 The accepted engine-owned instruction popup is shown by public orchestration, not by a once-per-session flag. Exact immutable `venue_version_id` is the boundary:
 
@@ -246,6 +278,62 @@ GalleryApp.getCameraPose()
 
 Gallery CRUD/versioning/model validation/Exhibition assignment remain outside `Gallery_V0_11.js`.
 
+## V13 Shared Asset Foundation + Asset Manager + Prop Placement
+
+V13.1/V13.2/V13.3/V13.4/V13.5 are PASS/CLOSED. V13.6 is the production-closure candidate: it keeps the Shared Asset table model intact, adds aggregate closure diagnostics, and corrects channel-aware validation in the derived usage synchronizer.
+
+Canonical reusable asset model:
+
+```text
+shared_assets
+  -> shared_asset_versions (immutable published/history GLB versions)
+  -> shared_asset_usages   (Draft/Published/Previous Exhibition references)
+```
+
+Asset types in V13.1:
+
+- `prop` — reusable Exhibition-owned scene-dressing model; initial placement contract is floor-based;
+- `frame` — reusable artwork-only model; it is never a free-standing scene prop.
+
+New reusable binaries use immutable Storage paths:
+
+```text
+shared-assets/assets/<asset UUID>/versions/<asset-version UUID>/model.glb
+```
+
+Existing Frames under `gallery-artworks/main/frames/*.glb` are **not moved, renamed or deleted**. The V13.1 production migration seeds them into the Shared Asset catalog as grandfathered immutable published Frame versions and makes the legacy `main/frames` write path read-only. Existing path-based artwork Frame state continues to work until the later V13 Frame migration stage deliberately writes ID-based references.
+
+V13.1 also freezes the future Exhibition reference contract without integrating placement into the current runtime yet:
+
+- future Props reference immutable `assetVersionId` from Exhibition `assetInstances`;
+- future artwork Frames may reference immutable `assetVersionId` inside `artworks[].frame`;
+- a database usage synchronizer indexes Draft / Published / Previous references transactionally when `exhibition_states` changes;
+- Gallery-scoped (`venue`) references are validated per state channel against that channel's exact Venue Version Gallery; Draft, Published and Previous may legitimately resolve to different Galleries;
+- published/history asset-version payloads cannot be overwritten or physically deleted;
+- new version publication requires current V13.1 streaming GLB validation and SHA-256/file-size identity.
+
+The implemented V13 Admin ownership is:
+
+```text
+LEFT WORKSPACE: EXHIBITIONS | GALLERIES | ASSETS
+CENTER: active 3D Scene
+RIGHT INSPECTOR: EXHIBITS | SPACE | LIGHTING | SETTINGS
+```
+
+`ASSETS` is a left-workspace tool switch, not a Scene switch. The Asset Manager provides search/type/category/archive filters, thumbnails, creation/metadata/scope, immutable GLB version upload/validation/publish, archive/restore and usage visibility. Exhibition-host and Gallery-host round trips preserve the current central preview context; Gallery-host Assets remains management-only.
+
+V13.3 adds `editor.assetInstances[]` for Exhibition-owned Shared Props. Published Prop tiles can be dragged from the left Browser onto the Floor on desktop or placed through `PLACE PROP` on touch/narrow input. Placement is checked against the live active Exhibition + exact Venue Version and Gallery scope. Props reuse the existing model-slot/AssetContainer/cache/collision/residency runtime underneath, but are excluded from Sculpture Tour/Inspect and are never serialized in `spheres[]`. Deleting an instance never deletes the immutable Shared Asset binary. Selected Props use the contextual right `PROP` inspector for transform/duplicate/delete.
+
+V13.4 removes the old full Frame variant grid from the right artwork inspector. The right side keeps only current Frame + `CHANGE` / `REMOVE`; `CHANGE` opens left `ASSETS / FRAMES` without rebuilding the Scene or losing artwork selection. Published Frames can be clicked in binding mode or dragged directly onto an artwork. Frame drops on Floor/Wall/Props are rejected. New bindings persist stable Shared Asset/version IDs with legacy Storage fallback, while existing legacy Published Frames remain readable.
+
+V13.5 preserves Shared Prop instances and artwork Frame bindings when an immutable GLB cannot hydrate. Admin exposes explicit unavailable state plus retry actions instead of silently rewriting/deleting references. `GalleryApp.getSharedAssetIntegrityDebug()` reports unavailable Props/Frames for the active Exhibition and exact Venue Version. Asset archive confirmation is usage-aware; archived assets keep existing references readable but block new placement/assignment until Restore.
+
+V13.6 adds the read-only `GalleryApp.getV13ProductionClosureDebug()` aggregate used during the final production matrix. It combines active Exhibition/exact Venue Version identity, Prop/Frame counts, unavailable-reference diagnostics, switching/residency counters and ownership/orphan/workspace audit counters. It is diagnostic-only and does not replace the full production closure matrix.
+
+V13.6 also corrects the derived `shared_asset_usages` synchronizer so Draft, Published and Previous resolve Gallery scope independently through their own exact `*_venue_version_id -> venue_versions.venue_id`. This preserves the C24 reassignment contract where the three channels can belong to different Galleries. The corrective migration resynchronizes the derived index transactionally and does not add a placement table or change Shared Asset identity/versioning.
+
+Catalog browsing uses metadata/thumbnails and does not prefetch the full GLB catalog. V13.2 thumbnails use immutable `shared-assets/assets/<asset UUID>/thumbnails/<media UUID>.webp` paths and are registered in `media_library`. V13.3 enriches the existing catalog RPC with Published file hash/runtime metadata so native HTML dragstart can build its payload synchronously; no placement table is introduced.
+
 ## Backend dependency
 
 The application uses **Supabase** for Auth, Postgres/RLS/RPC data access and Storage.
@@ -264,7 +352,7 @@ From repository root:
 npm run check
 ```
 
-This performs production build, syntax, repository verification and consolidated regression suites, including C23 executable GLB worker fixtures, C24 Exhibition/Gallery assignment invariants, C25/C25.4 cross-space/media readiness tests and C26 carousel/Space-entry policy invariants.
+This performs production build, syntax, repository verification and consolidated regression suites, including C23 Space GLB fixtures, V14.1.5.1 Sculpture GLB fixtures, V14.1.6 shared-host/context tests, V14.1.7 latest-wins/session-ownership tests, C24 Exhibition/Gallery assignment invariants, C25/C25.4 cross-space/media readiness tests and C26 carousel/Space-entry policy invariants.
 
 SQL package verification is separate:
 
@@ -272,7 +360,7 @@ SQL package verification is separate:
 node OUTSIDE_REPO/TOOLS/verify-sql-package.mjs
 ```
 
-The SQL/package verifier is static. C26 adds no new SQL; it inherits the C25.3 database contract. C25.4 production smoke is confirmed PASS. C26 closure still requires GitHub / GitHub Pages deployment, a real second Gallery/Exhibition and the documented production browser matrix.
+The SQL/package verifier is static. V13.1/V13.2/V13.3/V13.6 database changes are already deployed/PASS and V13.4/V13.5 added no SQL. **V14.1.7 adds no SQL/schema/RPC change.** Deploy only the repository through GitHub/GitHub Pages. `ALL_IN_ONE.sql` remains fresh-install/reference-only and must not be run on the existing production database.
 
 ## Documentation
 
