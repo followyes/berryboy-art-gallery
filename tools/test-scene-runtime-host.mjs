@@ -48,8 +48,8 @@ function makeSceneModule(createdOptions, order) {
         render() { this.renders += 1; },
         dispose() { this.disposed = true; }
       };
-      queueMicrotask(() => window.dispatchEvent(new CustomEvent('gallery-interaction-ready', {
-        detail: { lifecycleId: options.lifecycleId }
+      queueMicrotask(() => window.dispatchEvent(new CustomEvent('gallery-scene-readiness', {
+        detail: { lifecycleId: options.lifecycleId, phase: 'scene-visually-settled', loadingSessionId: options.loadingSession && options.loadingSession.id }
       })));
       return scene;
     }
@@ -66,6 +66,7 @@ const sessionRebindCalls = [];
 const adapterModes = [];
 const engine = makeEngine();
 const canvas = { id: 'renderCanvas' };
+let currentReadiness = null;
 const app = {
   rebindSceneLoadingContext(options) {
     const context = options.loadingPolicy && options.loadingPolicy.contextKind;
@@ -81,7 +82,16 @@ const app = {
   },
   async switchExhibition(id) {
     order.push(`switch:${id}`);
+    const sessionId = sessionRebindCalls.at(-1) || null;
+    currentReadiness = { settled: true, lifecycleId: host && host.orchestrator ? host.orchestrator.getActiveLifecycleId() : null, loadingSessionId: sessionId, phase: 'scene-visually-settled' };
     return true;
+  },
+  async waitForSceneReadiness(options = {}) {
+    return { ...(currentReadiness || {}), settled: true, lifecycleId: options.lifecycleId, loadingSessionId: options.loadingSessionId, phase: options.phase || 'scene-visually-settled' };
+  },
+  republishSceneReadiness(_reason, details = {}) {
+    currentReadiness = { settled: true, lifecycleId: host && host.orchestrator ? host.orchestrator.getActiveLifecycleId() : null, loadingSessionId: details.loadingSessionId || sessionRebindCalls.at(-1) || null, phase: 'scene-visually-settled' };
+    return currentReadiness;
   }
 };
 window.GalleryApp = app;
@@ -213,4 +223,4 @@ assert.equal(testBootstrap.includes('module.createScene('), false, 'Test Gallery
 assert.ok(testBootstrap.includes('loadingContext: "test-gallery"'));
 assert.ok(testBootstrap.includes('galleryTestMode: true'));
 
-console.log('V14.1.7 shared runtime host + current context/session rebinding passed.');
+console.log('V14.1.8 shared runtime host + canonical readiness authority passed.');

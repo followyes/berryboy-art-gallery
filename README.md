@@ -1,18 +1,18 @@
 # Exhibition Platform
 
-Current repository release: **V14.1.7 — Unified Transition Requests + Current Loading-Session Ownership**.
+Current repository release: **V14.1.8 — One Readiness Authority + Public Entry Gate**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
-## V14.1.7 Unified Transition Requests + Current Loading-Session Ownership
+## V14.1.8 One Readiness Authority + Public Entry Gate
 
-V14.1.6 is production **PASS/CLOSED** and established one shared Viewer/Admin/Test runtime host plus dynamic Public/Admin loading-context rebinding. V14.1.7 keeps that architecture and fixes transition ordering/session ownership without changing database contracts or the still-temporary Public heavy-renderable timing policy.
+V14.1.7 is production **PASS/CLOSED** and established latest-target transition ordering plus current loading-session/recovery ownership. V14.1.8 keeps those semantics and removes the remaining ambiguity about what completes a physical Scene lifecycle.
 
-The Scene loading orchestrator now creates switch intent identity **before** remote runtime resolution. A slower response from an older click/history target can therefore no longer overtake a newer target. One atomic physical Scene operation is allowed to finish safely, then the orchestrator reconciles directly to the newest pending target. Superseded pending targets can be skipped before remote resolution/delegation.
+`scene-loading-policies.js` now defines one controller-level authority for every runtime context: `gallery-scene-readiness` with phase `scene-visually-settled`. `SceneLifecycleController` resolves that contract from the active loading policy and no longer subscribes directly to the historical `gallery-interaction-ready` event. Exact lifecycle identity and authority phase must match before startup/cutover completes. Same-Space Exhibition reuse also waits the canonical `GalleryApp.waitForSceneReadiness()` result for the current lifecycle/session.
 
-For reused same-`venue_version_id` Scenes, each target switch now owns a **fresh current loading session**. `GalleryApp.rebindSceneLoadingSession()` binds that session to the existing physical lifecycle and retires the previous session so it cannot accept or accumulate late tasks. A failed same-Space switch restores a fresh recovery session for the previous runtime. Cross-Space rollback similarly recreates the previous Scene with its own recovery session rather than the failed target session.
+`Gallery_V0_11.js` publishes the canonical readiness snapshot before any legacy compatibility-ready signal. `gallery-interaction-ready` remains temporarily as a downstream compatibility event, not lifecycle truth. The core exposes `waitForSceneReadiness()`, `republishSceneReadiness()` and `getSceneReadinessDebug()` for the shared orchestrator/controller host and production diagnostics.
 
-Public browser/history switches and Admin Exhibition selection resolve their target runtime inside the orchestrator request boundary. Public failure also reconciles URL identity back to the actually active runtime, preventing URL/Scene divergence after failed or superseded navigation. Existing same-runtime Admin→Public mode adoption remains a context-mode bridge, not a competing Gallery target switch.
+Public Gallery entry is now a **visit gate**, not a once-per-Space hint. Every explicit entry from Home/listing shows the accepted `Explore the gallery` popup, including re-entry into the exact same currently resident Gallery. A content-only Exhibition switch while the visitor is already inside that same exact Space does not re-show it solely for the switch. The popup `Start exploring` action can unlock movement only after canonical Scene readiness is current.
 
 The three-file lifecycle/loading authority remains:
 
@@ -22,11 +22,11 @@ scene-loading-orchestrator.js
 scene-loading-policies.js
 ```
 
-`Gallery_V0_11.js` remains the Babylon/editor executor. It exposes inward context/session rebind compatibility bridges but does not import or construct the orchestrator.
+`Gallery_V0_11.js` remains the Babylon/editor executor. It exposes inward context/session/readiness bridges but does not import or construct the orchestrator.
 
-**V14.1.7 intentionally does not yet change Public heavy-renderable timing.** Sole readiness authority is V14.1.8, complete pre-interaction Frames/Sculptures/Shared/Venue Props settle is V14.1.9, and active-visit no-reload/frame-time closure is V14.1.10.
+**V14.1.8 intentionally does not yet change the complete Public heavy-renderable timing policy.** Frames/Sculptures/Shared/Venue Props are moved into the complete pre-interaction walkthrough settle in V14.1.9. V14.1.10 then closes active-visit residency and frame-time/no-reload behavior.
 
-V14.1.7 requires **no SQL**.
+V14.1.8 requires **no SQL**.
 
 ## Product model
 
@@ -62,7 +62,7 @@ Specific Gallery names are data. They are not platform/runtime branding.
 - `src/runtime/scene-lifecycle-controller.js` — C25 owner of one mutable Babylon Scene on the persistent Engine/canvas.
 - `src/runtime/scene-loading-policies.js` — V14.1.1 pure context/readiness policy contract.
 - `src/runtime/scene-loading-orchestrator.js` — high-level loading authority, shared Viewer/Admin/Test runtime host, latest-target switch ordering and current loading-session ownership.
-- `src/runtime/public-space-entry-policy.js` — C26 exact-`venue_version_id` policy for the public Gallery instruction popup.
+- `src/runtime/public-space-entry-policy.js` — V14.1.8 visit-entry policy for the public Gallery instruction popup; explicit Home/list entry always shows it, including same-resident Gallery re-entry.
 - `src/validation/gallery-model-validation.js` — C23 browser coordinator for technical Gallery model validation.
 - `src/workers/gallery-glb-validator-worker.js` — streaming GLB/glTF validator + incremental SHA-256 worker.
 - `src/config/space-fixture.js` — local/login-disabled test fixture only.
@@ -352,7 +352,7 @@ From repository root:
 npm run check
 ```
 
-This performs production build, syntax, repository verification and consolidated regression suites, including C23 Space GLB fixtures, V14.1.5.1 Sculpture GLB fixtures, V14.1.6 shared-host/context tests, V14.1.7 latest-wins/session-ownership tests, C24 Exhibition/Gallery assignment invariants, C25/C25.4 cross-space/media readiness tests and C26 carousel/Space-entry policy invariants.
+This performs production build, syntax, repository verification and consolidated regression suites, including C23 Space GLB fixtures, V14.1.5.1 Sculpture GLB fixtures, V14.1.6 shared-host/context tests, V14.1.7 latest-wins/session-ownership tests, V14.1.8 canonical-readiness/Public-entry tests, C24 Exhibition/Gallery assignment invariants, C25/C25.4 cross-space/media readiness tests and C26 carousel/Space-entry policy invariants.
 
 SQL package verification is separate:
 
@@ -360,7 +360,7 @@ SQL package verification is separate:
 node OUTSIDE_REPO/TOOLS/verify-sql-package.mjs
 ```
 
-The SQL/package verifier is static. V13.1/V13.2/V13.3/V13.6 database changes are already deployed/PASS and V13.4/V13.5 added no SQL. **V14.1.7 adds no SQL/schema/RPC change.** Deploy only the repository through GitHub/GitHub Pages. `ALL_IN_ONE.sql` remains fresh-install/reference-only and must not be run on the existing production database.
+The SQL/package verifier is static. V13.1/V13.2/V13.3/V13.6 database changes are already deployed/PASS and V13.4/V13.5 added no SQL. **V14.1.8 adds no SQL/schema/RPC change.** Deploy only the repository through GitHub/GitHub Pages. `ALL_IN_ONE.sql` remains fresh-install/reference-only and must not be run on the existing production database.
 
 ## Documentation
 

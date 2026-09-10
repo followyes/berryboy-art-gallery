@@ -1,9 +1,11 @@
 /*
-  Exhibition Platform — V14.1.1 Scene Loading Policies
+  Exhibition Platform — V14.1.1 Scene Loading Policies / V14.1.8 One Readiness Authority
   Pure lifecycle/loading policy contract. No DOM, Babylon, Supabase or mutable globals.
 */
 
 export const SCENE_LOADING_POLICY_SCHEMA = "exhibition-platform-scene-loading-policy.v1";
+export const SCENE_LOADING_READINESS_EVENT = "gallery-scene-readiness";
+export const SCENE_LOADING_READINESS_PHASE = "scene-visually-settled";
 
 export const SCENE_LOADING_CONTEXTS = Object.freeze({
   PUBLIC_EXHIBITION: "public-exhibition",
@@ -141,6 +143,8 @@ function createReadinessContract(contextKind) {
     }
   };
   return freezeRecord({
+    authorityEvent: SCENE_LOADING_READINESS_EVENT,
+    authorityPhase: SCENE_LOADING_READINESS_PHASE,
     compatibilityReadyEvent: "gallery-interaction-ready",
     failureEvent: "gallery-startup-failure",
     ...map[contextKind]

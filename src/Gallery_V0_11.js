@@ -3,7 +3,7 @@ import {
     getLegacySceneModeFlags,
     getSceneLoadingSpaceRolePolicy,
     getSceneLoadingFamilyPolicy
-} from "./runtime/scene-loading-policies.js";
+} from "./runtime/scene-loading-policies.js?v=v14_1_8_readiness_authority_20260910";
 import {
     validateSculptureModelFile,
     hasRenderableSculptureGeometry
@@ -141,6 +141,7 @@ import {
   - V14.1.4: Gallery Authoring Assigned-Space Settle — assigned Floor/Walls/Ceiling/Props start immediately in authoring preview and must reach loaded/failed terminal state before compatibility READY.
   - V14.1.5: Admin Visible Hydration Batch — Admin assigned artwork Previews, Frames, sculpture/models and Shared Props settle as one policy-driven visible batch before Admin preview is considered visually settled.
   - V14.1.5.1: GLB Runtime Truth — sculpture/model completion requires real renderable meshes, queued is distinct from loaded, direct Sculpture GLB uploads are deep-validated, and Admin exposes explicit unavailable/retry state instead of an ambiguous placeholder.
+  - V14.1.8: One Readiness Authority — policy-defined `gallery-scene-readiness / scene-visually-settled` is the canonical lifecycle completion truth; legacy interaction-ready is compatibility-only and Viewer intro unlock reads the canonical authority.
   - Stage C6C8C20: Current-Zone Model Fast Lane — sculpture/model GLBs in the camera's current gallery streaming zone start immediately after Interaction Ready without waiting for the generic viewer-motion / 2.8 s model idle budget; nearby/deferred models keep the existing conservative background streaming policy.
 */
 
@@ -157,6 +158,133 @@ export const createScene = function (engineArg, canvasArg, runtimeOptionsArg) {
     // readiness/orchestration authority out of this Babylon executor layer.
     var galleryLoadingPolicy = resolveSceneLoadingPolicyFromRuntimeOptions(runtimeOptions);
     var galleryLoadingSession = runtimeOptions.loadingSession && typeof runtimeOptions.loadingSession === "object" ? runtimeOptions.loadingSession : null;
+
+    // V14.1.8 — ONE READINESS AUTHORITY
+    // Policy defines one canonical Scene settle event/phase. Core is the physical executor that
+    // publishes that truth; controller/orchestrator consume it. `gallery-interaction-ready` stays
+    // compatibility-only and is emitted strictly after this authoritative settle.
+    var gallerySceneReadinessAuthority = {
+        stage: "V14.1.8",
+        schema: "exhibition-platform-scene-readiness-authority.v1",
+        generation: 0,
+        publishes: 0,
+        last: null
+    };
+
+    function getGalleryReadinessAuthorityContract() {
+        var readiness = galleryLoadingPolicy && galleryLoadingPolicy.readiness ? galleryLoadingPolicy.readiness : {};
+        return {
+            event: String(readiness.authorityEvent || "gallery-scene-readiness"),
+            phase: String(readiness.authorityPhase || "scene-visually-settled"),
+            compatibilityReadyEvent: String(readiness.compatibilityReadyEvent || "gallery-interaction-ready"),
+            failureEvent: String(readiness.failureEvent || "gallery-startup-failure")
+        };
+    }
+
+    function getGalleryCurrentLoadingSessionId() {
+        return galleryLoadingSession && galleryLoadingSession.id ? String(galleryLoadingSession.id) : null;
+    }
+
+    function getGallerySceneReadinessSnapshot() {
+        var last = gallerySceneReadinessAuthority.last;
+        return last ? cloneGalleryJson(last) : {
+            stage: gallerySceneReadinessAuthority.stage,
+            schema: gallerySceneReadinessAuthority.schema,
+            settled: false,
+            phase: getGalleryReadinessAuthorityContract().phase,
+            lifecycleId: galleryLifecycleId,
+            loadingSessionId: getGalleryCurrentLoadingSessionId(),
+            exhibitionId: null,
+            contextKind: galleryLoadingPolicy && galleryLoadingPolicy.contextKind ? galleryLoadingPolicy.contextKind : null
+        };
+    }
+
+    function isGallerySceneReadinessSnapshotCurrent(snapshot, options) {
+        options = options || {};
+        if (!snapshot || snapshot.settled !== true) return false;
+        var expectedLifecycleId = String(options.lifecycleId || galleryLifecycleId || "").trim();
+        var expectedSessionId = String(options.loadingSessionId || getGalleryCurrentLoadingSessionId() || "").trim();
+        var expectedPhase = String(options.phase || getGalleryReadinessAuthorityContract().phase || "").trim();
+        if (expectedLifecycleId && String(snapshot.lifecycleId || "") !== expectedLifecycleId) return false;
+        if (expectedSessionId && String(snapshot.loadingSessionId || "") !== expectedSessionId) return false;
+        if (expectedPhase && String(snapshot.phase || "") !== expectedPhase) return false;
+        return true;
+    }
+
+    function publishGallerySceneReadiness(reason, details) {
+        if (!isGallerySceneWorkCurrent()) return null;
+        var contract = getGalleryReadinessAuthorityContract();
+        var sessionId = getGalleryCurrentLoadingSessionId();
+        var exhibitionId = null;
+        try { exhibitionId = getActiveGalleryExhibitionId(); } catch (_error) {}
+        var previous = gallerySceneReadinessAuthority.last;
+        if (previous && previous.settled === true &&
+            String(previous.lifecycleId || "") === String(galleryLifecycleId || "") &&
+            String(previous.loadingSessionId || "") === String(sessionId || "") &&
+            String(previous.exhibitionId || "") === String(exhibitionId || "") &&
+            String(previous.contextKind || "") === String(galleryLoadingPolicy.contextKind || "") &&
+            String(previous.phase || "") === contract.phase) {
+            return cloneGalleryJson(previous);
+        }
+        gallerySceneReadinessAuthority.generation += 1;
+        gallerySceneReadinessAuthority.publishes += 1;
+        var snapshot = {
+            stage: "V14.1.8",
+            schema: gallerySceneReadinessAuthority.schema,
+            generation: gallerySceneReadinessAuthority.generation,
+            settled: true,
+            phase: contract.phase,
+            lifecycleId: galleryLifecycleId,
+            loadingSessionId: sessionId,
+            requestId: galleryLoadingSession && galleryLoadingSession.requestId ? String(galleryLoadingSession.requestId) : null,
+            transitionId: galleryLoadingSession && galleryLoadingSession.transitionId ? String(galleryLoadingSession.transitionId) : null,
+            contextKind: galleryLoadingPolicy && galleryLoadingPolicy.contextKind ? galleryLoadingPolicy.contextKind : null,
+            venueVersionId: galleryActiveVenueVersionId || null,
+            exhibitionId: exhibitionId || null,
+            reason: reason || "scene-visually-settled",
+            details: details ? cloneGalleryJson(details) : null,
+            settledAt: Date.now()
+        };
+        gallerySceneReadinessAuthority.last = snapshot;
+        try { window.dispatchEvent(new CustomEvent(contract.event, { detail: cloneGalleryJson(snapshot) })); } catch (_eventError) {}
+        return cloneGalleryJson(snapshot);
+    }
+
+    function waitForGallerySceneReadiness(options) {
+        options = options || {};
+        var current = getGallerySceneReadinessSnapshot();
+        if (isGallerySceneReadinessSnapshotCurrent(current, options)) return Promise.resolve(current);
+        var contract = getGalleryReadinessAuthorityContract();
+        var timeoutMs = Math.max(1000, Number(options.timeoutMs) || 120000);
+        return new Promise(function (resolve, reject) {
+            var timeoutId = 0;
+            function cleanup() {
+                window.removeEventListener(contract.event, onReady);
+                if (timeoutId) clearTimeout(timeoutId);
+                timeoutId = 0;
+            }
+            function onReady(event) {
+                var detail = event && event.detail ? event.detail : null;
+                if (!isGallerySceneReadinessSnapshotCurrent(detail, options)) return;
+                cleanup();
+                resolve(cloneGalleryJson(detail));
+            }
+            window.addEventListener(contract.event, onReady);
+            timeoutId = setTimeout(function () {
+                cleanup();
+                var error = new Error("Canonical Scene readiness timed out for " + String(options.reason || "request") + ".");
+                error.code = "scene-readiness-timeout";
+                reject(error);
+            }, timeoutMs);
+        });
+    }
+
+    function republishGallerySceneReadiness(reason, details) {
+        var foregroundReady = !!(galleryExhibitionRuntime && galleryExhibitionRuntime.foregroundReady);
+        var interactionReady = !!(galleryFastStartRuntime && galleryFastStartRuntime.interactionReady);
+        if (!foregroundReady && !interactionReady) return null;
+        return publishGallerySceneReadiness(reason || "scene-readiness-republish", details || null);
+    }
 
     // V14.1.3 — one Scene-local ownership predicate for asynchronous work. The loading
     // session survives past the initial READY request so background imports can be
@@ -193,7 +321,7 @@ export const createScene = function (engineArg, canvasArg, runtimeOptionsArg) {
     // in-memory scene draft alive without keeping Edit/Admin UI active.
     var galleryAdminDraftPreviewActive = false;
     var galleryLoadingContextRebindDebug = {
-        stage: "V14.1.7",
+        stage: "V14.1.8",
         count: 0,
         lastFrom: galleryLoadingPolicy.contextKind,
         lastTo: galleryLoadingPolicy.contextKind,
@@ -202,7 +330,7 @@ export const createScene = function (engineArg, canvasArg, runtimeOptionsArg) {
     };
 
     var galleryLoadingSessionRebindDebug = {
-        stage: "V14.1.7",
+        stage: "V14.1.8",
         count: 0,
         lastFrom: galleryLoadingSession && galleryLoadingSession.id ? galleryLoadingSession.id : null,
         lastTo: galleryLoadingSession && galleryLoadingSession.id ? galleryLoadingSession.id : null,
@@ -15926,7 +16054,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         if (!viewerIntroOverlay) return;
         var startButton = viewerIntroOverlay.querySelector("#berryboyIntroStart");
         if (!startButton) return;
-        var ready = !!(galleryFastStartRuntime && galleryFastStartRuntime.interactionReady);
+        var ready = isGallerySceneReadinessSnapshotCurrent(getGallerySceneReadinessSnapshot());
         startButton.disabled = !ready;
         startButton.setAttribute("aria-busy", ready ? "false" : "true");
         startButton.textContent = ready
@@ -15951,30 +16079,43 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             clearTimeout(galleryFastStartRuntime.interactionGateWatchdogTimer);
             galleryFastStartRuntime.interactionGateWatchdogTimer = null;
         }
-        updateViewerIntroInteractionState();
         if (ready) {
+            var canonicalReadiness = publishGallerySceneReadiness(reason || "interaction-ready", {
+                source: "setGalleryInteractionReady",
+                foreground: galleryExhibitionRuntime && galleryExhibitionRuntime.foregroundReadinessLast ? cloneGalleryJson(galleryExhibitionRuntime.foregroundReadinessLast) : null
+            });
+            // The intro may already be visible while the canonical gate is settling. Refresh
+            // its CTA only after the authority snapshot exists so Start exploring never stays
+            // disabled because of pre-authority compatibility state.
+            updateViewerIntroInteractionState();
             startGalleryAdaptiveMobileQuality(reason || "interaction-ready");
 
+            // Compatibility-only signal. It is deliberately downstream from canonical readiness.
             if (!galleryFastStartRuntime.interactionReadyEventDispatched) {
                 galleryFastStartRuntime.interactionReadyEventDispatched = true;
                 try {
-                    window.dispatchEvent(new CustomEvent("gallery-interaction-ready", {
+                    var compatibilityEvent = getGalleryReadinessAuthorityContract().compatibilityReadyEvent;
+                    window.dispatchEvent(new CustomEvent(compatibilityEvent, {
                         detail: {
-                            stage: "12C66C6A",
+                            stage: "V14.1.8",
                             lifecycleId: galleryLifecycleId,
                             venueVersionId: galleryActiveVenueVersionId,
                             exhibitionId: getActiveGalleryExhibitionId(),
+                            canonicalPhase: canonicalReadiness ? canonicalReadiness.phase : null,
+                            canonicalGeneration: canonicalReadiness ? canonicalReadiness.generation : null,
                             reason: reason || "interaction-ready",
                             readyAt: galleryFastStartRuntime.interactionReadyAt
                         }
                     }));
                 } catch (eventError) {}
             }
+        } else {
+            updateViewerIntroInteractionState();
         }
     }
 
     function hideViewerIntroOverlay() {
-        if (!editMode && galleryFastStartRuntime && !galleryFastStartRuntime.interactionReady) {
+        if (!editMode && !isGallerySceneReadinessSnapshotCurrent(getGallerySceneReadinessSnapshot())) {
             updateViewerIntroInteractionState();
             return false;
         }
@@ -18951,6 +19092,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 galleryExhibitionRuntime.foregroundReadyReason = result.reason;
                 galleryExhibitionRuntime.foregroundReadyAt = Date.now();
                 galleryExhibitionRuntime.foregroundReadinessLast = result;
+                if (galleryFastStartRuntime && galleryFastStartRuntime.interactionReady) {
+                    publishGallerySceneReadiness(result.reason || "foreground-ready", { source: "foreground-readiness-refresh" });
+                }
                 try { window.dispatchEvent(new CustomEvent("gallery-foreground-ready", { detail: cloneGalleryJson(result) })); } catch (error) {}
             }
             return result;
@@ -46505,6 +46649,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             setGalleryPublishedStateBaseline(serializeGalleryState(), { serverState: state && Object.keys(state).length ? state : null, revision: row && row.revision !== undefined ? Number(row.revision) || 0 : getGalleryStateRevision(state), confirmed: true, serverRowExists: row ? row.rowExists !== false : false, reason: "exhibition-switch-baseline" });
             cacheGalleryExhibitionState(exhibition, serializeGalleryState(), { updatedAt: row ? row.updated_at || null : null, rowExists: !!row, source: targetLayerRestored ? "switch-resident-hit" : (cachedTarget ? "switch-cache-hit" : "switch-loaded") });
             globalThis.BerryboyArtGalleryLatestState = serializeGalleryState();
+            publishGallerySceneReadiness(
+                targetLayerRestored ? "resident-exhibition-scene-settled" : "same-space-exhibition-scene-settled",
+                { transition: cloneGalleryJson(galleryExhibitionRuntime.lastModeTransition) }
+            );
             notifyGalleryStatus("Active exhibition: " + exhibition.name + (targetLayerRestored ? " (resident)." : (cachedTarget ? " (session cache)." : ".")));
             try { window.dispatchEvent(new CustomEvent("gallery-exhibition-transition-complete", { detail: cloneGalleryJson(galleryExhibitionRuntime.lastModeTransition) })); } catch (error) {}
             return true;
@@ -46776,12 +46924,25 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         rebindSceneLoadingSession: function (options) {
             return rebindGallerySceneLoadingSession(options || {});
         },
+        waitForSceneReadiness: function (options) {
+            return waitForGallerySceneReadiness(options || {});
+        },
+        republishSceneReadiness: function (reason, details) {
+            return republishGallerySceneReadiness(reason || "api-republish", details || null);
+        },
+        getSceneReadinessDebug: function () {
+            return Object.assign({
+                publishes: gallerySceneReadinessAuthority.publishes,
+                generation: gallerySceneReadinessAuthority.generation,
+                contract: getGalleryReadinessAuthorityContract()
+            }, getGallerySceneReadinessSnapshot());
+        },
         getSceneLoadingPolicyDebug: function () {
             var loadingSessionSnapshot = galleryLoadingSession && typeof galleryLoadingSession.getSnapshot === "function"
                 ? galleryLoadingSession.getSnapshot()
                 : null;
             return {
-                stage: "V14.1.7",
+                stage: "V14.1.8",
                 schema: galleryLoadingPolicy.schema,
                 contextKind: galleryLoadingPolicy.contextKind,
                 readiness: cloneGalleryJson(galleryLoadingPolicy.readiness),
@@ -46799,7 +46960,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                     timeouts: galleryAdminVisibleHydrationRuntime.timeouts
                 }),
                 sceneWorkCurrent: isGallerySceneWorkCurrent(),
-                loadingSession: loadingSessionSnapshot ? cloneGalleryJson(loadingSessionSnapshot) : null
+                loadingSession: loadingSessionSnapshot ? cloneGalleryJson(loadingSessionSnapshot) : null,
+                readinessAuthority: Object.assign({ publishes: gallerySceneReadinessAuthority.publishes }, getGallerySceneReadinessSnapshot())
             };
         },
         getAdminVisibleHydrationDebug: function () {

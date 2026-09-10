@@ -63,15 +63,16 @@ const engineModule = {
     queueMicrotask(() => {
       // Deliberately send one event from an unrelated lifecycle first. The waiter must ignore it.
       staleEvents += 1;
-      window.dispatchEvent(new CustomEvent('gallery-interaction-ready', { detail: { lifecycleId: 'stale-c24-scene' } }));
+      window.dispatchEvent(new CustomEvent('gallery-scene-readiness', { detail: { lifecycleId: 'stale-c24-scene', phase: 'scene-visually-settled' } }));
       if (options.spaceDefinition.failStartup) {
         window.dispatchEvent(new CustomEvent('gallery-startup-failure', {
           detail: { lifecycleId: options.lifecycleId, message: 'synthetic target startup failure' }
         }));
       } else {
-        window.dispatchEvent(new CustomEvent('gallery-interaction-ready', {
+        window.dispatchEvent(new CustomEvent('gallery-scene-readiness', {
           detail: {
             lifecycleId: options.lifecycleId,
+            phase: 'scene-visually-settled',
             venueVersionId: options.spaceDefinition.venueVersionId,
             exhibitionId: options.exhibitionId
           }
@@ -89,6 +90,14 @@ window.GalleryApp = {
     assert.ok(id);
     assert.equal(options.force, true);
     return true;
+  },
+  async waitForSceneReadiness(options = {}) {
+    return {
+      settled: true,
+      lifecycleId: options.lifecycleId || null,
+      loadingSessionId: options.loadingSessionId || null,
+      phase: options.phase || 'scene-visually-settled'
+    };
   }
 };
 
@@ -233,7 +242,7 @@ assert.equal(orchestratedAdminScene.options.loadingSession.getSceneLifecycleId()
 
 const orchestratorDebug = orchestrator.getDebug();
 assert.equal(orchestratorDebug.schema, SCENE_LOADING_ORCHESTRATOR_SCHEMA);
-assert.equal(orchestratorDebug.stage, 'V14.1.7');
+assert.equal(orchestratorDebug.stage, 'V14.1.8');
 assert.equal(orchestratorDebug.latestWinsEnabled, true, 'V14.1.7 must enable newest-target reconciliation');
 assert.ok(orchestratorDebug.requests >= 2);
 assert.ok(orchestratorDebug.recentSessions.length >= 2);
@@ -381,7 +390,9 @@ console.log('C6C8C25/C25.2 Cross-Space + Admin Gallery preview regression invari
   const authoringB = { ...runtime('intro-authoring-b', 'venue-version-b1', { spaceId: 'gallery-b', mode: 'admin' }), context: 'gallery-authoring' };
 
   assert.equal(shouldShowPublicSpaceIntro(null, publicA1, { initial: true }), true, 'initial public entry must show intro');
-  assert.equal(shouldShowPublicSpaceIntro(publicA1, publicA1OtherExhibition), false, 'same exact Venue Version Exhibition switch must not re-show intro');
+  assert.equal(shouldShowPublicSpaceIntro(publicA1, publicA1OtherExhibition), false, 'same exact Venue Version Exhibition switch must not re-show intro during an already-open visit');
+  assert.equal(shouldShowPublicSpaceIntro(publicA1, publicA1OtherExhibition, { entry: true }), true, 'explicit Home/list Gallery entry must always show intro even on same Venue Version');
+  assert.equal(shouldShowPublicSpaceIntro(publicA1, publicA1, { publicEntry: true }), true, 'explicit re-entry to the exact resident Gallery must show intro');
   assert.equal(shouldShowPublicSpaceIntro(publicA1, publicB1), true, 'cross-Gallery Venue Version entry must show intro');
   assert.equal(shouldShowPublicSpaceIntro(publicB1, publicA1), true, 'return to a previously visited Space must show intro again');
   assert.equal(shouldShowPublicSpaceIntro(publicA1, publicA2), true, 'same Gallery slug but a different immutable Venue Version must show intro');

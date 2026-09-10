@@ -1,11 +1,11 @@
-/* Exhibition Platform — V14.1.7 isolated Test Gallery bootstrap via shared Scene runtime host. */
+/* Exhibition Platform — V14.1.8 isolated Test Gallery bootstrap via shared Scene runtime host + canonical readiness authority. */
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { createGalleryManagementApi } from "../data/gallery-management-api.js?v=c6c8c25_cross_space_runtime";
 import { buildSpaceDefinition } from "../runtime/space-definition-resolver.js?v=c6c8c25_cross_space_runtime";
-import { createSceneLoadingRuntimeHost } from "../runtime/scene-loading-orchestrator.js?v=v14_1_7_transition_session_20260910";
+import { createSceneLoadingRuntimeHost } from "../runtime/scene-loading-orchestrator.js?v=v14_1_8_readiness_authority_20260910";
 
-const STAGE = "V14.1.7";
-const ENGINE_CACHE_KEY = "v14_1_7_transition_session_20260910";
+const STAGE = "V14.1.8";
+const ENGINE_CACHE_KEY = "v14_1_8_readiness_authority_20260910";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
@@ -100,7 +100,7 @@ function createTestExhibitionRuntime(spaceDefinition, venueVersionId) {
 }
 
 function showError(error) {
-  console.error("V14.1.7 Test Gallery:", error);
+  console.error("V14.1.8 Test Gallery:", error);
   loading.style.display = "none";
   errorMessage.textContent = error && error.message ? error.message : String(error);
   errorPanel.style.display = "grid";

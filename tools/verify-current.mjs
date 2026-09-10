@@ -22,6 +22,8 @@ const transitionGuard=fs.readFileSync(new URL('../src/bootstrap/transition-guard
 const sceneLifecycle=fs.readFileSync(new URL('../src/runtime/scene-lifecycle-controller.js',import.meta.url),'utf8');
 const sceneLoadingPolicies=fs.readFileSync(new URL('../src/runtime/scene-loading-policies.js',import.meta.url),'utf8');
 const sceneLoadingOrchestrator=fs.readFileSync(new URL('../src/runtime/scene-loading-orchestrator.js',import.meta.url),'utf8');
+const publicEntryPolicy=fs.readFileSync(new URL('../src/runtime/public-space-entry-policy.js',import.meta.url),'utf8');
+const readinessTest=fs.readFileSync(new URL('./test-readiness-authority.mjs',import.meta.url),'utf8');
 const sharedAssetApi=fs.readFileSync(new URL('../src/data/shared-asset-api.js',import.meta.url),'utf8');
 const sharedAssetState=fs.readFileSync(new URL('../src/runtime/shared-asset-state.js',import.meta.url),'utf8');
 const sharedAssetValidation=fs.readFileSync(new URL('../src/validation/shared-asset-validation.js',import.meta.url),'utf8');
@@ -34,11 +36,27 @@ function count(h,n){return h.split(n).length-1}
 function sha(t){return crypto.createHash('sha256').update(t).digest('hex')}
 function extractFunction(text,name){const ms=[`async function ${name}(`,`function ${name}(`];let st=-1;for(const m of ms){st=text.indexOf(m);if(st>=0)break}assert(st>=0,`Missing ${name}`);const b=text.indexOf('{',st);let d=0,s='c',q='';for(let i=b;i<text.length;i++){const c=text[i],n=text[i+1]||'';if(s==='c'){if(c==='"'||c==="'"||c==='`'){s='s';q=c}else if(c==='/'&&n==='/'){s='l';i++}else if(c==='/'&&n==='*'){s='b';i++}else if(c==='{')d++;else if(c==='}'&&--d===0)return text.slice(st,i+1)}else if(s==='s'){if(c==='\\')i++;else if(c===q)s='c'}else if(s==='l'&&c==='\n')s='c';else if(s==='b'&&c==='*'&&n==='/'){s='c';i++}}throw new Error(`Unterminated ${name}`)}
 
-assert(index.includes('stage: "V14.1.7"'),'Index stage identity missing');
-assert(bootstrap.includes('const STAGE = "V14.1.7"'),'Viewer stage identity missing');
-assert(adminBootstrap.includes('const STAGE = "V14.1.7"'),'Admin stage identity missing');
-assert(bootstrap.includes('v14_1_7_transition_session_20260910'),'Current engine cache key missing');
-assert(index.includes('gallery-viewer-bootstrap.js?v=v14_1_7_transition_session_20260910'),'Index viewer cache key missing');
+assert(index.includes('stage: "V14.1.8"'),'Index stage identity missing');
+assert(bootstrap.includes('const STAGE = "V14.1.8"'),'Viewer stage identity missing');
+assert(adminBootstrap.includes('const STAGE = "V14.1.8"'),'Admin stage identity missing');
+assert(bootstrap.includes('v14_1_8_readiness_authority_20260910'),'Current engine cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=v14_1_8_readiness_authority_20260910'),'Index viewer cache key missing');
+const currentPackage=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
+assert(currentPackage.version==='0.14.1-v14-1-8-readiness-authority'&&currentPackage.description.includes('V14.1.8 One Readiness Authority + Public Entry Gate'),'V14.1.8 package identity missing');
+assert(sceneLoadingPolicies.includes('SCENE_LOADING_READINESS_EVENT = "gallery-scene-readiness"')&&sceneLoadingPolicies.includes('SCENE_LOADING_READINESS_PHASE = "scene-visually-settled"'),'V14.1.8 canonical readiness authority constants missing');
+assert(sceneLoadingPolicies.includes('authorityEvent: SCENE_LOADING_READINESS_EVENT')&&sceneLoadingPolicies.includes('authorityPhase: SCENE_LOADING_READINESS_PHASE')&&sceneLoadingPolicies.includes('compatibilityReadyEvent: "gallery-interaction-ready"'),'V14.1.8 policy readiness contract missing');
+assert(sceneLifecycle.includes('function resolveReadinessWaitContract(')&&sceneLifecycle.includes('const authorityEvent = text(waitContract.authorityEvent)')&&sceneLifecycle.includes('const authorityPhase = text(waitContract.authorityPhase)'),'V14.1.8 controller policy-driven readiness waiter missing');
+assert(!sceneLifecycle.includes('window.addEventListener("gallery-interaction-ready"'),'V14.1.8 controller still subscribes directly to compatibility ready event');
+assert(sceneLifecycle.includes('typeof app.waitForSceneReadiness !== "function"')&&sceneLifecycle.includes('await app.waitForSceneReadiness({'),'V14.1.8 same-Space canonical readiness wait missing');
+assert(source.includes('function publishGallerySceneReadiness(')&&source.includes('function waitForGallerySceneReadiness(')&&source.includes('getSceneReadinessDebug: function ()'),'V14.1.8 core canonical readiness publication/wait/debug API missing');
+const setInteractionReady=extractFunction(source,'setGalleryInteractionReady');
+assert(setInteractionReady.indexOf('publishGallerySceneReadiness')>=0&&setInteractionReady.indexOf('publishGallerySceneReadiness')<setInteractionReady.indexOf('compatibilityReadyEvent'),'V14.1.8 canonical readiness must publish before compatibility-ready');
+assert(source.includes('if (!editMode && !isGallerySceneReadinessSnapshotCurrent(getGallerySceneReadinessSnapshot()))'),'V14.1.8 intro movement unlock does not require canonical current readiness');
+assert(publicEntryPolicy.includes('options.initial === true || options.entry === true || options.publicEntry === true || !previousRuntime'),'V14.1.8 explicit Public visit/re-entry override missing');
+assert(bootstrap.includes('publicEntry: true')&&bootstrap.includes('homepage-gallery-entry'),'V14.1.8 Home/list entry is not marked as explicit Public visit');
+assert(bootstrap.includes('public-gallery-reentry-same-runtime'),'V14.1.8 same-resident Gallery re-entry path missing');
+assert(sceneLoadingOrchestrator.includes('republishSceneReadiness')&&sceneLoadingOrchestrator.includes('source: "orchestrator-adopt"'),'V14.1.8 same-Scene adopt readiness republish missing');
+assert(readinessTest.includes('legacy interaction-ready must not settle the controller')&&readinessTest.includes('explicit re-entry must show intro on same resident runtime'),'V14.1.8 executable readiness/entry regression missing');
 assert(sceneLoadingPolicies.includes('SCENE_LOADING_POLICY_SCHEMA = "exhibition-platform-scene-loading-policy.v1"'),'V14.1.1 loading policy schema missing');
 assert(sceneLoadingPolicies.includes('PUBLIC_EXHIBITION: "public-exhibition"')&&sceneLoadingPolicies.includes('ADMIN_EXHIBITION: "admin-exhibition"')&&sceneLoadingPolicies.includes('GALLERY_AUTHORING: "gallery-authoring"')&&sceneLoadingPolicies.includes('TEST_GALLERY: "test-gallery"'),'V14.1.1 canonical loading contexts missing');
 assert(sceneLoadingPolicies.includes('function resolveSceneLoadingContextFromRuntimeOptions')&&sceneLoadingPolicies.includes('function createSceneLoadingPolicy')&&sceneLoadingPolicies.includes('function getSceneLoadingSpaceRolePolicy'),'V14.1.1 pure policy API missing');
@@ -217,7 +235,7 @@ assert(source.includes('Exhibition state belongs to another Gallery Version'),'C
 assert(source.includes('gallery-scene-disposed')&&source.includes('galleryDisposed = true'),'C6C8C25 disposal contract missing');
 assert(exhibitionApi.includes('const runtimeKey = (modeValue, id) =>'),'C6C8C25 mode-qualified runtime cache missing');
 
-const packageJson=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
+const packageJson=currentPackage;
 const expectedRegressionSuites=[
   'test-core-runtime.mjs',
   'test-cross-space-runtime.mjs',
@@ -226,6 +244,7 @@ const expectedRegressionSuites=[
   'test-media-runtime.mjs',
   'test-performance-runtime.mjs',
   'test-platform-runtime.mjs',
+  'test-readiness-authority.mjs',
   'test-scene-runtime-host.mjs',
   'test-sculpture-model-validation.mjs',
   'test-shared-assets.mjs',
