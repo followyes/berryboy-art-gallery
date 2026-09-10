@@ -242,7 +242,7 @@ assert.equal(orchestratedAdminScene.options.loadingSession.getSceneLifecycleId()
 
 const orchestratorDebug = orchestrator.getDebug();
 assert.equal(orchestratorDebug.schema, SCENE_LOADING_ORCHESTRATOR_SCHEMA);
-assert.equal(orchestratorDebug.stage, 'V14.1.8');
+assert.equal(orchestratorDebug.stage, 'V14.1.9');
 assert.equal(orchestratorDebug.latestWinsEnabled, true, 'V14.1.7 must enable newest-target reconciliation');
 assert.ok(orchestratorDebug.requests >= 2);
 assert.ok(orchestratorDebug.recentSessions.length >= 2);
@@ -339,11 +339,11 @@ assert.ok(source.includes('Cross-Space Exhibition switch requires C6C8C25 Scene 
 assert.ok(api.includes('const runtimeKey = (modeValue, id) =>'), 'Public/Admin runtime caches must be channel-qualified');
 assert.ok(api.includes('public:<') === false); // implementation uses dynamic canonical key, not hard-coded one-off values
 assert.ok(api.includes('requestedMode'), 'mode-specific runtime cache lookup missing');
-assert.ok(source.includes('gallery-admin-visible-hydration-batch.v1'), 'V14.1.5 Admin visible hydration batch registry missing');
-assert.ok(source.includes('registerGalleryLoadingSessionTask(family, key, details)'), 'V14.1.5 core does not bind visible tasks to loading session');
-assert.ok(source.includes('waitForGalleryAdminVisibleHydrationBatch('), 'V14.1.5 Admin visible readiness wait missing');
-assert.ok(source.includes('sameSpaceAdminVisibleReadiness = await waitForGalleryAdminVisibleHydrationBatch'), 'V14.1.5 same-Space switch must await Admin visible terminal state');
-assert.ok(source.includes('queueGalleryFastStartModelLoad(slot, modelState);'), 'V14.1.5 must preserve Public model background hydration');
+assert.ok(source.includes('gallery-walkthrough-visible-hydration-batch.v1'), 'V14.1.9 Public/Admin walkthrough visible hydration batch registry missing');
+assert.ok(source.includes('registerGalleryLoadingSessionTask(family, key, details)'), 'V14.1.9 core does not bind visible tasks to loading session');
+assert.ok(source.includes('waitForGalleryWalkthroughFinalSettle('), 'V14.1.9 final walkthrough readiness wait missing');
+assert.ok(source.includes('sameSpaceWalkthroughSettle = await waitForGalleryWalkthroughFinalSettle'), 'V14.1.9 same-Space switch must await final walkthrough settle');
+assert.ok(source.includes('scheduleGalleryWalkthroughHeavyHydration("sculpture-models"'), 'V14.1.9 initial Public/Admin model hydration must use bounded terminal scheduler');
 
 
 
@@ -371,7 +371,7 @@ assert.ok(source.includes('var galleryStrictCriticalAssetNames = ["floor", "wall
 assert.ok(source.includes('galleryCriticalAssetNames = galleryAuthoringSpacePreview ? [] : galleryStrictCriticalAssetNames.slice()'));
 assert.ok(source.includes('galleryAuthoringPreviewBlockingAssetNames'), 'V14.1.4 must keep authoring validity separate from assigned preview settle');
 assert.ok(source.includes('if (galleryPolicyPreviewBlockingAssetNames.indexOf(assetName) !== -1)'), 'assigned authoring/Test assets must bypass deferred optional queue');
-assert.ok(source.includes('galleryStartupBlockingAssetNames = (galleryAuthoringSpacePreview || galleryTestMode)'), 'authoring/Test preview needs its own startup blocking set');
+assert.ok(source.includes('galleryStartupBlockingAssetNames = galleryPolicyPreviewBlockingAssetNames.slice()'), 'V14.1.9 all contexts must use the policy-owned startup blocking set');
 assert.ok(source.includes('authoringPreviewSettle: cloneGalleryJson(galleryAuthoringPreviewSettleDebug)'), 'authoring settle debug contract missing');
 assert.ok(admin.includes('Gallery preview is partial. Assigned asset failed to load:'), 'assigned authoring asset failure must be explicit in Admin UI');
 assert.ok(source.includes('galleryAuthoringSpacePreview ? optionalGallerySpaceAsset("floor") : requireGallerySpaceAsset("floor")'));

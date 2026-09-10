@@ -170,7 +170,7 @@ assert.equal(currentCoreSession.canContinue(activeLifecycleId), true);
 assert.equal(sessionBeforeG.isRetired(), true, 'previous session must be retired when failure recovery takes current ownership');
 
 const debug = orchestrator.getDebug();
-assert.equal(debug.stage, 'V14.1.8');
+assert.equal(debug.stage, 'V14.1.9');
 assert.equal(debug.latestWinsEnabled, true);
 assert.ok(debug.switchIntents >= 5);
 assert.ok(debug.supersededIntents >= 3);

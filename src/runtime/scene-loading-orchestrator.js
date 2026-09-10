@@ -1,15 +1,15 @@
 /*
-  Exhibition Platform — V14.1.8 Scene Loading Orchestrator / One Readiness Authority
+  Exhibition Platform — V14.1.9 Scene Loading Orchestrator / Pre-Interaction Walkthrough Hydration
   Compatibility shell above SceneLifecycleController. It owns high-level loading request/session
   identity and policy resolution while delegating the existing physical Scene behavior unchanged.
 */
 
-import { createSceneLifecycleController, getRuntimeVenueVersionKey } from "./scene-lifecycle-controller.js?v=v14_1_8_readiness_authority_20260910";
+import { createSceneLifecycleController, getRuntimeVenueVersionKey } from "./scene-lifecycle-controller.js?v=v14_1_9_preinteraction_walkthrough_20260910";
 import {
   SCENE_LOADING_POLICY_SCHEMA,
   createSceneLoadingPolicy,
   resolveSceneLoadingPolicyFromRuntimeOptions
-} from "./scene-loading-policies.js?v=v14_1_8_readiness_authority_20260910";
+} from "./scene-loading-policies.js?v=v14_1_9_preinteraction_walkthrough_20260910";
 
 export const SCENE_LOADING_ORCHESTRATOR_SCHEMA = "exhibition-platform-scene-loading-orchestrator.v1";
 export const SCENE_LOADING_SESSION_SCHEMA = "exhibition-platform-scene-loading-session.v1";
@@ -289,7 +289,7 @@ export function createSceneLoadingOrchestrator(options = {}) {
   let disposed = false;
   const recentSessions = [];
   const debug = {
-    stage: "V14.1.8",
+    stage: "V14.1.9",
     schema: SCENE_LOADING_ORCHESTRATOR_SCHEMA,
     requests: 0,
     starts: 0,
@@ -887,7 +887,7 @@ export async function createSceneLoadingRuntimeHost(options = {}) {
   const prepare = typeof hostOptions.prepare === "function" ? hostOptions.prepare : null;
   const configure = typeof hostOptions.configure === "function" ? hostOptions.configure : null;
   const debug = {
-    stage: "V14.1.8",
+    stage: "V14.1.9",
     schema: SCENE_LOADING_RUNTIME_HOST_SCHEMA,
     prepared: false,
     configured: false,

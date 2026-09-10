@@ -1,5 +1,5 @@
 /*
-  Exhibition Platform — V14.1.8 — One Readiness Authority + Public Entry Gate
+  Exhibition Platform — V14.1.9 — Pre-Interaction Complete Walkthrough Hydration
   Save Integrity Repair / Correct Startup Rebuild.
   Babylon, GLB loaders and the gallery engine start only after an explicit visitor click.
   The engine-owned instructional popup is shown after true interaction readiness; C6C8C16 keeps its mobile CTA pinned.
@@ -9,12 +9,12 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import { registerExhibitionAssetCache, getExhibitionAssetDeliveryStats } from "./asset-cache-bootstrap.js?v=c6c8c22_gallery_management_20260908";
 import { beginTransitionGuard, endTransitionGuard, isTransitionGuardActive } from "./transition-guard.js?v=c6c8c22_gallery_management_20260908";
 import { createExhibitionDataAdapter, resolveInitialPublicRuntime, listPublicExhibitionCards } from "../data/exhibition-api.js?v=c6c8c25_cross_space_runtime";
-import { getRuntimeVenueVersionKey } from "../runtime/scene-lifecycle-controller.js?v=v14_1_8_readiness_authority_20260910";
-import { createSceneLoadingRuntimeHost } from "../runtime/scene-loading-orchestrator.js?v=v14_1_8_readiness_authority_20260910";
-import { shouldShowPublicSpaceIntro } from "../runtime/public-space-entry-policy.js?v=v14_1_8_readiness_authority_20260910";
+import { getRuntimeVenueVersionKey } from "../runtime/scene-lifecycle-controller.js?v=v14_1_9_preinteraction_walkthrough_20260910";
+import { createSceneLoadingRuntimeHost } from "../runtime/scene-loading-orchestrator.js?v=v14_1_9_preinteraction_walkthrough_20260910";
+import { shouldShowPublicSpaceIntro } from "../runtime/public-space-entry-policy.js?v=v14_1_9_preinteraction_walkthrough_20260910";
 
-const STAGE = "V14.1.8";
-const ENGINE_CACHE_KEY = "v14_1_8_readiness_authority_20260910";
+const STAGE = "V14.1.9";
+const ENGINE_CACHE_KEY = "v14_1_9_preinteraction_walkthrough_20260910";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
 
@@ -283,7 +283,7 @@ async function ensurePublicExhibitionSelection(options = {}) {
 }
 
 const publicSpaceEntryDebug = {
-  stage: "V14.1.8",
+  stage: "V14.1.9",
   schema: "public-gallery-entry-policy.v2",
   evaluations: 0,
   shows: 0,

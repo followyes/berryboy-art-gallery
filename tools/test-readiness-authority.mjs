@@ -18,7 +18,7 @@ const viewerSource = fs.readFileSync(path.join(root, 'src/bootstrap/gallery-view
 const controllerSource = fs.readFileSync(path.join(root, 'src/runtime/scene-lifecycle-controller.js'), 'utf8');
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 
-assert.equal(pkg.version, '0.14.1-v14-1-8-readiness-authority');
+assert.equal(pkg.version, '0.14.1-v14-1-9-preinteraction-walkthrough-hydration');
 assert.equal(SCENE_LOADING_READINESS_EVENT, 'gallery-scene-readiness');
 assert.equal(SCENE_LOADING_READINESS_PHASE, 'scene-visually-settled');
 

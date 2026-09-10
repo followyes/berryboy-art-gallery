@@ -1426,7 +1426,9 @@ for (const context of ['public-exhibition', 'admin-exhibition', 'test-gallery'])
   }
 }
 assert.equal(getSceneLoadingSpaceRolePolicy('public-exhibition', 'props').requiredForValidRuntime, false);
-assert.equal(getSceneLoadingSpaceRolePolicy('public-exhibition', 'props').mustSettleBeforePreview, false);
+assert.equal(getSceneLoadingSpaceRolePolicy('public-exhibition', 'props', { assigned: true }).mustSettleBeforePreview, true);
+assert.equal(getSceneLoadingSpaceRolePolicy('public-exhibition', 'props', { assigned: false }).createsTask, false);
+assert.equal(getSceneLoadingSpaceRolePolicy('public-exhibition', 'props', { assigned: false }).unassignedIsLegal, true);
 for (const role of ['floor', 'walls', 'ceiling', 'props']) {
   const unassigned = getSceneLoadingSpaceRolePolicy(authoringPolicy, role, { assigned: false });
   const assigned = getSceneLoadingSpaceRolePolicy(authoringPolicy, role, { assigned: true });
@@ -1442,17 +1444,20 @@ assert.deepEqual(authoringBlockingRoles([]), [], 'authoring zero-assignment prev
 assert.deepEqual(authoringBlockingRoles(['floor']), ['floor'], 'authoring partial assignment must wait only for assigned roles');
 assert.deepEqual(authoringBlockingRoles(['floor', 'walls', 'ceiling', 'props']), ['floor', 'walls', 'ceiling', 'props'], 'authoring full assignment must wait for every assigned Space role');
 
-assert.equal(getSceneLoadingReadinessContract(publicPolicy).previewPhase, 'interaction-ready');
+assert.equal(getSceneLoadingReadinessContract(publicPolicy).previewPhase, 'walkthrough-visible-settled');
 for (const policy of [publicPolicy, adminPolicy, authoringPolicy, testPolicy]) {
   assert.equal(getSceneLoadingReadinessContract(policy).authorityEvent, 'gallery-scene-readiness');
   assert.equal(getSceneLoadingReadinessContract(policy).authorityPhase, 'scene-visually-settled');
   assert.equal(getSceneLoadingReadinessContract(policy).compatibilityReadyEvent, 'gallery-interaction-ready');
 }
-assert.equal(getSceneLoadingReadinessContract(adminPolicy).previewPhase, 'admin-visible-settled');
+assert.equal(getSceneLoadingReadinessContract(adminPolicy).previewPhase, 'walkthrough-visible-settled');
 assert.equal(getSceneLoadingReadinessContract(authoringPolicy).previewPhase, 'authoring-preview-settled');
 assert.equal(getSceneLoadingReadinessContract(testPolicy).previewPhase, 'test-preview-settled');
 assert.equal(getSceneLoadingFamilyPolicy(publicPolicy, 'artwork-preview').blocksPreviewSettle, true);
-assert.equal(getSceneLoadingFamilyPolicy(publicPolicy, 'frames').mode, 'background');
+assert.equal(getSceneLoadingFamilyPolicy(publicPolicy, 'frames').mode, 'foreground-terminal');
+assert.equal(getSceneLoadingFamilyPolicy(publicPolicy, 'frames').blocksPreviewSettle, true);
+assert.equal(getSceneLoadingFamilyPolicy(publicPolicy, 'sculpture-models').mode, 'foreground-terminal');
+assert.equal(getSceneLoadingFamilyPolicy(publicPolicy, 'shared-props').mode, 'foreground-terminal');
 assert.equal(getSceneLoadingFamilyPolicy(adminPolicy, 'frames').mode, 'foreground-terminal');
 assert.equal(getSceneLoadingFamilyPolicy(adminPolicy, 'frames').explicitUnavailableCountsAsTerminal, true);
 assert.equal(getSceneLoadingFamilyPolicy(authoringPolicy, 'shared-props').mode, 'not-applicable');
@@ -1477,17 +1482,17 @@ assert.ok(coreSource.includes('resolveSceneLoadingPolicyFromRuntimeOptions(runti
 assert.ok(coreSource.includes('getLegacySceneModeFlags(galleryLoadingPolicy)'), 'Core compatibility wiring does not preserve legacy execution flags through policy');
 assert.ok(coreSource.includes('getSceneLoadingPolicyDebug: function ()'), 'Policy debug surface missing');
 assert.ok(coreSource.includes('galleryAuthoringPreviewBlockingAssetNames'), 'V14.1.4 authoring preview blocking set missing');
-assert.ok(coreSource.includes('getSceneLoadingSpaceRolePolicy(\n                galleryLoadingPolicy'), 'V14.1.4 core must derive assigned authoring settle behavior from canonical policy');
+assert.ok(coreSource.includes('galleryPolicyPreviewBlockingAssetNames = galleryAssignedAssetNames.filter') && coreSource.includes('getSceneLoadingSpaceRolePolicy(') && coreSource.includes('return rolePolicy.mustSettleBeforePreview === true;'), 'V14.1.9 core must derive assigned Space settle behavior from canonical policy');
 assert.ok(coreSource.includes('galleryStartupBlockingAssetNames.indexOf(assetName) !== -1'), 'V14.1.4 terminal startup counter must use preview-blocking assets');
 assert.ok(coreSource.includes('getGalleryPendingStartupBlockingAssetNames().forEach'), 'V14.1.4 watchdog must terminate pending authoring assignments');
 assert.ok(coreSource.includes('retry-late-success-discarded:'), 'V14.1.4 late success after terminal failure must be discarded');
-assert.ok(coreSource.includes('gallery-admin-visible-hydration-batch.v1'), 'V14.1.5 Admin visible hydration batch missing');
+assert.ok(coreSource.includes('gallery-walkthrough-visible-hydration-batch.v1'), 'V14.1.9 walkthrough visible hydration batch missing');
 assert.ok(coreSource.includes('registerGalleryLoadingSessionTask(family, key, details)'), 'V14.1.5 visible task loading-session bridge missing');
-assert.ok(coreSource.includes('registerGalleryAdminVisibleHydrationTask('), 'V14.1.5 visible task promise registry missing');
-assert.ok(coreSource.includes('waitForGalleryAdminVisibleHydrationBatch('), 'V14.1.5 terminal Admin visible wait missing');
+assert.ok(coreSource.includes('registerGalleryWalkthroughVisibleHydrationTask('), 'V14.1.9 visible task promise registry missing');
+assert.ok(coreSource.includes('waitForGalleryWalkthroughFinalSettle('), 'V14.1.9 final walkthrough settle wait missing');
 assert.ok(coreSource.includes('gallery-admin-visible-settled'), 'V14.1.5 settled event missing');
-assert.ok(coreSource.includes('_galleryFastStartForceImmediate: true'), 'V14.1.5 Admin model immediate hydration override missing');
-assert.ok(coreSource.includes('forceImmediate: sharedPropVisibleBlocking'), 'V14.1.5 Shared Prop Admin immediate hydration override missing');
+assert.ok(coreSource.includes('_galleryFastStartForceImmediate: true'), 'V14.1.9 Public/Admin model immediate hydration override missing');
+assert.ok(coreSource.includes('forceImmediate: sharedPropVisibleBlocking'), 'V14.1.9 Shared Prop Public/Admin immediate hydration override missing');
 
-console.log('V14.1.1 + V14.1.4 + V14.1.5 Scene Loading policy/authoring/Admin visible settle tests passed.');
+console.log('V14.1.1 + V14.1.4 + V14.1.9 Scene Loading policy/authoring/walkthrough settle tests passed.');
 })();

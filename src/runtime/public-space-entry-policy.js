@@ -5,7 +5,7 @@
   In-place Exhibition switches inside an already-open same Space keep the previous behavior.
 */
 
-import { getRuntimeVenueVersionKey } from "./scene-lifecycle-controller.js?v=v14_1_8_readiness_authority_20260910";
+import { getRuntimeVenueVersionKey } from "./scene-lifecycle-controller.js?v=v14_1_9_preinteraction_walkthrough_20260910";
 
 export function shouldShowPublicSpaceIntro(previousRuntime, nextRuntime, options = {}) {
   if (!nextRuntime || nextRuntime.mode === "admin" || nextRuntime.context === "gallery-authoring") return false;

@@ -120,7 +120,7 @@ export function createSceneLifecycleController(options = {}) {
   let switching = false;
   let disposed = false;
   const debug = {
-    stage: "V14.1.8",
+    stage: "V14.1.9",
     schema: "exhibition-platform-scene-lifecycle.v1",
     starts: 0,
     sameVersionSwitches: 0,

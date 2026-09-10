@@ -1,32 +1,37 @@
 # Exhibition Platform
 
-Current repository release: **V14.1.8 — One Readiness Authority + Public Entry Gate**.
+Current repository release: **V14.1.9 — Pre-Interaction Complete Walkthrough Hydration**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
-## V14.1.8 One Readiness Authority + Public Entry Gate
+## V14.1.9 Pre-Interaction Complete Walkthrough Hydration
 
-V14.1.7 is production **PASS/CLOSED** and established latest-target transition ordering plus current loading-session/recovery ownership. V14.1.8 keeps those semantics and removes the remaining ambiguity about what completes a physical Scene lifecycle.
+V14.1.8 is production **PASS/CLOSED** and established one canonical `gallery-scene-readiness / scene-visually-settled` authority plus the mandatory Public Gallery visit popup. V14.1.9 attaches complete normal walkthrough-visible hydration to that authority.
 
-`scene-loading-policies.js` now defines one controller-level authority for every runtime context: `gallery-scene-readiness` with phase `scene-visually-settled`. `SceneLifecycleController` resolves that contract from the active loading policy and no longer subscribes directly to the historical `gallery-interaction-ready` event. Exact lifecycle identity and authority phase must match before startup/cutover completes. Same-Space Exhibition reuse also waits the canonical `GalleryApp.waitForSceneReadiness()` result for the current lifecycle/session.
+For Public and Admin Exhibition contexts, an assigned Venue Props GLB now joins the pre-interaction Space settle while an unassigned Props role remains legal. Artwork Preview remains materially blocking. Frames, Sculptures and Shared Props are `foreground-terminal`: they must be loaded or explicitly unavailable before canonical readiness.
 
-`Gallery_V0_11.js` publishes the canonical readiness snapshot before any legacy compatibility-ready signal. `gallery-interaction-ready` remains temporarily as a downstream compatibility event, not lifecycle truth. The core exposes `waitForSceneReadiness()`, `republishSceneReadiness()` and `getSceneReadinessDebug()` for the shared orchestrator/controller host and production diagnostics.
+Heavy visible GLB work is not launched as one uncontrolled burst. `Gallery_V0_11.js` owns a bounded walkthrough heavy-hydration scheduler with concurrency 1 and cooperative frame yields. Superseded batches discard queued stale work. Normal blocking model/Shared Prop restore uses the immediate terminal path rather than relying on post-ready current-zone/background queues.
 
-Public Gallery entry is now a **visit gate**, not a once-per-Space hint. Every explicit entry from Home/listing shows the accepted `Explore the gallery` popup, including re-entry into the exact same currently resident Gallery. A content-only Exhibition switch while the visitor is already inside that same exact Space does not re-show it solely for the switch. The popup `Start exploring` action can unlock movement only after canonical Scene readiness is current.
-
-The three-file lifecycle/loading authority remains:
+Initial Public/Admin startup and reused same-Space Exhibition switching converge on the same final settle sequence:
 
 ```text
-scene-lifecycle-controller.js
-scene-loading-orchestrator.js
-scene-loading-policies.js
+assigned Space shell + Venue Props terminal
+-> Artwork Preview materially present
+-> Frames / Sculptures / Shared Props terminal
+-> final collision/light/shadow membership commit
+-> final walkthrough GPU warmup
+-> stable-frame / long-task quiet gate
+-> canonical scene-visually-settled
+-> interaction may unlock
 ```
 
-`Gallery_V0_11.js` remains the Babylon/editor executor. It exposes inward context/session/readiness bridges but does not import or construct the orchestrator.
+The accepted `Explore the gallery` popup remains the Public visit gate and is shown on every real Home/list -> Gallery entry, including re-entry into the exact same resident Gallery. `Start exploring` cannot unlock movement before current canonical readiness. An in-place Exhibition switch inside an already-open same exact Space does not re-show the popup solely because content changed.
 
-**V14.1.8 intentionally does not yet change the complete Public heavy-renderable timing policy.** Frames/Sculptures/Shared/Venue Props are moved into the complete pre-interaction walkthrough settle in V14.1.9. V14.1.10 then closes active-visit residency and frame-time/no-reload behavior.
+Gallery authoring and Test Gallery remain isolated and keep their own loading-policy semantics. The three-file lifecycle/loading authority remains `scene-lifecycle-controller.js`, `scene-loading-orchestrator.js` and `scene-loading-policies.js`; `Gallery_V0_11.js` remains the Babylon/editor executor.
 
-V14.1.8 requires **no SQL**.
+V14.1.9 intentionally does **not** claim final active-visit residency/no-reload/frame-time closure. Autonomous Full artwork texture upgrade/residency, long-lived model residency/eviction and movement-time long-task/frame-spike closure remain V14.1.10.
+
+V14.1.9 requires **no SQL/schema/RPC change**.
 
 ## Product model
 
@@ -62,7 +67,7 @@ Specific Gallery names are data. They are not platform/runtime branding.
 - `src/runtime/scene-lifecycle-controller.js` — C25 owner of one mutable Babylon Scene on the persistent Engine/canvas.
 - `src/runtime/scene-loading-policies.js` — V14.1.1 pure context/readiness policy contract.
 - `src/runtime/scene-loading-orchestrator.js` — high-level loading authority, shared Viewer/Admin/Test runtime host, latest-target switch ordering and current loading-session ownership.
-- `src/runtime/public-space-entry-policy.js` — V14.1.8 visit-entry policy for the public Gallery instruction popup; explicit Home/list entry always shows it, including same-resident Gallery re-entry.
+- `src/runtime/public-space-entry-policy.js` — V14.1.8 visit-entry policy (preserved in V14.1.9) for the public Gallery instruction popup; explicit Home/list entry always shows it, including same-resident Gallery re-entry.
 - `src/validation/gallery-model-validation.js` — C23 browser coordinator for technical Gallery model validation.
 - `src/workers/gallery-glb-validator-worker.js` — streaming GLB/glTF validator + incremental SHA-256 worker.
 - `src/config/space-fixture.js` — local/login-disabled test fixture only.
@@ -352,7 +357,7 @@ From repository root:
 npm run check
 ```
 
-This performs production build, syntax, repository verification and consolidated regression suites, including C23 Space GLB fixtures, V14.1.5.1 Sculpture GLB fixtures, V14.1.6 shared-host/context tests, V14.1.7 latest-wins/session-ownership tests, V14.1.8 canonical-readiness/Public-entry tests, C24 Exhibition/Gallery assignment invariants, C25/C25.4 cross-space/media readiness tests and C26 carousel/Space-entry policy invariants.
+This performs production build, syntax, repository verification and consolidated regression suites, including C23 Space GLB fixtures, V14.1.5.1 Sculpture GLB fixtures, V14.1.6 shared-host/context tests, V14.1.7 latest-wins/session-ownership tests, V14.1.8 canonical-readiness/Public-entry tests, V14.1.9 complete walkthrough-hydration tests, C24 Exhibition/Gallery assignment invariants, C25/C25.4 cross-space/media readiness tests and C26 carousel/Space-entry policy invariants.
 
 SQL package verification is separate:
 
@@ -360,7 +365,7 @@ SQL package verification is separate:
 node OUTSIDE_REPO/TOOLS/verify-sql-package.mjs
 ```
 
-The SQL/package verifier is static. V13.1/V13.2/V13.3/V13.6 database changes are already deployed/PASS and V13.4/V13.5 added no SQL. **V14.1.8 adds no SQL/schema/RPC change.** Deploy only the repository through GitHub/GitHub Pages. `ALL_IN_ONE.sql` remains fresh-install/reference-only and must not be run on the existing production database.
+The SQL/package verifier is static. V13.1/V13.2/V13.3/V13.6 database changes are already deployed/PASS and V13.4/V13.5 added no SQL. **V14.1.9 adds no SQL/schema/RPC change.** Deploy only the repository through GitHub/GitHub Pages. `ALL_IN_ONE.sql` remains fresh-install/reference-only and must not be run on the existing production database.
 
 ## Documentation
 
