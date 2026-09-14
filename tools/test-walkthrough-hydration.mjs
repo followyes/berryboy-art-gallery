@@ -40,8 +40,8 @@ function functionBody(name) {
   throw new Error(`Could not extract ${name}`);
 }
 
-assert.equal(pkg.version, '0.14.1-v14-1-9-preinteraction-walkthrough-hydration');
-assert.ok(pkg.description.includes('V14.1.9 Pre-Interaction Complete Walkthrough Hydration'));
+assert.equal(pkg.version, '0.14.2-v14-2-6-canonical-draft-publish-model');
+assert.ok(pkg.description.includes('V14.2.6 Canonical Draft / Publish Model'));
 
 for (const context of ['public-exhibition', 'admin-exhibition']) {
   const policy = createSceneLoadingPolicy(context);

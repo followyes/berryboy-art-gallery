@@ -1,12 +1,12 @@
 /*
-  Exhibition Platform — V14.1.9 Admin Workspace / Pre-Interaction Walkthrough Hydration
+  Exhibition Platform — V14.1.10 Admin Workspace / No-Reload Residency & Frame-Time Closure
   Authenticated exhibition management + constrained 3D editor viewport.
 */
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { registerExhibitionAssetCache, getExhibitionAssetCacheStatus, getExhibitionAssetDeliveryStats, evictExhibitionAssetCacheUrl } from "./asset-cache-bootstrap.js?v=c6c8c22_gallery_management_20260908";
-import { beginTransitionGuard, endTransitionGuard, isTransitionGuardActive } from "./transition-guard.js?v=c6c8c22_gallery_management_20260908";
-import { createExhibitionDataAdapter, resolveInitialAdminRuntime } from "../data/exhibition-api.js?v=c6c8c25_cross_space_runtime";
-import { createGalleryManagementApi, CONTROLLED_GALLERY_ASSET_ROLES } from "../data/gallery-management-api.js?v=c6c8c25_cross_space_runtime";
+import { beginTransitionGuard, endTransitionGuard, isTransitionGuardActive } from "./transition-guard.js?v=v14_2_6_draft_publish_20260914";
+import { createExhibitionDataAdapter, resolveInitialAdminRuntime } from "../data/exhibition-api.js?v=v14_2_6_draft_publish_20260914";
+import { createGalleryManagementApi, CONTROLLED_GALLERY_ASSET_ROLES } from "../data/gallery-management-api.js?v=v14_2_6_draft_publish_20260914";
 import {
   REQUIRED_GALLERY_MODEL_ROLES,
   validateGalleryModelFile,
@@ -14,18 +14,13 @@ import {
   isCurrentGalleryModelValidation,
   summarizeGalleryModelValidation
 } from "../validation/gallery-model-validation.js?v=c6c8c25_cross_space_runtime";
-import { getRuntimeVenueVersionKey } from "../runtime/scene-lifecycle-controller.js?v=v14_1_9_preinteraction_walkthrough_20260910";
-import { createSceneLoadingRuntimeHost } from "../runtime/scene-loading-orchestrator.js?v=v14_1_9_preinteraction_walkthrough_20260910";
+import { getRuntimeVenueVersionKey } from "../runtime/scene-lifecycle-controller.js?v=v14_2_6_draft_publish_20260914";
+import { createSceneLoadingRuntimeHost } from "../runtime/scene-loading-orchestrator.js?v=v14_2_6_draft_publish_20260914";
 import { buildAuthoringSpaceDefinition } from "../runtime/space-definition-resolver.js?v=c6c8c25_2_admin_gallery_preview";
 import { createAdminAssetWorkspace } from "./admin-asset-workspace.js?v=v13_6_production_closure";
-import {
-  galleryBindingLabel,
-  isExhibitionGalleryMigrationPending,
-  summarizeGalleryMigrationImpact
-} from "../data/exhibition-gallery-assignment.js?v=c6c8c25_cross_space_runtime";
 
-const STAGE = "V14.1.9";
-const ENGINE_CACHE_KEY = "v14_1_9_preinteraction_walkthrough_20260910";
+const STAGE = "V14.1.10.1";
+const ENGINE_CACHE_KEY = "v14_2_6_draft_publish_20260914";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
 const inlineRuntimeContext = window.__EXHIBITION_INLINE_ADMIN_CONTEXT__ || null;
@@ -53,6 +48,7 @@ const exhibitionList = el("exhibitionList");
 const refreshExhibitionsButton = el("refreshExhibitionsButton");
 const createExhibitionForm = el("createExhibitionForm");
 const newExhibitionName = el("newExhibitionName");
+const newExhibitionGallery = el("newExhibitionGallery");
 const createExhibitionButton = el("createExhibitionButton");
 const detailsForm = el("detailsForm");
 const exhibitionName = el("exhibitionName");
@@ -61,6 +57,10 @@ const exhibitionSlug = el("exhibitionSlug");
 const exhibitionSortOrder = el("exhibitionSortOrder");
 const exhibitionPublicationStatus = el("exhibitionPublicationStatus");
 const exhibitionSpaceId = el("exhibitionSpaceId");
+const exhibitionPublicationNotice = el("exhibitionPublicationNotice");
+const publishExhibitionBundleButton = el("publishExhibitionBundleButton");
+const unpublishExhibitionButton = el("unpublishExhibitionButton");
+const deleteExhibitionButton = el("deleteExhibitionButton");
 const saveMetadataButton = el("saveMetadataButton");
 const choosePosterButton = el("choosePosterButton");
 const removePosterButton = el("removePosterButton");
@@ -109,9 +109,10 @@ let adminWorkspaceSection = "exhibitions";
 let assetWorkspace = null;
 let assetWorkspaceHost = "exhibitions";
 let assetWorkspaceReturnSection = "exhibitions";
-let exhibitionGalleryDetail = null;
-let exhibitionGalleryDetailRequest = 0;
-let exhibitionGalleryMutationInFlight = false;
+let exhibitionAdminDetail = null;
+let exhibitionAdminDetailRequest = 0;
+let exhibitionPublicationInFlight = false;
+let exhibitionCreationTargets = [];
 let galleryAuthoringPreviewActive = false;
 
 function formatDeliveryBytes(bytes) {
@@ -393,176 +394,80 @@ function setViewportStatus(label) {
   viewportStatus.appendChild(strong);
 }
 
-function ensureExhibitionGalleryAssignmentUi() {
-  if (document.getElementById("exhibitionGalleryAssignment")) return document.getElementById("exhibitionGalleryAssignment");
-  const anchor = exhibitionSpaceId && exhibitionSpaceId.closest ? exhibitionSpaceId.closest(".fieldMeta") : null;
-  if (!anchor || !detailsForm) return null;
-  if (!document.getElementById("c24ExhibitionGalleryAssignmentStyles")) {
-    const style = document.createElement("style");
-    style.id = "c24ExhibitionGalleryAssignmentStyles";
-    style.textContent = `
-      #exhibitionGalleryAssignment{display:grid;gap:9px;padding:11px;border:1px solid rgba(255,255,255,.12);border-radius:11px;background:rgba(255,255,255,.035)}
-      #exhibitionGalleryAssignment .c24AssignmentTitle{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.78)}
-      #exhibitionGalleryAssignment .c24BindingGrid{display:grid;gap:5px}
-      #exhibitionGalleryAssignment .c24BindingRow{display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px;font-size:10px;line-height:1.35}
-      #exhibitionGalleryAssignment .c24BindingRow span{color:rgba(255,255,255,.48)}
-      #exhibitionGalleryAssignment .c24BindingRow strong{color:rgba(255,255,255,.88);font-weight:600;overflow-wrap:anywhere}
-      #exhibitionGalleryAssignment .c24Migration{padding:8px;border-radius:8px;background:rgba(255,196,92,.08);color:rgba(255,220,153,.92);font-size:10px;line-height:1.45}
-      #exhibitionGalleryAssignment .c24Migration.resolved{background:rgba(125,169,130,.08);color:rgba(180,220,184,.9)}
-      #exhibitionGalleryAssignment .c24AssignmentActions{display:flex;flex-wrap:wrap;gap:7px}
-      #exhibitionGalleryAssignment .c25PublishValidation{display:grid;gap:5px;padding:9px;border-radius:8px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);font-size:10px;line-height:1.45}
-      #exhibitionGalleryAssignment .c25PublishValidation.valid{background:rgba(125,169,130,.08);color:rgba(180,220,184,.92)}
-      #exhibitionGalleryAssignment .c25PublishValidation.blocked{background:rgba(214,96,96,.08);color:rgba(255,185,185,.94)}
-      #exhibitionGalleryAssignment .c25PublishValidation .warning{color:rgba(255,220,153,.92)}
-      #exhibitionGalleryTarget{width:100%;min-height:38px;border:1px solid rgba(255,255,255,.18);border-radius:10px;background:#171a18;color:rgba(255,255,255,.92);padding:0 9px;font:inherit}
-    `;
-    document.head.appendChild(style);
-  }
-  const wrap = document.createElement("div");
-  wrap.id = "exhibitionGalleryAssignment";
-  wrap.innerHTML = `
-    <div class="c24AssignmentTitle">Gallery assignment</div>
-    <div class="c24BindingGrid">
-      <div class="c24BindingRow"><span>Draft</span><strong id="c24DraftGallery">Loading…</strong></div>
-      <div class="c24BindingRow"><span>Published</span><strong id="c24PublishedGallery">—</strong></div>
-      <div class="c24BindingRow"><span>Previous</span><strong id="c24PreviousGallery">—</strong></div>
-    </div>
-    <div id="c24GalleryMigration" class="c24Migration resolved">No pending Gallery migration.</div>
-    <div id="c25PublishValidation" class="c25PublishValidation">Checking publication readiness…</div>
-    <label class="fieldLabel">Assign Draft to Gallery<select id="exhibitionGalleryTarget"><option value="">Loading available Galleries…</option></select></label>
-    <div class="c24AssignmentActions">
-      <button id="assignExhibitionGalleryButton" class="adminButton" type="button">ASSIGN DRAFT</button>
-      <button id="confirmExhibitionGalleryLayoutButton" class="adminButton" type="button">CONFIRM LAYOUT</button>
-      <button id="publishExhibitionBundleButton" class="adminButton primary" type="button">PUBLISH EXHIBITION</button>
-      <button id="unpublishExhibitionButton" class="adminButton danger" type="button">UNPUBLISH EXHIBITION</button>
-      <button id="rollbackExhibitionBundleButton" class="adminButton" type="button">ROLLBACK PUBLICATION</button>
-    </div>
-    <div class="fieldMeta">Poster / cover is optional. Without one, public discovery uses the Exhibition title. Assignment changes the private Draft only; public cutover happens only through PUBLISH EXHIBITION.</div>`;
-  anchor.insertAdjacentElement("afterend", wrap);
-  document.getElementById("assignExhibitionGalleryButton")?.addEventListener("click", handleAssignExhibitionGallery);
-  document.getElementById("confirmExhibitionGalleryLayoutButton")?.addEventListener("click", handleConfirmExhibitionGalleryLayout);
-  document.getElementById("publishExhibitionBundleButton")?.addEventListener("click", handlePublishExhibitionBundle);
-  document.getElementById("unpublishExhibitionButton")?.addEventListener("click", handleUnpublishExhibition);
-  document.getElementById("rollbackExhibitionBundleButton")?.addEventListener("click", handleRollbackExhibitionBundle);
-  return wrap;
-}
-
 function c24Binding(detail, channel) {
   return detail && detail.galleryBindings ? detail.galleryBindings[channel] || null : null;
 }
 
-function renderExhibitionPublishValidation(detail) {
-  const box = document.getElementById("c25PublishValidation");
-  if (!box) return;
-  const validation = detail && detail.validation ? detail.validation : null;
+function getExhibitionPublicationState(detail) {
+  const matchingDetail = !!(selectedExhibition && detail && detail.exhibition && String(detail.exhibition.id) === selectedExhibition.id);
+  const state = matchingDetail && detail.state ? detail.state : {};
+  const card = matchingDetail && detail.card ? detail.card : {};
+  const stateDirty = matchingDetail && (
+    Number(state.draft_revision || 0) !== Number(state.published_revision || 0)
+    || String(state.draft_venue_version_id || "") !== String(state.published_venue_version_id || "")
+  );
+  const cardDirty = matchingDetail && Number(card.draft_revision || 0) !== Number(card.published_revision || 0);
+  return { matchingDetail, stateDirty, cardDirty, hasUnpublishedChanges: !!(stateDirty || cardDirty) };
+}
+
+function renderExhibitionPublication(detail) {
+  if (!selectedExhibition) return;
+  const publication = getExhibitionPublicationState(detail);
+  const matchingDetail = publication.matchingDetail;
+  const validation = matchingDetail && detail.validation ? detail.validation : null;
   const blockers = validation && Array.isArray(validation.blockers) ? validation.blockers : [];
-  const warnings = validation && Array.isArray(validation.warnings) ? validation.warnings : [];
-  box.replaceChildren();
-  box.classList.toggle("valid", !!(validation && validation.valid));
-  box.classList.toggle("blocked", !!(validation && !validation.valid));
+  const migrationPending = !!(matchingDetail && detail.migration && detail.migration.status === "needs-layout-confirmation");
+  const isPublic = !!selectedExhibition.is_published;
 
-  const headline = document.createElement("strong");
-  headline.textContent = validation && validation.valid ? "READY TO PUBLISH" : "PUBLICATION BLOCKED";
-  box.appendChild(headline);
+  if (exhibitionPublicationStatus) {
+    exhibitionPublicationStatus.textContent = isPublic
+      ? (publication.hasUnpublishedChanges ? "PUBLISHED / UNPUBLISHED CHANGES" : "PUBLISHED / UP TO DATE")
+      : "DRAFT / NOT PUBLIC";
+  }
+  if (publishExhibitionBundleButton) {
+    publishExhibitionBundleButton.textContent = isPublic
+      ? (publication.hasUnpublishedChanges ? "PUBLISH CHANGES" : "UP TO DATE")
+      : "PUBLISH EXHIBITION";
+    publishExhibitionBundleButton.disabled = exhibitionPublicationInFlight || !validation || !validation.valid || migrationPending
+      || (isPublic && !publication.hasUnpublishedChanges);
+  }
+  if (unpublishExhibitionButton) {
+    unpublishExhibitionButton.disabled = exhibitionPublicationInFlight || !isPublic;
+  }
 
-  if (!validation) {
-    const line = document.createElement("div");
-    line.textContent = "Publication validation is unavailable.";
-    box.appendChild(line);
+  if (!exhibitionPublicationNotice) return;
+  exhibitionPublicationNotice.classList.remove("blocked");
+  if (!matchingDetail || !validation) {
+    exhibitionPublicationNotice.textContent = "Publication validation is unavailable. Refresh Exhibitions and try again.";
+    exhibitionPublicationNotice.classList.add("blocked");
+    exhibitionPublicationNotice.classList.remove("hidden");
     return;
   }
-
-  for (const blocker of blockers) {
-    const line = document.createElement("div");
-    line.textContent = `• ${String(blocker)}`;
-    box.appendChild(line);
+  if (migrationPending || blockers.length) {
+    const messages = blockers.length ? blockers : ["This Exhibition requires Gallery migration maintenance before publication."];
+    exhibitionPublicationNotice.textContent = `Cannot publish: ${messages.map((item) => String(item)).join(" · ")}`;
+    exhibitionPublicationNotice.classList.add("blocked");
+    exhibitionPublicationNotice.classList.remove("hidden");
+    return;
   }
-  for (const warning of warnings) {
-    const line = document.createElement("div");
-    line.className = "warning";
-    line.textContent = `• ${String(warning)}`;
-    box.appendChild(line);
-  }
-  if (!blockers.length && !warnings.length) {
-    const line = document.createElement("div");
-    line.textContent = "No publication blockers.";
-    box.appendChild(line);
-  }
+  exhibitionPublicationNotice.textContent = "";
+  exhibitionPublicationNotice.classList.add("hidden");
 }
 
-function renderExhibitionGalleryAssignment(detail) {
-  ensureExhibitionGalleryAssignmentUi();
-  if (!detail || !selectedExhibition || String(detail.exhibition && detail.exhibition.id) !== selectedExhibition.id) return;
-  const draft = c24Binding(detail, "draft");
-  const published = c24Binding(detail, "published");
-  const previous = c24Binding(detail, "previous");
-  const draftEl = document.getElementById("c24DraftGallery");
-  const pubEl = document.getElementById("c24PublishedGallery");
-  const prevEl = document.getElementById("c24PreviousGallery");
-  if (draftEl) draftEl.textContent = galleryBindingLabel(draft);
-  if (pubEl) pubEl.textContent = galleryBindingLabel(published);
-  if (prevEl) prevEl.textContent = galleryBindingLabel(previous);
-
-  const migration = detail.migration || null;
-  const pending = isExhibitionGalleryMigrationPending(detail);
-  const migrationEl = document.getElementById("c24GalleryMigration");
-  if (migrationEl) {
-    migrationEl.classList.toggle("resolved", !pending);
-    migrationEl.textContent = pending
-      ? "Gallery changed: spatial placement was reset. Rebuild/save the layout in this Gallery, then CONFIRM LAYOUT before publishing."
-      : (migration && migration.status === "resolved" ? "Gallery migration layout confirmed." : "No pending Gallery migration.");
-  }
-  renderExhibitionPublishValidation(detail);
-
-  const select = document.getElementById("exhibitionGalleryTarget");
-  if (select) {
-    select.innerHTML = "";
-    const targets = Array.isArray(detail.availableVenues) ? detail.availableVenues : [];
-    if (!targets.length) {
-      const option = document.createElement("option"); option.value = ""; option.textContent = "No assignable Published Gallery Versions"; select.appendChild(option);
-    } else {
-      for (const venue of targets) {
-        const version = venue && venue.publishedVersion;
-        if (!venue || !version || !version.id) continue;
-        const option = document.createElement("option");
-        option.value = `${venue.id}|${version.id}`;
-        option.textContent = `${venue.name || venue.slug} · ${version.version_number || version.id}`;
-        option.dataset.venueId = venue.id;
-        option.dataset.versionId = version.id;
-        if (draft && String(draft.venueId) === String(venue.id) && String(draft.versionId) === String(version.id)) option.selected = true;
-        select.appendChild(option);
-      }
-    }
-  }
-  const selectedOption = select && select.selectedOptions && select.selectedOptions[0];
-  const sameTarget = !!(draft && selectedOption && selectedOption.dataset && String(draft.venueId) === String(selectedOption.dataset.venueId) && String(draft.versionId) === String(selectedOption.dataset.versionId));
-  const assign = document.getElementById("assignExhibitionGalleryButton");
-  const confirm = document.getElementById("confirmExhibitionGalleryLayoutButton");
-  const publish = document.getElementById("publishExhibitionBundleButton");
-  const unpublish = document.getElementById("unpublishExhibitionButton");
-  const rollback = document.getElementById("rollbackExhibitionBundleButton");
-  if (assign) assign.disabled = exhibitionGalleryMutationInFlight || !selectedOption || !selectedOption.dataset.venueId || sameTarget;
-  if (confirm) confirm.disabled = exhibitionGalleryMutationInFlight || !pending;
-  if (publish) publish.disabled = exhibitionGalleryMutationInFlight || pending || !(detail.validation && detail.validation.valid);
-  if (unpublish) unpublish.disabled = exhibitionGalleryMutationInFlight || !selectedExhibition || !selectedExhibition.is_published;
-  if (rollback) rollback.disabled = exhibitionGalleryMutationInFlight || !(detail.state && detail.state.previous_state && detail.card && detail.card.previous_value);
-}
-
-async function refreshExhibitionGalleryAssignment(exhibitionId) {
+async function refreshExhibitionAdminDetail(exhibitionId) {
   if (!exhibitionId) return null;
-  ensureExhibitionGalleryAssignmentUi();
-  const request = ++exhibitionGalleryDetailRequest;
+  const request = ++exhibitionAdminDetailRequest;
   try {
     if (!exhibitionData) exhibitionData = createExhibitionDataAdapter({ supabase, mode: "admin" });
     const detail = await exhibitionData.getAdminDetail(exhibitionId);
-    if (request !== exhibitionGalleryDetailRequest || !selectedExhibition || selectedExhibition.id !== String(exhibitionId)) return detail;
-    exhibitionGalleryDetail = detail;
-    renderExhibitionGalleryAssignment(detail);
+    if (request !== exhibitionAdminDetailRequest || !selectedExhibition || selectedExhibition.id !== String(exhibitionId)) return detail;
+    exhibitionAdminDetail = detail;
+    renderExhibitionPublication(detail);
     return detail;
   } catch (error) {
-    if (request === exhibitionGalleryDetailRequest) {
-      const migrationEl = document.getElementById("c24GalleryMigration");
-      if (migrationEl) { migrationEl.classList.remove("resolved"); migrationEl.textContent = `Gallery assignment unavailable: ${error.message || error}`; }
+    if (request === exhibitionAdminDetailRequest && selectedExhibition && selectedExhibition.id === String(exhibitionId)) {
+      exhibitionAdminDetail = null;
+      renderExhibitionPublication(null);
     }
     return null;
   }
@@ -577,92 +482,81 @@ function reloadAdminForExhibition(exhibitionId) {
   location.href = url.href;
 }
 
-async function handleAssignExhibitionGallery() {
-  if (!selectedExhibition || exhibitionGalleryMutationInFlight) return;
-  const detail = exhibitionGalleryDetail || await refreshExhibitionGalleryAssignment(selectedExhibition.id);
-  if (!detail) return;
-  const select = document.getElementById("exhibitionGalleryTarget");
-  const option = select && select.selectedOptions && select.selectedOptions[0];
-  if (!option || !option.dataset.venueId || !option.dataset.versionId) return;
-  const impact = summarizeGalleryMigrationImpact(detail.state && detail.state.draft_state);
-  const affected = impact.artworks + impact.sculptures;
-  const message = `Assign this Exhibition Draft to ${option.textContent}?\n\nGallery-specific placement will be reset${affected ? ` for ${affected} artwork/sculpture object(s)` : ""}. The current Published Exhibition will remain unchanged until PUBLISH EXHIBITION.`;
-  if (!window.confirm(message)) return;
-  if (!confirmAndDiscardAdminChanges("You have unsaved Admin changes. Discard them before changing Gallery?")) return;
-  exhibitionGalleryMutationInFlight = true;
-  renderExhibitionGalleryAssignment(detail);
+async function handlePublishExhibitionBundle() {
+  if (!selectedExhibition || exhibitionPublicationInFlight) return;
+  syncMetadataDirtyState();
+  if (metadataDirty || hasSceneUnsavedChanges()) { showToast("Save Exhibition details and 3D changes before publishing."); return; }
+  const detail = exhibitionAdminDetail || await refreshExhibitionAdminDetail(selectedExhibition.id);
+  if (!detail || !(detail.validation && detail.validation.valid) || (detail.migration && detail.migration.status === "needs-layout-confirmation")) {
+    renderExhibitionPublication(detail);
+    showToast("This Exhibition is not ready to publish.");
+    return;
+  }
+  if (!window.confirm("Publish this Exhibition to the public site?")) return;
+  exhibitionPublicationInFlight = true;
+  renderExhibitionPublication(detail);
   try {
-    const result = await exhibitionData.assignGallery(selectedExhibition.id, { venueId: option.dataset.venueId, venueVersionId: option.dataset.versionId });
-    if (result && result.changed === false) { showToast("Exhibition Draft is already assigned to this Gallery Version."); await refreshExhibitionGalleryAssignment(selectedExhibition.id); return; }
-    showToast("Gallery assigned. Reopening Admin in the target Gallery…");
-    reloadAdminForExhibition(selectedExhibition.id);
-  } catch (error) {
-    showToast(error.message || String(error));
-  } finally {
-    exhibitionGalleryMutationInFlight = false;
-    if (exhibitionGalleryDetail) renderExhibitionGalleryAssignment(exhibitionGalleryDetail);
+    const publishResult = await exhibitionData.publishBundle(selectedExhibition.id);
+    showToast(publishResult && publishResult.changed === false ? "Exhibition is already up to date." : "Exhibition published.");
+    await fetchCatalog();
+    syncSelectedFromCatalog(selectedExhibition.id);
+    await refreshExhibitionAdminDetail(selectedExhibition.id);
+  } catch (error) { showToast(error.message || String(error)); }
+  finally {
+    exhibitionPublicationInFlight = false;
+    renderExhibitionPublication(exhibitionAdminDetail);
   }
 }
 
-async function handleConfirmExhibitionGalleryLayout() {
-  if (!selectedExhibition || exhibitionGalleryMutationInFlight) return;
-  if (hasSceneUnsavedChanges()) { showToast("Save the 3D layout before confirming Gallery migration."); return; }
-  exhibitionGalleryMutationInFlight = true;
-  if (exhibitionGalleryDetail) renderExhibitionGalleryAssignment(exhibitionGalleryDetail);
-  try {
-    await exhibitionData.confirmGalleryLayout(selectedExhibition.id);
-    showToast("Gallery migration layout confirmed.");
-    await refreshExhibitionGalleryAssignment(selectedExhibition.id);
-  } catch (error) { showToast(error.message || String(error)); }
-  finally { exhibitionGalleryMutationInFlight = false; if (exhibitionGalleryDetail) renderExhibitionGalleryAssignment(exhibitionGalleryDetail); }
-}
-
-async function handlePublishExhibitionBundle() {
-  if (!selectedExhibition || exhibitionGalleryMutationInFlight) return;
-  syncMetadataDirtyState();
-  if (metadataDirty || hasSceneUnsavedChanges()) { showToast("Save Exhibition details and 3D changes before publishing."); return; }
-  if (!window.confirm("Publish the current Exhibition Draft and its assigned Gallery Version? This is the explicit public cutover.")) return;
-  exhibitionGalleryMutationInFlight = true;
-  if (exhibitionGalleryDetail) renderExhibitionGalleryAssignment(exhibitionGalleryDetail);
-  try {
-    await exhibitionData.publishBundle(selectedExhibition.id);
-    showToast("Exhibition published.");
-    await fetchCatalog();
-    syncSelectedFromCatalog(selectedExhibition.id);
-    await refreshExhibitionGalleryAssignment(selectedExhibition.id);
-  } catch (error) { showToast(error.message || String(error)); }
-  finally { exhibitionGalleryMutationInFlight = false; if (exhibitionGalleryDetail) renderExhibitionGalleryAssignment(exhibitionGalleryDetail); }
-}
-
 async function handleUnpublishExhibition() {
-  if (!selectedExhibition || exhibitionGalleryMutationInFlight || !selectedExhibition.is_published) return;
-  if (!window.confirm("Hide this Exhibition from the public site? Draft, Published and Previous snapshots remain stored; this only changes public visibility/status.")) return;
-  exhibitionGalleryMutationInFlight = true;
-  if (exhibitionGalleryDetail) renderExhibitionGalleryAssignment(exhibitionGalleryDetail);
+  if (!selectedExhibition || exhibitionPublicationInFlight || !selectedExhibition.is_published) return;
+  if (!window.confirm("Hide this Exhibition from the public site?")) return;
+  exhibitionPublicationInFlight = true;
+  renderExhibitionPublication(exhibitionAdminDetail);
   try {
     if (!exhibitionData || typeof exhibitionData.unpublish !== "function") throw new Error("Explicit unpublish action is unavailable.");
     await exhibitionData.unpublish(selectedExhibition.id);
     showToast("Exhibition unpublished.");
     await fetchCatalog();
     syncSelectedFromCatalog(selectedExhibition.id);
-    await refreshExhibitionGalleryAssignment(selectedExhibition.id);
+    await refreshExhibitionAdminDetail(selectedExhibition.id);
   } catch (error) { showToast(error.message || String(error)); }
-  finally { exhibitionGalleryMutationInFlight = false; if (exhibitionGalleryDetail) renderExhibitionGalleryAssignment(exhibitionGalleryDetail); }
+  finally {
+    exhibitionPublicationInFlight = false;
+    renderExhibitionPublication(exhibitionAdminDetail);
+  }
 }
 
-async function handleRollbackExhibitionBundle() {
-  if (!selectedExhibition || exhibitionGalleryMutationInFlight) return;
-  if (!window.confirm("Rollback the public Exhibition to its Previous snapshot? The Draft authoring Gallery will not change.")) return;
-  exhibitionGalleryMutationInFlight = true;
-  if (exhibitionGalleryDetail) renderExhibitionGalleryAssignment(exhibitionGalleryDetail);
+async function handleDeleteExhibition() {
+  if (!selectedExhibition || exhibitionPublicationInFlight) return;
+  syncMetadataDirtyState();
+  if (metadataDirty || hasSceneUnsavedChanges()) { showToast("Save or discard Exhibition changes before deleting it."); return; }
+  const deleting = { ...selectedExhibition };
+  if (!window.confirm(`Delete “${deleting.name}” permanently? This removes the Exhibition and its owned files. This cannot be undone.`)) return;
+  exhibitionPublicationInFlight = true;
+  if (deleteExhibitionButton) setBusy(deleteExhibitionButton, true);
   try {
-    await exhibitionData.rollbackBundle(selectedExhibition.id);
-    showToast("Public Exhibition rolled back. Draft assignment was preserved.");
+    if (!exhibitionData || typeof exhibitionData.deletePermanent !== "function") throw new Error("Exhibition delete action is unavailable.");
+    await exhibitionData.deletePermanent(deleting.id);
+    showToast("Exhibition deleted.");
     await fetchCatalog();
-    syncSelectedFromCatalog(selectedExhibition.id);
-    await refreshExhibitionGalleryAssignment(selectedExhibition.id);
+    const next = catalog[0] || null;
+    if (next) {
+      await selectAndSwitchExhibition(next.id, { skipConfirm: true, reason: "admin-exhibition-delete-fallback", guardTitle: `Opening ${next.name}…`, guardDetail: "Loading another Exhibition after deletion." });
+    } else {
+      selectedExhibition = null;
+      exhibitionAdminDetail = null;
+      renderCatalog();
+      if (detailsForm) detailsForm.querySelectorAll("input,textarea,button").forEach((node) => { node.disabled = true; });
+      setViewportStatus("no Exhibition");
+      showToast("No Exhibitions remain. Create a new Exhibition to continue.");
+    }
   } catch (error) { showToast(error.message || String(error)); }
-  finally { exhibitionGalleryMutationInFlight = false; if (exhibitionGalleryDetail) renderExhibitionGalleryAssignment(exhibitionGalleryDetail); }
+  finally {
+    exhibitionPublicationInFlight = false;
+    if (deleteExhibitionButton) setBusy(deleteExhibitionButton, false);
+    renderExhibitionPublication(exhibitionAdminDetail);
+  }
 }
 
 function normalizeExhibition(record) {
@@ -682,12 +576,51 @@ function normalizeExhibition(record) {
   };
 }
 
+function renderExhibitionCreationTargets() {
+  if (!newExhibitionGallery) return;
+  const previousValue = newExhibitionGallery.value;
+  newExhibitionGallery.innerHTML = "";
+  if (!exhibitionCreationTargets.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No Published Galleries available";
+    newExhibitionGallery.appendChild(option);
+    createExhibitionButton.disabled = true;
+    return;
+  }
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Choose Published Gallery…";
+  newExhibitionGallery.appendChild(placeholder);
+  for (const target of exhibitionCreationTargets) {
+    const option = document.createElement("option");
+    option.value = `${target.venueId}|${target.venueVersionId}`;
+    option.dataset.venueId = target.venueId;
+    option.dataset.versionId = target.venueVersionId;
+    option.textContent = `${target.venueName} · ${target.versionNumber}`;
+    newExhibitionGallery.appendChild(option);
+  }
+  if ([...newExhibitionGallery.options].some((option) => option.value === previousValue)) newExhibitionGallery.value = previousValue;
+  createExhibitionButton.disabled = !newExhibitionName.value.trim() || !newExhibitionGallery.value;
+}
+
+async function refreshExhibitionCreationTargets() {
+  if (!exhibitionData) exhibitionData = createExhibitionDataAdapter({ supabase, mode: "admin" });
+  if (typeof exhibitionData.setMode === "function") exhibitionData.setMode("admin");
+  exhibitionCreationTargets = typeof exhibitionData.listCreationTargets === "function"
+    ? await exhibitionData.listCreationTargets()
+    : [];
+  renderExhibitionCreationTargets();
+  return exhibitionCreationTargets;
+}
+
 async function fetchCatalog() {
   if (!exhibitionData) exhibitionData = createExhibitionDataAdapter({ supabase, mode: "admin" });
   if (typeof exhibitionData.setMode === "function") exhibitionData.setMode("admin");
   window.ExhibitionPlatformDataAdapter = exhibitionData;
   if (window.GalleryApp && typeof window.GalleryApp.setExhibitionDataMode === "function") window.GalleryApp.setExhibitionDataMode("admin");
   catalog = (await exhibitionData.list()).map(normalizeExhibition).filter(Boolean);
+  await refreshExhibitionCreationTargets();
   renderCatalog();
   return catalog;
 }
@@ -753,7 +686,7 @@ function setSelectedExhibition(record) {
   updatePublicPageHref(selectedExhibition.id);
   setMetadataBaselineFromForm();
   renderCatalog();
-  void refreshExhibitionGalleryAssignment(selectedExhibition.id);
+  void refreshExhibitionAdminDetail(selectedExhibition.id);
 }
 
 function syncSelectedFromCatalog(id) {
@@ -762,21 +695,21 @@ function syncSelectedFromCatalog(id) {
   return found;
 }
 
-async function selectAndSwitchExhibition(id) {
+async function selectAndSwitchExhibition(id, options = {}) {
   const target = catalog.find((item) => item.id === id);
-  if (!target || isTransitionGuardActive()) return;
+  if (!target || isTransitionGuardActive()) return false;
   if (!engineReady || !window.GalleryApp || !sceneLifecycleController) {
     setSelectedExhibition(target);
     updateUrlExhibition(id);
     if (!sceneLifecycleController && !inlineWorkspaceMode) reloadAdminForExhibition(id);
-    return;
+    return true;
   }
   const current = window.GalleryApp.getActiveExhibition();
   if (current && current.id === id) {
     setSelectedExhibition(target);
-    return;
+    return true;
   }
-  if (!confirmAndDiscardAdminChanges("You have unsaved Admin changes. Discard them and switch exhibition?")) return;
+  if (options.skipConfirm !== true && !confirmAndDiscardAdminChanges("You have unsaved Admin changes. Discard them and switch exhibition?")) return false;
   if (!exhibitionData) exhibitionData = createExhibitionDataAdapter({ supabase, mode: "admin" });
   if (typeof exhibitionData.setMode === "function") exhibitionData.setMode("admin");
 
@@ -786,19 +719,22 @@ async function selectAndSwitchExhibition(id) {
   const transitionBefore = await getExhibitionAssetDeliveryStats().catch(() => null);
   const fromId = current && current.id ? current.id : "?";
   const guardToken = await beginTransitionGuard({
-    title: `Switching to ${target.name}…`,
-    detail: "Preparing the selected Gallery runtime.",
+    title: options.guardTitle || `Switching to ${target.name}…`,
+    detail: options.guardDetail || "Preparing the selected Gallery runtime.",
     minVisibleMs: 150
   });
-  if (!guardToken) return;
+  if (!guardToken) return false;
   const transitionStartedAt = performance.now();
   try {
     const result = await sceneLifecycleController.switchTo(id, {
       forceRemote: true,
-      reason: "admin-exhibition-switch",
+      reason: options.reason || "admin-exhibition-switch",
       sceneOptions: { adminWorkspace: true }
     });
-    if (!result || !result.ok || result.superseded) return;
+    if (!result || !result.ok || result.superseded) {
+      if (options.failurePrefix) showToast(options.failurePrefix + "transition did not complete.");
+      return false;
+    }
     const targetRuntime = result.runtime || sceneLifecycleController.getActiveRuntime();
     const currentRuntime = sceneLifecycleController.getActiveRuntime();
     const crossSpace = result.mode === "cross-space-scene-recreate";
@@ -820,10 +756,12 @@ async function selectAndSwitchExhibition(id) {
     void captureExhibitionTransitionDiagnostic(transitionBefore, transitionStartedAt, fromId, id)
       .then(() => updateAssetDeliveryStatus())
       .catch(() => null);
+    return true;
   } catch (error) {
     scene = sceneLifecycleController.getActiveScene();
     if (inlineRuntimeContext) inlineRuntimeContext.scene = scene;
-    showToast("Could not switch exhibition: " + (error.message || error));
+    showToast((options.failurePrefix || "Could not switch exhibition: ") + (error.message || error));
+    return false;
   } finally {
     await endTransitionGuard(guardToken);
   }
@@ -1116,6 +1054,9 @@ window.addEventListener("gallery-draft-state", (event) => {
   sceneSaveState.dirty = !!detail.dirty;
   sceneSaveState.saveInFlight = !!detail.saveInFlight;
   updateSceneSaveButton();
+  if (detail.reason === "save-finished" && selectedExhibition && !detail.saveInFlight) {
+    void refreshExhibitionAdminDetail(selectedExhibition.id);
+  }
 });
 
 window.addEventListener("gallery-exhibition-context-change", async (event) => {
@@ -1149,7 +1090,7 @@ saveStateButton.addEventListener("click", async () => {
   sceneSaveState.saveInFlight = false;
   sceneSaveState.dirty = !ok;
   updateSceneSaveButton();
-  if (ok && selectedExhibition) void refreshExhibitionGalleryAssignment(selectedExhibition.id);
+  if (ok && selectedExhibition) void refreshExhibitionAdminDetail(selectedExhibition.id);
 });
 
 refreshExhibitionsButton.addEventListener("click", async () => {
@@ -1165,19 +1106,38 @@ refreshExhibitionsButton.addEventListener("click", async () => {
 createExhibitionForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const name = newExhibitionName.value.trim();
-  if (!name || !window.GalleryApp) return;
+  const option = newExhibitionGallery && newExhibitionGallery.selectedOptions ? newExhibitionGallery.selectedOptions[0] : null;
+  const venueId = option && option.dataset ? String(option.dataset.venueId || "") : "";
+  const venueVersionId = option && option.dataset ? String(option.dataset.versionId || "") : "";
+  if (!name || !venueId || !venueVersionId) return;
   if (!confirmAndDiscardAdminChanges("You have unsaved Admin changes. Discard them and create a new exhibition?")) return;
+  if (!exhibitionData) exhibitionData = createExhibitionDataAdapter({ supabase, mode: "admin" });
+  if (typeof exhibitionData.setMode === "function") exhibitionData.setMode("admin");
   setBusy(createExhibitionButton, true);
   try {
-    const created = await window.GalleryApp.createExhibition(name);
+    const created = await exhibitionData.create({ name, venueId, venueVersionId });
     if (!created) return;
     newExhibitionName.value = "";
-    const localCreated = upsertLocalCatalogRecord(created);
-    setSelectedExhibition(localCreated);
-    updateUrlExhibition(created.id);
+    newExhibitionGallery.value = "";
+    upsertLocalCatalogRecord(created);
+    renderExhibitionCreationTargets();
+    const entered = await selectAndSwitchExhibition(created.id, {
+      skipConfirm: true,
+      reason: "admin-exhibition-create-enter",
+      guardTitle: `Opening ${created.name}…`,
+      guardDetail: `Entering ${option.textContent} through the canonical Scene lifecycle.`,
+      failurePrefix: "Exhibition was created, but its Gallery could not be opened: "
+    });
+    if (entered) showToast(`Exhibition created and opened in ${option.textContent}.`);
   } catch (error) { showToast(error.message || String(error)); }
-  finally { setBusy(createExhibitionButton, false); }
+  finally { setBusy(createExhibitionButton, false); renderExhibitionCreationTargets(); }
 });
+
+newExhibitionName.addEventListener("input", renderExhibitionCreationTargets);
+if (newExhibitionGallery) newExhibitionGallery.addEventListener("change", renderExhibitionCreationTargets);
+if (publishExhibitionBundleButton) publishExhibitionBundleButton.addEventListener("click", handlePublishExhibitionBundle);
+if (unpublishExhibitionButton) unpublishExhibitionButton.addEventListener("click", handleUnpublishExhibition);
+if (deleteExhibitionButton) deleteExhibitionButton.addEventListener("click", handleDeleteExhibition);
 
 detailsForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -1579,7 +1539,7 @@ function ensureGalleryManagementUi() {
       const liveSpace = window.GalleryApp && typeof window.GalleryApp.getSpaceDefinition === "function"
         ? window.GalleryApp.getSpaceDefinition()
         : null;
-      const detail = exhibitionGalleryDetail;
+      const detail = exhibitionAdminDetail;
       const draftBinding = detail ? c24Binding(detail, "draft") : null;
       return {
         exhibitionId: liveExhibition && liveExhibition.id ? liveExhibition.id : selectedExhibition.id,
@@ -1852,9 +1812,9 @@ function renderGalleryDetail(detail) {
       <div class="gallerySubsection"><h3>Validation</h3><div id="galleryValidation" class="galleryValidation ${validationValid ? "valid" : "invalid"}"></div><button id="validateGalleryButton" class="adminButton" type="button" ${canManage && draft && venue.status !== "archived" ? "" : "disabled"}>VALIDATE DRAFT</button></div>
       <div class="gallerySubsection"><h3>Actions</h3><div class="galleryActions">
         <button id="publishGalleryButton" class="adminButton primary" type="button" ${canManage && draft && venue.status !== "archived" ? "" : "disabled"}>PUBLISH VERSION</button>
+        <button id="createExhibitionForGalleryButton" class="adminButton" type="button" ${canManage && published && venue.status !== "archived" ? "" : "disabled"}>CREATE EXHIBITION IN THIS GALLERY</button>
         <button id="rollbackGalleryButton" class="adminButton" type="button" ${canManage && rollback.available && venue.status !== "archived" ? "" : "disabled"}>ROLLBACK</button>
-        <button id="archiveGalleryButton" class="adminButton danger" type="button" ${canManage && venue.status !== "archived" && !draft && activeExhibitionCount===0 ? "" : "disabled"}>ARCHIVE</button>
-        <button id="restoreGalleryButton" class="adminButton" type="button" ${canManage && venue.status === "archived" ? "" : "disabled"}>RESTORE</button>
+        <button id="deleteGalleryButton" class="adminButton danger" type="button" ${canManage ? "" : "disabled"}>DELETE GALLERY</button>
       </div><div id="galleryActionNote" class="galleryDangerNote"></div></div>
       <div class="gallerySubsection"><h3>Version history</h3><div id="galleryHistory" class="galleryHistory"></div></div>`;
 
@@ -1889,9 +1849,9 @@ function renderGalleryDetail(detail) {
     galleryEl("testGalleryButton").addEventListener("click", handleTestGallery);
     galleryEl("validateGalleryButton").addEventListener("click", handleValidateGallery);
     galleryEl("publishGalleryButton").addEventListener("click", handlePublishGallery);
+    galleryEl("createExhibitionForGalleryButton").addEventListener("click", handleCreateExhibitionForGallery);
     galleryEl("rollbackGalleryButton").addEventListener("click", handleRollbackGallery);
-    galleryEl("archiveGalleryButton").addEventListener("click", handleArchiveGallery);
-    galleryEl("restoreGalleryButton").addEventListener("click", handleRestoreGallery);
+    galleryEl("deleteGalleryButton").addEventListener("click", handleDeleteGallery);
     galleryMetadataBaseline = galleryMetadataSnapshot();
     galleryEntryBaseline = galleryEntrySnapshot();
     galleryMetadataDirty = false;
@@ -1968,21 +1928,20 @@ function renderGalleryAssetSlots(detail, working, assets, editable) {
       });
     });
     actions.append(button);
-    if (role === "props" && asset) {
-      const clearButton = document.createElement("button"); clearButton.type="button"; clearButton.className="adminButton"; clearButton.textContent="CLEAR"; clearButton.disabled=!editable;
-      clearButton.addEventListener("click", async () => {
-        if (!window.confirm("Remove optional Props from this Draft Version?")) return;
-        await withGalleryMutation(clearButton, "CLEARING…", async () => {
+    if (asset) {
+      const deleteButton = document.createElement("button"); deleteButton.type="button"; deleteButton.className="adminButton danger"; deleteButton.textContent="DELETE"; deleteButton.disabled=!editable;
+      deleteButton.addEventListener("click", async () => {
+        if (!window.confirm(`Delete ${role.toUpperCase()} from this Gallery Draft?${role === "props" ? "" : " The Draft will not be publishable until this required model is uploaded again."}`)) return;
+        await withGalleryMutation(deleteButton, "DELETING…", async () => {
           try {
             const draft = galleryDraftVersion(selectedGalleryDetail); if (!draft) throw new Error("An active Gallery Draft is required.");
-            const result = await galleryManagement.clearOptionalAssetSlot(draft.id, role);
-            const warning = result.cleanup && result.cleanup.warnings && result.cleanup.warnings[0];
-            showToast(warning ? `Optional Props removed. ${warning}` : "Optional Props removed.");
+            await galleryManagement.deleteAssetSlot(draft.id, role);
+            showToast(`${role.toUpperCase()} deleted from Gallery Draft.`);
             await refreshSelectedGallery();
           } catch (error) { showToast(error.message || String(error)); }
         });
       });
-      actions.append(clearButton);
+      actions.append(deleteButton);
     }
     row.append(label, meta, actions, input); grid.appendChild(row);
   });
@@ -2198,9 +2157,35 @@ async function handlePublishGallery() {
     try {
       await galleryManagement.publish(draft.id);
       await refreshSelectedGallery();
-      showToast(`${draft.version_number} published. Existing Exhibitions were not reassigned.`);
+      await refreshExhibitionCreationTargets();
+      showToast(`${draft.version_number} published. It is now available when creating an Exhibition.`);
     } catch(error) { showToast(error.message || String(error)); }
   });
+}
+
+async function handleCreateExhibitionForGallery() {
+  const detail = selectedGalleryDetail;
+  const venue = detail && detail.venue ? detail.venue : null;
+  const published = galleryPublishedVersion(detail);
+  if (!venue || !published || venue.status === "archived") {
+    showToast("Publish this Gallery before creating an Exhibition in it.");
+    return;
+  }
+  if (!setAdminWorkspaceSection("exhibitions")) return;
+  try {
+    await refreshExhibitionCreationTargets();
+    const value = `${venue.id}|${published.id}`;
+    const matchingOption = newExhibitionGallery
+      ? [...newExhibitionGallery.options].find((option) => option.value === value)
+      : null;
+    if (!matchingOption) throw new Error("This Published Gallery is not available as an Exhibition creation target.");
+    newExhibitionGallery.value = value;
+    renderExhibitionCreationTargets();
+    newExhibitionName.focus();
+    showToast(`Creating a new Exhibition in ${matchingOption.textContent}.`);
+  } catch (error) {
+    showToast(error.message || String(error));
+  }
 }
 
 async function handleRollbackGallery() {
@@ -2217,29 +2202,26 @@ async function handleRollbackGallery() {
   });
 }
 
-async function handleArchiveGallery() {
-  if(!selectedGalleryDetail || galleryMutationInFlight) return;
-  if (!confirmAndDiscardGalleryFormChanges("Unsaved Gallery changes will be discarded before archiving. Continue?")) return;
-  if(!window.confirm("Archive this Gallery?")) return;
-  const button = galleryEl("archiveGalleryButton");
-  await withGalleryMutation(button, "ARCHIVING…", async () => {
+async function handleDeleteGallery() {
+  if (!selectedGalleryDetail || galleryMutationInFlight) return;
+  if (!confirmAndDiscardGalleryFormChanges("Unsaved Gallery changes will be discarded before deletion. Continue?")) return;
+  const venue = selectedGalleryDetail.venue;
+  if (!window.confirm(`Delete “${venue.name || venue.slug}” permanently? This removes all of its Gallery Versions and owned model files. Exhibitions or venue-scoped Shared Assets must be removed first.`)) return;
+  const button = galleryEl("deleteGalleryButton");
+  await withGalleryMutation(button, "DELETING…", async () => {
     try {
-      await galleryManagement.archive(selectedGalleryDetail.venue.id);
-      await refreshSelectedGallery();
-      showToast("Gallery archived.");
-    } catch(error) { showToast(error.message || String(error)); }
-  });
-}
-
-async function handleRestoreGallery() {
-  if(!selectedGalleryDetail || galleryMutationInFlight) return;
-  if (!confirmAndDiscardGalleryFormChanges("Unsaved Gallery changes will be discarded before restoring. Continue?")) return;
-  const button = galleryEl("restoreGalleryButton");
-  await withGalleryMutation(button, "RESTORING…", async () => {
-    try {
-      await galleryManagement.restore(selectedGalleryDetail.venue.id);
-      await refreshSelectedGallery();
-      showToast("Gallery restored.");
+      await galleryManagement.deletePermanent(venue.id);
+      selectedGalleryDetail = null;
+      galleryCatalog = await galleryManagement.list();
+      renderGalleryCatalog();
+      const next = galleryCatalog[0] || null;
+      if (next) await selectGallery(next.id, { skipConfirm: true });
+      else {
+        const body = galleryEl("galleryDetailBody");
+        if (body) body.innerHTML = '<div class="fieldMeta">No Gallery selected. Create a Gallery to continue.</div>';
+      }
+      await refreshExhibitionCreationTargets();
+      showToast("Gallery deleted.");
     } catch(error) { showToast(error.message || String(error)); }
   });
 }

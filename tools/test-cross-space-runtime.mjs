@@ -242,7 +242,7 @@ assert.equal(orchestratedAdminScene.options.loadingSession.getSceneLifecycleId()
 
 const orchestratorDebug = orchestrator.getDebug();
 assert.equal(orchestratorDebug.schema, SCENE_LOADING_ORCHESTRATOR_SCHEMA);
-assert.equal(orchestratorDebug.stage, 'V14.1.9');
+assert.equal(orchestratorDebug.stage, 'V14.1.10');
 assert.equal(orchestratorDebug.latestWinsEnabled, true, 'V14.1.7 must enable newest-target reconciliation');
 assert.ok(orchestratorDebug.requests >= 2);
 assert.ok(orchestratorDebug.recentSessions.length >= 2);

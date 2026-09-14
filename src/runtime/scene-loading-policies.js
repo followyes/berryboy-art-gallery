@@ -1,5 +1,5 @@
 /*
-  Exhibition Platform — V14.1.1 Scene Loading Policies / V14.1.9 Pre-Interaction Complete Walkthrough Hydration
+  Exhibition Platform — V14.1.1 Scene Loading Policies / V14.1.10 No-Reload Residency & Frame-Time Closure
   Pure lifecycle/loading policy contract. No DOM, Babylon, Supabase or mutable globals.
 */
 

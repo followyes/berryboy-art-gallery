@@ -16,6 +16,28 @@ function asRows(response) {
   if (!response) return [];
   return Array.isArray(response.data) ? response.data : (response.data ? [response.data] : []);
 }
+
+async function removeStorageItemsOrThrow(supabase, items) {
+  const grouped = new Map();
+  for (const item of Array.isArray(items) ? items : []) {
+    const bucket = text(item && item.bucket);
+    const path = text(item && item.path);
+    if (!bucket || !path) continue;
+    if (!grouped.has(bucket)) grouped.set(bucket, []);
+    grouped.get(bucket).push(path);
+  }
+  let removed = 0;
+  for (const [bucket, paths] of grouped.entries()) {
+    const unique = [...new Set(paths)];
+    for (let i = 0; i < unique.length; i += 100) {
+      const batch = unique.slice(i, i + 100);
+      const response = await supabase.storage.from(bucket).remove(batch);
+      if (response && response.error) throw response.error;
+      removed += batch.length;
+    }
+  }
+  return removed;
+}
 function rpcOne(response) { return asRows(response)[0] || null; }
 function unwrapState(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -283,27 +305,66 @@ export function createExhibitionDataAdapter({ supabase, mode = "public", initial
       const runtime = await resolve(reference, false);
       return saveCanonicalState(supabase, runtime, state);
     },
-    async create(name) {
+    async listCreationTargets() {
+      if (modeName !== "admin") throw new Error("Public Viewer cannot list Exhibition creation targets.");
+      const venues = asRows(await supabase.rpc("admin_list_venues", { p_status: "published", p_search: null }));
+      return venues.map((venue) => {
+        const venueId = text(venue && venue.id);
+        const venueVersionId = text(venue && venue.published_version_id);
+        const versions = Array.isArray(venue && venue.versions) ? venue.versions : [];
+        const publishedVersion = versions.find((version) => text(version && version.id) === venueVersionId) || null;
+        if (!venueId || !venueVersionId || !publishedVersion || text(publishedVersion.status) !== "published") return null;
+        return {
+          venueId,
+          venueVersionId,
+          venueName: text(venue.name || venue.slug || venueId),
+          venueSlug: text(venue.slug),
+          versionNumber: text(publishedVersion.version_number || venueVersionId)
+        };
+      }).filter(Boolean);
+    },
+    async create(input) {
       if (modeName !== "admin") throw new Error("Public Viewer cannot create Exhibitions.");
-      const current = initialRuntime || Array.from(runtimeByKey.values()).find((item) => item && item.mode === "admin") || await loadAdminRuntime(supabase, "main");
+      const request = input && typeof input === "object" ? input : {};
+      const name = text(request.name);
+      const venueId = text(request.venueId);
+      const venueVersionId = text(request.venueVersionId);
+      if (!name) throw new Error("Exhibition name is required.");
+      if (!venueId || !venueVersionId) throw new Error("Choose a Published Gallery before creating an Exhibition.");
       const id = globalThis.crypto && typeof globalThis.crypto.randomUUID === "function" ? globalThis.crypto.randomUUID() : null;
       const suffix = id ? id.slice(-6) : Date.now().toString(36).slice(-6);
-      const base = text(name).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 56) || "exhibition";
+      const base = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 56) || "exhibition";
       const slug = `${base}-${suffix}`;
-      const venueDetail = rpcOne(await supabase.rpc("admin_get_venue", { p_venue_id: current.venue.id }));
-      const publishedVersionId = venueDetail && venueDetail.venue ? text(venueDetail.venue.published_version_id) : "";
-      if (!publishedVersionId) throw new Error("Create a Published Gallery Version before creating an Exhibition.");
       const created = rpcOne(await supabase.rpc("admin_create_exhibition", {
-        p_venue_id: current.venue.id,
-        p_venue_version_id: publishedVersionId,
+        p_venue_id: venueId,
+        p_venue_version_id: venueVersionId,
         p_slug: slug,
-        p_title: text(name),
+        p_title: name,
         p_patch: { display_order: 0 }
       }));
       if (!created || !created.id) throw new Error("Exhibition creation returned no record.");
       const runtime = await loadAdminRuntime(supabase, created.id);
       cacheRuntime(runtime, "admin");
       return { ...runtime.exhibition };
+    },
+    async deletePermanent(reference) {
+      if (modeName !== "admin") throw new Error("Public Viewer cannot delete Exhibitions.");
+      const runtime = await resolve(reference, true);
+      const exhibitionId = runtime.exhibition.id;
+      let prepared = false;
+      try {
+        const plan = rpcOne(await supabase.rpc("admin_prepare_exhibition_delete", { p_exhibition_id: exhibitionId }));
+        if (!plan) throw new Error("Exhibition delete preparation returned no result.");
+        prepared = true;
+        await removeStorageItemsOrThrow(supabase, plan.storageItems || []);
+        const result = rpcOne(await supabase.rpc("admin_delete_exhibition", { p_exhibition_id: exhibitionId }));
+        if (!result || result.deleted !== true) throw new Error("Exhibition delete returned no confirmation.");
+        this.invalidate(exhibitionId);
+        return result;
+      } catch (error) {
+        if (prepared) await supabase.rpc("admin_cancel_exhibition_delete", { p_exhibition_id: exhibitionId }).catch(() => null);
+        throw error;
+      }
     },
     async updateMetadata(reference, patch = {}) {
       if (modeName !== "admin") throw new Error("Public Viewer cannot update Exhibition metadata.");

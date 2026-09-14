@@ -1,37 +1,62 @@
 # Exhibition Platform
 
-Current repository release: **V14.1.9 — Pre-Interaction Complete Walkthrough Hydration**.
+Current repository release: **V14.2.6 — Canonical Draft / Publish Model**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
-## V14.1.9 Pre-Interaction Complete Walkthrough Hydration
+## V14.2.6 Canonical Draft / Publish Model
 
-V14.1.8 is production **PASS/CLOSED** and established one canonical `gallery-scene-readiness / scene-visually-settled` authority plus the mandatory Public Gallery visit popup. V14.1.9 attaches complete normal walkthrough-visible hydration to that authority.
+Exhibition runtime saves are now **Draft-only**. `SAVE CHANGES` updates the Draft channel and never changes Public content. Explicit bundle publication is the only normal boundary that can move Draft runtime state and card/metadata into Published.
 
-For Public and Admin Exhibition contexts, an assigned Venue Props GLB now joins the pre-interaction Space settle while an unassigned Props role remains legal. Artwork Preview remains materially blocking. Frames, Sculptures and Shared Props are `foreground-terminal`: they must be loaded or explicitly unavailable before canonical readiness.
+Bundle Publish is idempotent. If Draft state/card already match Published and the Exhibition is already Public, the RPC returns `changed:false` and does not rotate meaningful Previous snapshots. State and card history rotate independently, so metadata-only publication cannot overwrite 3D Previous history and a 3D-only publication cannot overwrite card Previous history.
 
-Heavy visible GLB work is not launched as one uncontrolled burst. `Gallery_V0_11.js` owns a bounded walkthrough heavy-hydration scheduler with concurrency 1 and cooperative frame yields. Superseded batches discard queued stale work. Normal blocking model/Shared Prop restore uses the immediate terminal path rather than relying on post-ready current-zone/background queues.
+Admin publication truth is explicit: `DRAFT / NOT PUBLIC`, `PUBLISHED / UNPUBLISHED CHANGES`, or `PUBLISHED / UP TO DATE`. A Published Exhibition with saved Draft changes exposes `PUBLISH CHANGES`; an already up-to-date Published Exhibition disables redundant Publish. V14.2.6 requires the matching production SQL migration before repository deployment.
 
-Initial Public/Admin startup and reused same-Space Exhibition switching converge on the same final settle sequence:
+## V14.2.5 Content Lifecycle & Safe Deletion
 
-```text
-assigned Space shell + Venue Props terminal
--> Artwork Preview materially present
--> Frames / Sculptures / Shared Props terminal
--> final collision/light/shadow membership commit
--> final walkthrough GPU warmup
--> stable-frame / long-task quiet gate
--> canonical scene-visually-settled
--> interaction may unlock
-```
+V14.2.5 is **PASS / CLOSED** after user-confirmed production smoke. Permanent Exhibition/Gallery deletion and Gallery Draft model deletion remain the active lifecycle baseline. The hidden prepare -> Storage cleanup -> final-delete protocol remains unchanged. Shared Asset lifecycle/UI redesign is still deferred to V14.3.
 
-The accepted `Explore the gallery` popup remains the Public visit gate and is shown on every real Home/list -> Gallery entry, including re-entry into the exact same resident Gallery. `Start exploring` cannot unlock movement before current canonical readiness. An in-place Exhibition switch inside an already-open same exact Space does not re-show the popup solely because content changed.
+## V14.2.4 Exhibition Workspace Cleanup
 
-Gallery authoring and Test Gallery remain isolated and keep their own loading-policy semantics. The three-file lifecycle/loading authority remains `scene-lifecycle-controller.js`, `scene-loading-orchestrator.js` and `scene-loading-policies.js`; `Gallery_V0_11.js` remains the Babylon/editor executor.
+The normal Exhibition workspace no longer exposes the historical C24 Gallery reassignment workflow. Draft/Published/Previous Gallery binding rows, `ASSIGN DRAFT`, `CONFIRM LAYOUT`, the reassignment selector and visible `ROLLBACK PUBLICATION` control are removed from both standalone and inline Admin. Exhibition Details now stays product-facing: metadata, current Gallery identity, publication status, Poster/Cover and explicit Publish/Unpublish actions.
 
-V14.1.9 intentionally does **not** claim final active-visit residency/no-reload/frame-time closure. Autonomous Full artwork texture upgrade/residency, long-lived model residency/eviction and movement-time long-task/frame-spike closure remain V14.1.10.
+The C24 database/data-adapter reassignment and rollback capabilities are intentionally retained for compatibility/recovery and are no longer treated as normal authoring controls. Internal `admin_get_exhibition` detail remains available for publication validation and the existing Shared Asset placement fallback. V14.2.4 changes no SQL/schema/RPC behavior and does not yet change Save/Publish semantics.
 
-V14.1.9 requires **no SQL/schema/RPC change**.
+## V14.2.3 Creation -> Scene Lifecycle Integration
+
+After `CREATE EXHIBITION` succeeds, Admin now automatically enters the created Exhibition through the existing Scene Loading Orchestrator. Same exact immutable Venue Version keeps the current Scene and uses the established Exhibition-layer switch/reuse path; a different Venue Version uses the established controlled cross-Space Scene recreation on the persistent Engine/canvas. Creation does not call `GalleryApp.switchExhibition()` directly and does not introduce another lifecycle authority.
+
+Published Gallery details also expose `CREATE EXHIBITION IN THIS GALLERY`. The shortcut does not fork creation: it switches to the canonical Exhibition form, refreshes creation targets and preselects the Gallery's exact current Published Version. A Gallery Draft is never selected. If database creation succeeds but Scene entry fails, the Exhibition remains created and selectable for a normal retry. V14.2.3 requires **no SQL/schema/RPC change**.
+
+## V14.2.2.1 Published Gallery Selector Visual Fix
+
+The V14.2.2.1 dark native selector readability fix remains included. Its separate production visual smoke was folded into the V14.2.3 smoke by explicit user decision.
+
+## V14.2.2 Exhibition Creation Targeting
+
+Admin `CREATE EXHIBITION` requires a name plus an explicit current Published Gallery. The client passes the exact `venue_id + published_version_id` pair to the existing guarded creation RPC instead of silently inheriting the Gallery from the currently open Exhibition. A Gallery Draft is never a creation target.
+
+## V14.1.10.1 Resident Gallery Re-entry / Public Fresh-Visit UX
+
+V14.1.10.1 is the corrective follow-up to production-observed Public re-entry behavior. Home/listing now suspends the visitor session without disposing the resident Scene. Every real Public entry starts a fresh visit, resets movement/Inspect/camera to the authored Entry Point `position + target`, and shows the mandatory Explore popup.
+
+Same-Space Public switching still fetches fresh Published truth, but this no longer disables reuse of an already-instantiated Exhibition layer. A resident layer is reused only when its stored canonical revision matches the current row; stale resident resources are explicitly disposed before replacement. Public preparation uses an opaque transition guard so visitors never watch an Exhibition layer being rebuilt. Admin remains seamless.
+
+Focused debug: `GalleryApp.getPublicVisitDebug()`. V14.1.10.1 requires **no SQL/schema/RPC change**.
+
+## V14.1.10 No-Reload Residency & Frame-Time Closure
+
+V14.1.9 is production **PASS/CLOSED** and guarantees complete normal Public/Admin walkthrough-visible hydration before canonical readiness. V14.1.10 keeps that already-settled walkthrough stable after `Start exploring`.
+
+`Gallery_V0_11.js` now owns one `gallery-active-visit-residency.v1` authority for normal Public/Admin visits. After terminal visible hydration and the final collision/light/shadow commit, but before final GPU warmup + quiet proof, the exact active lifecycle/loading-session/Exhibition is locked resident.
+
+The physical Wall/Floor/Ceiling shell remains enabled and uses per-mesh `alwaysSelectAsActiveMesh = true`; global `scene.skipFrustumClipping` remains false. This directly targets the V14.1.9 production transient where a violent camera turn could briefly expose the Scene clear color between static Space segments.
+
+Normal active-visit streaming can no longer silently suspend/dispose and later re-import current Sculpture/Shared Prop runtimes. Stale active Preview/model queues are purged and normal post-unlock Preview/model background starts are blocked. Normal proximity/memory maintenance also cannot autonomously swap artwork Preview -> Full or Full -> Preview during walking. Explicit artwork Inspect remains the bounded user-requested Full-quality path.
+
+Parked inactive Exhibition layers are not globally pinned and retain their existing bounded layer-residency eviction. Rolling post-unlock diagnostics record slow/severe frames, camera-turn slow frames, long-task proximity, Space active-set misses and unexpected model imports. Focused debug: `GalleryApp.getActiveVisitResidencyDebug()`.
+
+V14.1.10 requires **no SQL/schema/RPC change**.
 
 ## Product model
 
@@ -161,9 +186,9 @@ Previous   -> rollback-history Gallery Version
 
 The Draft authoring Gallery remains mirrored on `exhibitions.venue_id` and `exhibition_states.venue_id`. Published/Previous are exact Version references and are not forced to match that Draft Gallery.
 
-### Draft-only reassignment
+### Draft-only reassignment compatibility
 
-Normal Admin reassignment can target only the chosen Gallery's current Published/frozen Version.
+The C24 backend compatibility path can target only the chosen Gallery's current Published/frozen Version. V14.2.4 removes this reassignment workflow from normal Admin UI; it remains available only as retained compatibility/recovery behavior.
 
 Example:
 
@@ -179,7 +204,7 @@ Published  -> Main Gallery v2   (unchanged and still public)
 
 Cross-Gallery reassignment resets only Gallery-specific spatial state: wall presentation state, artwork/sculpture placement/anchor/focus-camera fields, local lights, tour order and navigation path. Exhibition identity/media/text and unrelated non-spatial data remain.
 
-A versioned `venueMigration` marker records the pending migration. If spatial items exist, the rebuilt layout must be saved after assignment before **CONFIRM LAYOUT**. An unresolved migration blocks Exhibition publication.
+A versioned `venueMigration` marker records the pending migration. Historical C24 flows required layout confirmation after assignment; V14.2.4 no longer exposes that maintenance action in the normal Exhibition workspace. An unresolved migration still blocks Exhibition publication at the backend/validation layer.
 
 ### Explicit publication boundary
 
@@ -226,8 +251,8 @@ Same exact `venue_version_id` Exhibition switches continue to reuse the live Bab
 
 - Poster/Cover is optional for Exhibition publication.
 - Generic Exhibition Details save does not change public visibility.
-- Publication is explicit through `PUBLISH EXHIBITION`; hiding is explicit through `UNPUBLISH EXHIBITION`.
-- Admin shows canonical publication blockers/warnings from `admin_validate_exhibition()`.
+- Publication remains explicit through `PUBLISH EXHIBITION`; hiding remains explicit through `UNPUBLISH EXHIBITION`.
+- V14.2.4 removes the large Gallery-assignment/readiness box; only actual publication blockers are surfaced next to the compact publication actions.
 - Public discovery supports coverless title-only cards.
 
 ## C6C8C25.2 Admin Gallery Partial Preview / UI Fixes
@@ -357,7 +382,7 @@ From repository root:
 npm run check
 ```
 
-This performs production build, syntax, repository verification and consolidated regression suites, including C23 Space GLB fixtures, V14.1.5.1 Sculpture GLB fixtures, V14.1.6 shared-host/context tests, V14.1.7 latest-wins/session-ownership tests, V14.1.8 canonical-readiness/Public-entry tests, V14.1.9 complete walkthrough-hydration tests, C24 Exhibition/Gallery assignment invariants, C25/C25.4 cross-space/media readiness tests and C26 carousel/Space-entry policy invariants.
+This performs production build, syntax, repository verification and consolidated regression suites, including C23 Space GLB fixtures, V14.1.5.1 Sculpture GLB fixtures, V14.1.6 shared-host/context tests, V14.1.7 latest-wins/session-ownership tests, V14.1.8 canonical-readiness/Public-entry tests, V14.1.9 complete walkthrough-hydration tests, V14.1.10 active-visit residency/frame-time tests, C24 Exhibition/Gallery assignment invariants, C25/C25.4 cross-space/media readiness tests and C26 carousel/Space-entry policy invariants.
 
 SQL package verification is separate:
 
@@ -365,7 +390,7 @@ SQL package verification is separate:
 node OUTSIDE_REPO/TOOLS/verify-sql-package.mjs
 ```
 
-The SQL/package verifier is static. V13.1/V13.2/V13.3/V13.6 database changes are already deployed/PASS and V13.4/V13.5 added no SQL. **V14.1.9 adds no SQL/schema/RPC change.** Deploy only the repository through GitHub/GitHub Pages. `ALL_IN_ONE.sql` remains fresh-install/reference-only and must not be run on the existing production database.
+The SQL/package verifier is static. V14.2.5 requires `OUTSIDE_REPO/SQL/V14_2_5_CONTENT_LIFECYCLE_SAFE_DELETION.sql` to be run on production **before** deploying this repository through GitHub/GitHub Pages. `ALL_IN_ONE.sql` remains fresh-install/reference-only and must not be run on the existing production database.
 
 ## Documentation
 

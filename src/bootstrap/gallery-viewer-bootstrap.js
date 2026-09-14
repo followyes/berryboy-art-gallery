@@ -1,5 +1,5 @@
 /*
-  Exhibition Platform — V14.1.9 — Pre-Interaction Complete Walkthrough Hydration
+  Exhibition Platform — V14.1.10.1 — Resident Gallery Re-entry / Public Fresh-Visit UX
   Save Integrity Repair / Correct Startup Rebuild.
   Babylon, GLB loaders and the gallery engine start only after an explicit visitor click.
   The engine-owned instructional popup is shown after true interaction readiness; C6C8C16 keeps its mobile CTA pinned.
@@ -7,14 +7,14 @@
 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { registerExhibitionAssetCache, getExhibitionAssetDeliveryStats } from "./asset-cache-bootstrap.js?v=c6c8c22_gallery_management_20260908";
-import { beginTransitionGuard, endTransitionGuard, isTransitionGuardActive } from "./transition-guard.js?v=c6c8c22_gallery_management_20260908";
-import { createExhibitionDataAdapter, resolveInitialPublicRuntime, listPublicExhibitionCards } from "../data/exhibition-api.js?v=c6c8c25_cross_space_runtime";
-import { getRuntimeVenueVersionKey } from "../runtime/scene-lifecycle-controller.js?v=v14_1_9_preinteraction_walkthrough_20260910";
-import { createSceneLoadingRuntimeHost } from "../runtime/scene-loading-orchestrator.js?v=v14_1_9_preinteraction_walkthrough_20260910";
-import { shouldShowPublicSpaceIntro } from "../runtime/public-space-entry-policy.js?v=v14_1_9_preinteraction_walkthrough_20260910";
+import { beginTransitionGuard, endTransitionGuard, isTransitionGuardActive } from "./transition-guard.js?v=v14_2_6_draft_publish_20260914";
+import { createExhibitionDataAdapter, resolveInitialPublicRuntime, listPublicExhibitionCards } from "../data/exhibition-api.js?v=v14_2_6_draft_publish_20260914";
+import { getRuntimeVenueVersionKey } from "../runtime/scene-lifecycle-controller.js?v=v14_2_6_draft_publish_20260914";
+import { createSceneLoadingRuntimeHost } from "../runtime/scene-loading-orchestrator.js?v=v14_2_6_draft_publish_20260914";
+import { shouldShowPublicSpaceIntro } from "../runtime/public-space-entry-policy.js?v=v14_2_6_draft_publish_20260914";
 
-const STAGE = "V14.1.9";
-const ENGINE_CACHE_KEY = "v14_1_9_preinteraction_walkthrough_20260910";
+const STAGE = "V14.1.10.1";
+const ENGINE_CACHE_KEY = "v14_2_6_draft_publish_20260914";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
 
@@ -175,6 +175,11 @@ function ensurePublicDiscoveryStyles() {
 }
 
 async function ensurePublicExhibitionSelection(options = {}) {
+  // V14.1.10.1 — Home/listing ends the current visitor session without disposing
+  // the resident Babylon Scene or its renderable assets.
+  if (activeScene && window.GalleryApp && typeof window.GalleryApp.suspendPublicVisit === "function") {
+    try { window.GalleryApp.suspendPublicVisit(options.reason || "public-home-listing"); } catch (_error) {}
+  }
   if (options.force !== true && hasExplicitExhibitionSelection()) return getRequestedExhibitionId();
   let cards = [];
   try { cards = await listPublicExhibitionCards(supabase); }
@@ -283,8 +288,8 @@ async function ensurePublicExhibitionSelection(options = {}) {
 }
 
 const publicSpaceEntryDebug = {
-  stage: "V14.1.9",
-  schema: "public-gallery-entry-policy.v2",
+  stage: "V14.1.10.1",
+  schema: "public-gallery-entry-policy.v3",
   evaluations: 0,
   shows: 0,
   hides: 0,
@@ -339,10 +344,15 @@ async function switchPublicExhibition(reference, options = {}) {
       updatePublicRuntimeIdentity(currentRuntime, options.historyMode || "push");
       activePublicRuntime = currentRuntime;
       if (options.publicEntry === true || options.entry === true) {
-        applyPublicSpaceIntroPolicy(currentRuntime, currentRuntime, {
-          entry: true,
-          reason: options.reason || "public-gallery-reentry-same-runtime"
-        });
+        const app = window.GalleryApp || null;
+        if (app && typeof app.beginPublicVisit === "function") {
+          app.beginPublicVisit({ reason: options.reason || "public-gallery-reentry-same-runtime" });
+        } else {
+          applyPublicSpaceIntroPolicy(currentRuntime, currentRuntime, {
+            entry: true,
+            reason: options.reason || "public-gallery-reentry-same-runtime"
+          });
+        }
       }
       return true;
     }
@@ -355,13 +365,15 @@ async function switchPublicExhibition(reference, options = {}) {
   const guardToken = ownsGuard ? await beginTransitionGuard({
     title: "Opening exhibition…",
     detail: "Preparing the selected Gallery and exhibition.",
-    minVisibleMs: 150
+    minVisibleMs: 150,
+    opaque: true
   }) : null;
   if (ownsGuard && !guardToken) return false;
 
   try {
     const result = await sceneLifecycleController.switchTo(reference, {
       forceRemote: true,
+      reuseResidentLayer: true,
       reason: "public-exhibition-switch",
       sceneOptions: { adminWorkspace: false }
     });
@@ -370,10 +382,22 @@ async function switchPublicExhibition(reference, options = {}) {
 
     if (!result || result.superseded || !result.ok) return false;
     if (window.GalleryApp && typeof window.GalleryApp.setExhibitionDataMode === "function") window.GalleryApp.setExhibitionDataMode("public");
-    applyPublicSpaceIntroPolicy(currentRuntime, activePublicRuntime || result.runtime, {
-      entry: options.publicEntry === true || options.entry === true,
-      reason: options.reason || "public-exhibition-switch"
-    });
+    if (options.publicEntry === true || options.entry === true) {
+      const app = window.GalleryApp || null;
+      if (app && typeof app.beginPublicVisit === "function") {
+        app.beginPublicVisit({ reason: options.reason || "public-exhibition-switch" });
+      } else {
+        applyPublicSpaceIntroPolicy(currentRuntime, activePublicRuntime || result.runtime, {
+          entry: true,
+          reason: options.reason || "public-exhibition-switch"
+        });
+      }
+    } else {
+      applyPublicSpaceIntroPolicy(currentRuntime, activePublicRuntime || result.runtime, {
+        entry: false,
+        reason: options.reason || "public-exhibition-switch"
+      });
+    }
     updatePublicRuntimeIdentity(activePublicRuntime || result.runtime, options.historyMode || "push");
     syncMobileQualityControl();
     if (activeEngine && activeEngine.resize) activeEngine.resize();
@@ -481,8 +505,13 @@ function ensureInlineAdminWorkspaceStyles() {
     #inlineAdminWorkspace .sectionHead p { margin:5px 0 0; color:rgba(255,255,255,.57); font-size:11px; line-height:1.45; }
     #inlineAdminWorkspace .sectionBody { padding:0 14px 14px; }
     #inlineAdminWorkspace #createExhibitionForm { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:7px; }
+    #inlineAdminWorkspace #newExhibitionName { grid-column:1 / -1; }
+    #inlineAdminWorkspace #newExhibitionGallery { min-width:0; }
     #inlineAdminWorkspace .adminInput, #inlineAdminWorkspace .adminTextarea { width:100%; border:1px solid rgba(255,255,255,.18); border-radius:10px; background:rgba(255,255,255,.055); color:rgba(255,255,255,.92); outline:none; font:inherit; }
     #inlineAdminWorkspace .adminInput { height:38px; padding:0 11px; }
+    #inlineAdminWorkspace select.adminInput { color-scheme:dark; background-color:#202422; color:rgba(255,255,255,.92); }
+    #inlineAdminWorkspace select.adminInput option { background:#202422; color:rgba(255,255,255,.92); }
+    #inlineAdminWorkspace select.adminInput option[value=""] { color:rgba(255,255,255,.57); }
     #inlineAdminWorkspace .adminTextarea { min-height:92px; resize:vertical; padding:10px 11px; line-height:1.45; }
     #inlineAdminWorkspace #exhibitionList { display:grid; gap:7px; max-height:280px; overflow:auto; padding-right:2px; }
     #inlineAdminWorkspace .exhibitionRow { width:100%; display:grid; grid-template-columns:48px minmax(0,1fr); gap:10px; align-items:center; text-align:left; padding:7px; border:1px solid transparent; border-radius:10px; background:transparent; color:rgba(255,255,255,.92); cursor:pointer; }
@@ -504,6 +533,9 @@ function ensureInlineAdminWorkspaceStyles() {
     #inlineAdminWorkspace #posterPreview { width:94px; aspect-ratio:4/5; object-fit:cover; border-radius:10px; border:1px solid rgba(255,255,255,.18); background:#101210; }
     #inlineAdminWorkspace .posterActions { display:grid; gap:7px; }
     #inlineAdminWorkspace #posterFileInput { display:none; }
+    #inlineAdminWorkspace .publicationControls { display:grid; gap:8px; padding-top:11px; border-top:1px solid rgba(255,255,255,.10); }
+    #inlineAdminWorkspace .publicationActions { display:flex; flex-wrap:wrap; gap:7px; }
+    #inlineAdminWorkspace .publicationNotice.blocked { color:#f0b5b5; }
     #inlineAdminMain { min-width:0; min-height:0; padding:18px; background:radial-gradient(circle at 30% 10%,rgba(255,255,255,.035),transparent 36%),#0b0d0c; }
     #inlineAdminViewportCard { height:100%; min-height:0; display:grid; grid-template-rows:56px minmax(0,1fr); border:1px solid rgba(255,255,255,.10); border-radius:16px; overflow:hidden; background:#050606; box-shadow:0 28px 90px rgba(0,0,0,.22); }
     #inlineAdminViewportToolbar { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:0 12px; border-bottom:1px solid rgba(255,255,255,.10); background:rgba(20,22,21,.96); }
@@ -536,8 +568,8 @@ function ensureInlineAdminWorkspaceDom() {
     </header>
     <div id="inlineAdminBody">
       <aside id="inlineAdminSidebar">
-        <section class="workspaceSection"><div class="sectionHead"><div><h2>Exhibitions</h2><p>Switch the active exhibition or create a new one with its assigned Gallery Draft.</p></div><button id="refreshExhibitionsButton" class="adminButton" type="button">↻</button></div><div class="sectionBody"><form id="createExhibitionForm"><input id="newExhibitionName" class="adminInput" maxlength="120" placeholder="New exhibition name" autocomplete="off"/><button id="createExhibitionButton" class="adminButton primary" type="submit">CREATE</button></form><div style="height:10px"></div><div id="exhibitionList"><div class="fieldMeta">Loading exhibition catalog…</div></div></div></section>
-        <section class="workspaceSection"><div class="sectionHead"><div><h2>Exhibition details</h2><p>Metadata used by the admin workspace and the future public carousel.</p></div></div><div class="sectionBody"><form id="detailsForm"><label class="fieldLabel">Name<input id="exhibitionName" class="adminInput" maxlength="120" required/></label><label class="fieldLabel">Description<textarea id="exhibitionDescription" class="adminTextarea" maxlength="4000" placeholder="Short exhibition description"></textarea></label><div class="inlineFields"><label class="fieldLabel">Slug<input id="exhibitionSlug" class="adminInput" readonly/></label><label class="fieldLabel">Order<input id="exhibitionSortOrder" class="adminInput" type="number" step="1"/></label></div><div class="fieldMeta">Public status: <strong id="exhibitionPublicationStatus">—</strong></div><div class="fieldLabel">Poster / cover</div><div class="posterCard"><img id="posterPreview" alt="Exhibition poster preview"/><div class="posterActions"><button id="choosePosterButton" class="adminButton" type="button">UPLOAD / REPLACE</button><button id="removePosterButton" class="adminButton danger" type="button">REMOVE</button><div id="posterStatus" class="fieldMeta">No poster assigned.</div><input id="posterFileInput" type="file" accept="image/jpeg,image/png,image/webp,image/avif"/></div></div><div class="fieldMeta">Gallery: <strong id="exhibitionSpaceId">—</strong></div><button id="saveMetadataButton" class="adminButton primary" type="submit">SAVE EXHIBITION DETAILS</button></form></div></section>
+        <section class="workspaceSection"><div class="sectionHead"><div><h2>Exhibitions</h2><p>Create an Exhibition in an explicit Published Gallery, or switch the active Exhibition.</p></div><button id="refreshExhibitionsButton" class="adminButton" type="button">↻</button></div><div class="sectionBody"><form id="createExhibitionForm"><input id="newExhibitionName" class="adminInput" maxlength="120" placeholder="New exhibition name" autocomplete="off"/><select id="newExhibitionGallery" class="adminInput" aria-label="Published Gallery" required><option value="">Loading Published Galleries…</option></select><button id="createExhibitionButton" class="adminButton primary" type="submit" disabled>CREATE</button></form><div style="height:10px"></div><div id="exhibitionList"><div class="fieldMeta">Loading exhibition catalog…</div></div></div></section>
+        <section class="workspaceSection"><div class="sectionHead"><div><h2>Exhibition details</h2><p>Metadata and public visibility for this Exhibition.</p></div></div><div class="sectionBody"><form id="detailsForm"><label class="fieldLabel">Name<input id="exhibitionName" class="adminInput" maxlength="120" required/></label><label class="fieldLabel">Description<textarea id="exhibitionDescription" class="adminTextarea" maxlength="4000" placeholder="Short exhibition description"></textarea></label><div class="inlineFields"><label class="fieldLabel">Slug<input id="exhibitionSlug" class="adminInput" readonly/></label><label class="fieldLabel">Order<input id="exhibitionSortOrder" class="adminInput" type="number" step="1"/></label></div><div class="fieldMeta">Public status: <strong id="exhibitionPublicationStatus">—</strong></div><div class="fieldLabel">Poster / cover</div><div class="posterCard"><img id="posterPreview" alt="Exhibition poster preview"/><div class="posterActions"><button id="choosePosterButton" class="adminButton" type="button">UPLOAD / REPLACE</button><button id="removePosterButton" class="adminButton danger" type="button">REMOVE</button><div id="posterStatus" class="fieldMeta">No poster assigned.</div><input id="posterFileInput" type="file" accept="image/jpeg,image/png,image/webp,image/avif"/></div></div><div class="fieldMeta">Gallery: <strong id="exhibitionSpaceId">—</strong></div><button id="saveMetadataButton" class="adminButton primary" type="submit">SAVE EXHIBITION DETAILS</button><div class="publicationControls"><div id="exhibitionPublicationNotice" class="fieldMeta publicationNotice hidden"></div><div class="publicationActions"><button id="publishExhibitionBundleButton" class="adminButton primary" type="button">PUBLISH EXHIBITION</button><button id="unpublishExhibitionButton" class="adminButton danger" type="button">UNPUBLISH EXHIBITION</button><button id="deleteExhibitionButton" class="adminButton danger" type="button">DELETE EXHIBITION</button></div></div></form></div></section>
       </aside>
       <main id="inlineAdminMain"><section id="inlineAdminViewportCard"><div id="inlineAdminViewportToolbar"><div><div id="viewportStatus">3D preview: <strong>ready</strong></div><div id="assetDeliveryStatus" class="fieldMeta">Asset delivery: shared engine runtime</div><div id="networkDiagnostics" class="fieldMeta">Network: measuring Storage delivery…</div></div><div class="fieldMeta">One live WebGL engine — the Gallery Scene is recreated only when its immutable Version changes.</div></div><div id="adminViewportStage"><div id="workspaceLoading" class="workspaceLoading hidden"><div class="loadingCard">Preparing Admin Workspace…</div></div></div></section></main>
     </div>`;
@@ -1068,7 +1100,7 @@ if (exhibitionsButton) exhibitionsButton.addEventListener("click", function (eve
     location.href = url.href;
     return;
   }
-  ensurePublicExhibitionSelection({ force: true })
+  ensurePublicExhibitionSelection({ force: true, reason: "public-home-button" })
     .then((reference) => reference ? switchPublicExhibition(reference, { historyMode: "push", publicEntry: true, reason: "homepage-gallery-entry" }) : false)
     .catch((error) => showToast(`Could not open exhibition list: ${error && error.message ? error.message : error}`));
 });
@@ -1283,7 +1315,11 @@ async function startGalleryRuntime() {
     // Canonical Scene readiness has settled. Hide the page loader, then present the mandatory Public entry gate before movement unlock.
     bootGuard.ready();
     window.requestAnimationFrame(function () {
-      applyPublicSpaceIntroPolicy(null, publicRuntime, { initial: true, reason: "initial-public-entry" });
+      if (window.GalleryApp && typeof window.GalleryApp.beginPublicVisit === "function") {
+        window.GalleryApp.beginPublicVisit({ reason: "initial-public-entry" });
+      } else {
+        applyPublicSpaceIntroPolicy(null, publicRuntime, { initial: true, reason: "initial-public-entry" });
+      }
 
       window.requestAnimationFrame(function () {
         const introOverlay = document.getElementById("berryboyViewerIntroOverlay");

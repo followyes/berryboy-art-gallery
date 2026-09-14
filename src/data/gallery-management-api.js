@@ -66,6 +66,28 @@ async function removeStoragePathsBestEffort(supabase, paths) {
   return { removed: unique, warnings: [] };
 }
 
+
+async function removeStorageItemsOrThrow(supabase, items) {
+  const grouped = new Map();
+  for (const item of Array.isArray(items) ? items : []) {
+    const bucket = text(item && item.bucket);
+    const path = text(item && item.path);
+    if (!bucket || !path) continue;
+    if (!grouped.has(bucket)) grouped.set(bucket, []);
+    grouped.get(bucket).push(path);
+  }
+  let removed = 0;
+  for (const [bucket, paths] of grouped.entries()) {
+    const unique = [...new Set(paths)];
+    for (let i = 0; i < unique.length; i += 100) {
+      const batch = unique.slice(i, i + 100);
+      const response = await supabase.storage.from(bucket).remove(batch);
+      if (response && response.error) throw response.error;
+      removed += batch.length;
+    }
+  }
+  return removed;
+}
 export function createGalleryManagementApi({ supabase }) {
   if (!supabase) throw new Error("Supabase client is required for Gallery Management.");
 
@@ -176,12 +198,12 @@ export function createGalleryManagementApi({ supabase }) {
       return result;
     },
 
-    async clearOptionalAssetSlot(venueVersionId, role) {
+    async deleteAssetSlot(venueVersionId, role) {
       const normalizedRole = roleName(role);
-      if (!OPTIONAL_GALLERY_ASSET_ROLES.includes(normalizedRole)) throw new Error(`${normalizedRole} is required and cannot be cleared.`);
       const result = one(await supabase.rpc("admin_clear_venue_asset_slot", { p_venue_version_id: venueVersionId, p_role: normalizedRole }));
-      if (!result) throw new Error("Optional Gallery asset could not be cleared.");
+      if (!result) throw new Error("Gallery model could not be deleted.");
       const cleanup = await removeStoragePathsBestEffort(supabase, result.cleanupCandidates || []);
+      if (cleanup.warnings.length) throw new Error(cleanup.warnings[0]);
       return { ...result, cleanup };
     },
 
@@ -233,6 +255,22 @@ export function createGalleryManagementApi({ supabase }) {
       const venue = one(await supabase.rpc("admin_restore_venue", { p_venue_id: venueId }));
       if (!venue) throw new Error("Gallery restore returned no result.");
       return venue;
+    },
+
+    async deletePermanent(venueId) {
+      let prepared = false;
+      try {
+        const plan = one(await supabase.rpc("admin_prepare_venue_delete", { p_venue_id: venueId }));
+        if (!plan) throw new Error("Gallery delete preparation returned no result.");
+        prepared = true;
+        await removeStorageItemsOrThrow(supabase, plan.storageItems || []);
+        const result = one(await supabase.rpc("admin_delete_venue", { p_venue_id: venueId }));
+        if (!result || result.deleted !== true) throw new Error("Gallery delete returned no confirmation.");
+        return result;
+      } catch (error) {
+        if (prepared) await supabase.rpc("admin_cancel_venue_delete", { p_venue_id: venueId }).catch(() => null);
+        throw error;
+      }
     },
 
     async resolveTest(versionId) {
