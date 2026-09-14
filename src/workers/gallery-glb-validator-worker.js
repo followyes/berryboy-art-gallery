@@ -6,6 +6,7 @@
 
 const VALIDATION_SCHEMA = "exhibition-platform-gallery-model-validation.v1";
 const VALIDATOR_VERSION = "C6C8C23.1";
+const STRUCTURAL_SIGNATURE_SCHEMA = "exhibition-platform-gallery-runtime-mesh-signatures.v1";
 const GLB_MAGIC = 0x46546c67;
 const JSON_CHUNK = 0x4e4f534a;
 const BIN_CHUNK = 0x004e4942;
@@ -174,6 +175,8 @@ class GlbStreamParser {
     this.chunks = [];
     this.jsonParts = [];
     this.jsonBytes = 0;
+    this.binParts = [];
+    this.binBytes = 0;
     this.totalConsumed = 0;
     this.error = null;
   }
@@ -209,6 +212,9 @@ class GlbStreamParser {
         if (this.chunk.type===JSON_CHUNK && take) {
           this.jsonParts.push(data.slice(p,p+take));
           this.jsonBytes+=take;
+        } else if (this.chunk.type===BIN_CHUNK && take) {
+          this.binParts.push(data.slice(p,p+take));
+          this.binBytes+=take;
         }
         p+=take; this.totalConsumed+=take; this.chunk.remaining-=take;
         if (this.chunk.remaining===0) this.chunk=null;
@@ -237,7 +243,9 @@ class GlbStreamParser {
       try { json=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(merged).replace(/\u0000+$/g,"")); jsonParsed=true; }
       catch (error) { errors.push(issue("GLB_JSON_INVALID",`GLB JSON chunk could not be parsed: ${error.message || error}`)); }
     }
-    return {header:this.header,chunks:this.chunks,json,jsonParsed,errors};
+    const bin=new Uint8Array(this.binBytes); let bo=0;
+    for(const part of this.binParts){bin.set(part,bo);bo+=part.length;}
+    return {header:this.header,chunks:this.chunks,json,jsonParsed,bin,errors};
   }
 }
 
@@ -272,7 +280,65 @@ function saneBounds(min,max){
   return finiteArray(min,3)&&finiteArray(max,3)&&min.every((v,i)=>v<=max[i]&&Math.abs(v)<=MAX_REASONABLE_COORDINATE&&Math.abs(max[i])<=MAX_REASONABLE_COORDINATE);
 }
 
-function inspectGltf(gltf, chunks, role) {
+function sha256Text(value){
+  const sha=new Sha256();
+  sha.update(new TextEncoder().encode(String(value)));
+  return `sha256:${sha.digestHex()}`;
+}
+function stableNumber(value){
+  return Number.isFinite(Number(value))?Number(Number(value).toFixed(6)):null;
+}
+function stableArray(values){
+  return Array.isArray(values)?values.map(stableNumber):[];
+}
+function accessorFingerprint(accessorIndex,accessors,bufferViews,bin){
+  const ai=Number(accessorIndex);
+  if(!Number.isInteger(ai)||ai<0||ai>=accessors.length)return null;
+  const a=accessors[ai]||{};
+  const meta={componentType:Number(a.componentType)||null,type:safeText(a.type)||null,count:Number(a.count)||0,normalized:a.normalized===true,min:Array.isArray(a.min)?a.min:null,max:Array.isArray(a.max)?a.max:null};
+  const sha=new Sha256();
+  sha.update(new TextEncoder().encode(JSON.stringify(meta)));
+  const elementSize=accessorElementByteSize(a), count=Number(a.count);
+  if(a.bufferView!==undefined&&validIndex(a.bufferView,bufferViews.length)&&elementSize&&Number.isInteger(count)&&count>=0&&bin instanceof Uint8Array){
+    const bv=bufferViews[Number(a.bufferView)]||{};
+    const viewOffset=Number(bv.byteOffset||0), accessorOffset=Number(a.byteOffset||0), stride=bv.byteStride===undefined?elementSize:Number(bv.byteStride);
+    if(Number.isInteger(viewOffset)&&viewOffset>=0&&Number.isInteger(accessorOffset)&&accessorOffset>=0&&Number.isInteger(stride)&&stride>=elementSize){
+      for(let i=0;i<count;i++){
+        const start=viewOffset+accessorOffset+i*stride, end=start+elementSize;
+        if(start<0||end>bin.length)return null;
+        sha.update(bin.subarray(start,end));
+      }
+    }
+  }
+  const sparse=a&&a.sparse;
+  if(sparse&&Number.isInteger(Number(sparse.count))&&bin instanceof Uint8Array){
+    for(const section of [sparse.indices,sparse.values]){
+      if(!section||!validIndex(section.bufferView,bufferViews.length))continue;
+      const bv=bufferViews[Number(section.bufferView)]||{};
+      const start=Number(bv.byteOffset||0)+Number(section.byteOffset||0), end=Number(bv.byteOffset||0)+Number(bv.byteLength||0);
+      if(Number.isInteger(start)&&Number.isInteger(end)&&start>=0&&end<=bin.length&&end>=start)sha.update(bin.subarray(start,end));
+    }
+  }
+  return `sha256:${sha.digestHex()}`;
+}
+function meshGeometryFingerprint(mesh,accessors,bufferViews,bin){
+  const primitives=Array.isArray(mesh&&mesh.primitives)?mesh.primitives:[];
+  const normalized=primitives.map((p)=>{
+    const attrs=p&&p.attributes&&typeof p.attributes==="object"?p.attributes:{};
+    const attrFingerprints=Object.fromEntries(Object.keys(attrs).sort().map((key)=>[key,accessorFingerprint(attrs[key],accessors,bufferViews,bin)]));
+    const targets=(Array.isArray(p&&p.targets)?p.targets:[]).map((target)=>Object.fromEntries(Object.keys(target||{}).sort().map((key)=>[key,accessorFingerprint(target[key],accessors,bufferViews,bin)])));
+    return {mode:p&&p.mode===undefined?4:Number(p.mode),attributes:attrFingerprints,indices:p&&p.indices===undefined?null:accessorFingerprint(p.indices,accessors,bufferViews,bin),targets};
+  });
+  return sha256Text(JSON.stringify(normalized));
+}
+function finalizeBoundsReport(bounds,boundedPrimitiveCount,missingBoundsCount){
+  if(!boundedPrimitiveCount||!bounds.min.every(Number.isFinite)||!bounds.max.every(Number.isFinite))return null;
+  const extent=bounds.max.map((v,i)=>v-bounds.min[i]);
+  const diagonal=Math.hypot(...extent);
+  return {min:stableArray(bounds.min),max:stableArray(bounds.max),extent:stableArray(extent),diagonal:stableNumber(diagonal),complete:missingBoundsCount===0,boundedPrimitiveCount,missingPrimitiveBounds:missingBoundsCount};
+}
+
+function inspectGltf(gltf, chunks, role, binBytes) {
   const errors=[], warnings=[];
   if(!gltf || typeof gltf!=="object" || Array.isArray(gltf)) return {errors:[issue("GLTF_ROOT_INVALID","GLB JSON root must be an object.")],warnings:[],summary:{}};
   const asset=gltf.asset||{};
@@ -351,6 +417,8 @@ function inspectGltf(gltf, chunks, role) {
   const duplicateRuntimeNames=[...new Set(runtimeMeshNames.filter((n,i,a)=>a.indexOf(n)!==i))];
   if(duplicateRuntimeNames.length) errors.push(issue("GLTF_DUPLICATE_RUNTIME_MESH_NAME",`Duplicate runtime mesh names inside ${role}: ${duplicateRuntimeNames.slice(0,10).join(", ")}.`));
 
+  const meshGeometryFingerprints=meshes.map((mesh)=>meshGeometryFingerprint(mesh,accessors,bufferViews,binBytes));
+  const runtimeMeshes=[];
   const bounds={min:[Infinity,Infinity,Infinity],max:[-Infinity,-Infinity,-Infinity]};
   let boundedPrimitiveCount=0, missingBoundsCount=0, reachableRenderablePrimitiveCount=0;
   const roots=[];
@@ -373,12 +441,23 @@ function inspectGltf(gltf, chunks, role) {
     active.add(ni);
     const node=nodes[ni]||{}, world=multiplyMatrix(parent,nodeLocalMatrix(node));
     if(node.mesh!==undefined&&meshes[Number(node.mesh)]){
-      for(const primitive of (meshes[Number(node.mesh)].primitives||[])){
+      const meshIndex=Number(node.mesh), mesh=meshes[meshIndex];
+      const nodeBounds={min:[Infinity,Infinity,Infinity],max:[-Infinity,-Infinity,-Infinity]};
+      let nodeBounded=0,nodeMissing=0;
+      for(const primitive of (mesh.primitives||[])){
         const ai=primitive&&primitive.attributes?Number(primitive.attributes.POSITION):NaN;
         const accessor=Number.isInteger(ai)?accessors[ai]:null;
         if(accessor) reachableRenderablePrimitiveCount++;
-        if(accessor&&saneBounds(accessor.min,accessor.max)){includeBounds(bounds,accessor.min,accessor.max,world);boundedPrimitiveCount++;}
-        else if(accessor) missingBoundsCount++;
+        if(accessor&&saneBounds(accessor.min,accessor.max)){includeBounds(bounds,accessor.min,accessor.max,world);includeBounds(nodeBounds,accessor.min,accessor.max,world);boundedPrimitiveCount++;nodeBounded++;}
+        else if(accessor){missingBoundsCount++;nodeMissing++;}
+      }
+      const runtimeName=safeText(node.name)||safeText(mesh.name);
+      if(runtimeName&&runtimeName!=="__root__"){
+        const worldMatrix=world.map(stableNumber);
+        runtimeMeshes.push({
+          name:runtimeName,nodeIndex:ni,meshIndex,sourceMeshName:safeText(mesh.name)||null,primitiveCount:Array.isArray(mesh.primitives)?mesh.primitives.length:0,
+          geometryFingerprint:meshGeometryFingerprints[meshIndex],transformFingerprint:sha256Text(JSON.stringify(worldMatrix)),worldMatrix,worldBounds:finalizeBoundsReport(nodeBounds,nodeBounded,nodeMissing)
+        });
       }
     }
     for(const child of (Array.isArray(node.children)?node.children:[])) visit(Number(child),world);
@@ -406,6 +485,8 @@ function inspectGltf(gltf, chunks, role) {
     meshNames,
     runtimeMeshNames:[...new Set(runtimeMeshNames)],
     duplicateRuntimeNames,
+    structuralSignatureSchema:STRUCTURAL_SIGNATURE_SCHEMA,
+    runtimeMeshes:runtimeMeshes.sort((a,b)=>a.name.localeCompare(b.name)),
     bounds:boundsReport
   }};
 }
@@ -440,7 +521,7 @@ async function validate(message) {
   const streamed=await streamSource(message.source,(loaded,total)=>postMessage({type:"progress",id:message.id,loaded,total}));
   errors.push(...streamed.parsed.errors);
   let summary={};
-  if(streamed.parsed.jsonParsed){const inspected=inspectGltf(streamed.parsed.json,streamed.parsed.chunks,role);errors.push(...inspected.errors);warnings.push(...inspected.warnings);summary=inspected.summary;}
+  if(streamed.parsed.jsonParsed){const inspected=inspectGltf(streamed.parsed.json,streamed.parsed.chunks,role,streamed.parsed.bin);errors.push(...inspected.errors);warnings.push(...inspected.warnings);summary=inspected.summary;}
   if(message.expectedSize!==undefined&&message.expectedSize!==null&&Number(message.expectedSize)!==streamed.total) errors.push(issue("SOURCE_SIZE_MISMATCH",`Expected ${Number(message.expectedSize)} bytes but read ${streamed.total}.`));
   if(streamed.total===0) errors.push(issue("FILE_EMPTY","GLB file is empty."));
   const report={

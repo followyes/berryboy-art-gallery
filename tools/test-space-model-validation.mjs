@@ -13,9 +13,16 @@ import {
 import {
   GALLERY_MODEL_VALIDATION_SCHEMA,
   GALLERY_MODEL_VALIDATOR_VERSION,
+  GALLERY_STRUCTURAL_SIGNATURE_SCHEMA,
   isCurrentGalleryModelValidation,
+  hasCurrentGalleryStructuralSignatures,
   summarizeGalleryModelValidation
 } from '../src/validation/gallery-model-validation.js';
+import {
+  compareGalleryRoleStructures,
+  compareGalleryStructuralSnapshots,
+  GALLERY_STRUCTURAL_COMPATIBILITY_SCHEMA
+} from '../src/validation/gallery-structural-compatibility.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const workerPath = path.join(root, 'src/workers/gallery-glb-validator-worker.js');
@@ -95,6 +102,13 @@ assert.equal(valid.valid,true,JSON.stringify(valid.errors));
 assert.equal(valid.glb.meshCount,1);
 assert.equal(valid.glb.renderablePrimitiveCount,1);
 assert.deepEqual(valid.glb.runtimeMeshNames,['Floor_segment_001']);
+assert.equal(valid.glb.structuralSignatureSchema,GALLERY_STRUCTURAL_SIGNATURE_SCHEMA);
+assert.equal(valid.glb.runtimeMeshes.length,1);
+assert.equal(valid.glb.runtimeMeshes[0].name,'Floor_segment_001');
+assert.match(valid.glb.runtimeMeshes[0].geometryFingerprint,/^sha256:[0-9a-f]{64}$/);
+assert.match(valid.glb.runtimeMeshes[0].transformFingerprint,/^sha256:[0-9a-f]{64}$/);
+assert.deepEqual(valid.glb.runtimeMeshes[0].worldBounds.min,[0,0,0]);
+assert.deepEqual(valid.glb.runtimeMeshes[0].worldBounds.max,[1,0,1]);
 assert.deepEqual(valid.glb.bounds.min,[0,0,0]);
 assert.deepEqual(valid.glb.bounds.max,[1,0,1]);
 assert.equal(valid.fileHash,'sha256:'+crypto.createHash('sha256').update(validBytes).digest('hex'));
@@ -116,6 +130,35 @@ for (const binLength of [36,40,44,48,52,56,60,64,68,72,76,80]) {
   assert.equal(report.valid,true,JSON.stringify(report.errors));
   assert.equal(report.fileHash,'sha256:'+crypto.createHash('sha256').update(bytes).digest('hex'));
 }
+
+// V14.3.3 structural compatibility: same geometry + transform move vs byte-level geometry change.
+const movedGltf=baseGltf({nodes:[{name:'Floor_segment_001',mesh:0,translation:[2,0,0]}]});
+const movedReport=await validateBytes(makeGlb(movedGltf),'floor');
+assert.equal(movedReport.valid,true,JSON.stringify(movedReport.errors));
+const movedComparison=compareGalleryRoleStructures(valid,movedReport,{role:'floor'});
+assert.equal(movedComparison.schema,GALLERY_STRUCTURAL_COMPATIBILITY_SCHEMA);
+assert.equal(movedComparison.classification,'MOVED');
+assert.equal(movedComparison.counts.MOVED,1);
+
+const changedBin=new Uint8Array(36); changedBin[0]=123; changedBin[12]=45;
+const changedReport=await validateBytes(makeGlb(baseGltf(),changedBin),'floor');
+assert.equal(changedReport.valid,true,JSON.stringify(changedReport.errors));
+const changedComparison=compareGalleryRoleStructures(valid,changedReport,{role:'floor'});
+assert.equal(changedComparison.classification,'CHANGED');
+assert.equal(changedComparison.counts.CHANGED,1);
+
+const identicalComparison=compareGalleryRoleStructures(valid,valid,{role:'floor'});
+assert.equal(identicalComparison.classification,'UNCHANGED');
+assert.equal(identicalComparison.evidence,'IDENTICAL_FILE_HASH');
+
+const legacyValidation={schema:valid.schema,validatorVersion:valid.validatorVersion,valid:true,role:'floor',fileHash:'sha256:'+ '1'.repeat(64),fileSize:100,glb:{meshCount:1,renderablePrimitiveCount:1,reachableRenderablePrimitiveCount:1,runtimeMeshNames:['Floor_segment_001']}};
+const legacySame={...legacyValidation};
+assert.equal(compareGalleryRoleStructures(legacyValidation,legacySame,{role:'floor'}).classification,'UNCHANGED');
+const legacyOther={...legacyValidation,fileHash:'sha256:'+ '2'.repeat(64)};
+assert.equal(compareGalleryRoleStructures(legacyValidation,legacyOther,{role:'floor'}).classification,'UNVERIFIABLE');
+const galleryComparison=compareGalleryStructuralSnapshots({floor:valid},{floor:movedReport});
+assert.equal(galleryComparison.classification,'MOVED');
+assert.equal(galleryComparison.roles.find(x=>x.role==='walls').classification,'UNCHANGED');
 
 const emptyJsonReport=await validateBytes(makeRawJsonGlb(''),'floor');
 assert.equal(emptyJsonReport.valid,false);
@@ -169,7 +212,9 @@ assert.ok(badSceneReport.errors.some(x=>x.code==='GLTF_SCENE_INDEX'));
 // Browser-side staleness contract.
 const asset={file_hash:valid.fileHash,file_size:valid.fileSize,storage_path:'venues/a/versions/b/assets/floor/file.glb',metadata:{c23ModelValidation:{...valid,sourceStoragePath:'venues/a/versions/b/assets/floor/file.glb'}}};
 assert.equal(isCurrentGalleryModelValidation(asset,'floor'),true);
+assert.equal(hasCurrentGalleryStructuralSignatures(asset,'floor'),true);
 assert.equal(summarizeGalleryModelValidation(asset,'floor').state,'valid');
+assert.equal(summarizeGalleryModelValidation(asset,'floor').structural,true);
 assert.equal(isCurrentGalleryModelValidation({...asset,file_hash:'sha256:'+'0'.repeat(64)},'floor'),false);
 assert.equal(summarizeGalleryModelValidation(null,'props').state,'optional');
 
@@ -191,6 +236,7 @@ assert.equal(validateVenueManifest(withTwoProps).valid,false);
 
 // Static integration invariants around upload/publish/runtime.
 assert.ok(apiSource.includes('admin_record_venue_asset_validation'));
+assert.ok(apiSource.includes('admin_refresh_venue_asset_structural_metadata') && apiSource.includes('venue_version_structural_signature_report'));
 assert.ok(apiSource.includes('admin_clear_venue_asset_slot'));
 assert.ok(apiSource.includes('C23 deep validation must pass before a Gallery model can be uploaded'));
 assert.ok(adminSource.includes('validateGalleryModelFile') && adminSource.includes('validateExistingGalleryAsset'));

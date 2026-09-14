@@ -6,14 +6,14 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import { registerExhibitionAssetCache, getExhibitionAssetCacheStatus, getExhibitionAssetDeliveryStats, evictExhibitionAssetCacheUrl } from "./asset-cache-bootstrap.js?v=c6c8c22_gallery_management_20260908";
 import { beginTransitionGuard, endTransitionGuard, isTransitionGuardActive } from "./transition-guard.js?v=v14_2_6_draft_publish_20260914";
 import { createExhibitionDataAdapter, resolveInitialAdminRuntime } from "../data/exhibition-api.js?v=v14_2_6_draft_publish_20260914";
-import { createGalleryManagementApi, CONTROLLED_GALLERY_ASSET_ROLES } from "../data/gallery-management-api.js?v=v14_2_6_draft_publish_20260914";
+import { createGalleryManagementApi, CONTROLLED_GALLERY_ASSET_ROLES } from "../data/gallery-management-api.js?v=v14_3_3_structural_compatibility";
 import {
   REQUIRED_GALLERY_MODEL_ROLES,
   validateGalleryModelFile,
   validateGalleryModelUrl,
   isCurrentGalleryModelValidation,
   summarizeGalleryModelValidation
-} from "../validation/gallery-model-validation.js?v=c6c8c25_cross_space_runtime";
+} from "../validation/gallery-model-validation.js?v=v14_3_3_structural_compatibility";
 import { getRuntimeVenueVersionKey } from "../runtime/scene-lifecycle-controller.js?v=v14_2_6_draft_publish_20260914";
 import { createSceneLoadingRuntimeHost } from "../runtime/scene-loading-orchestrator.js?v=v14_2_6_draft_publish_20260914";
 import { buildAuthoringSpaceDefinition } from "../runtime/space-definition-resolver.js?v=c6c8c25_2_admin_gallery_preview";

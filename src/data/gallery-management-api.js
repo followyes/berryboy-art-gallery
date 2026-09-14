@@ -198,6 +198,31 @@ export function createGalleryManagementApi({ supabase }) {
       return result;
     },
 
+    async refreshAssetStructuralMetadata({ venueVersionId, role, validation }) {
+      const normalizedRole = roleName(role);
+      const glb = validation && validation.glb && typeof validation.glb === "object" ? validation.glb : null;
+      if (!validation || validation.valid !== true || validation.role !== normalizedRole || !/^sha256:[0-9a-f]{64}$/.test(text(validation.fileHash))) {
+        throw new Error("A passing Gallery model validation is required for structural metadata refresh.");
+      }
+      if (!glb || glb.structuralSignatureSchema !== "exhibition-platform-gallery-runtime-mesh-signatures.v1" || !Array.isArray(glb.runtimeMeshes)) {
+        throw new Error("V14.3.3 runtime-mesh structural signatures are required for metadata refresh.");
+      }
+      const result = one(await supabase.rpc("admin_refresh_venue_asset_structural_metadata", {
+        p_venue_version_id: venueVersionId,
+        p_role: normalizedRole,
+        p_file_hash: validation.fileHash,
+        p_validation: validation
+      }));
+      if (!result || !result.asset) throw new Error("Gallery structural metadata could not be refreshed.");
+      return result;
+    },
+
+    async getStructuralMetadataStatus(venueVersionId) {
+      const result = one(await supabase.rpc("venue_version_structural_signature_report", { p_venue_version_id: venueVersionId }));
+      if (!result || !Array.isArray(result.roles)) throw new Error("Gallery structural metadata status could not be loaded.");
+      return result;
+    },
+
     async deleteAssetSlot(venueVersionId, role) {
       const normalizedRole = roleName(role);
       const result = one(await supabase.rpc("admin_clear_venue_asset_slot", { p_venue_version_id: venueVersionId, p_role: normalizedRole }));

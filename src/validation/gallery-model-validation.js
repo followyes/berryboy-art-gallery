@@ -1,13 +1,15 @@
 /* Exhibition Platform — C6C8C23 Space Model Validation browser coordinator. */
 export const GALLERY_MODEL_VALIDATION_SCHEMA = "exhibition-platform-gallery-model-validation.v1";
 export const GALLERY_MODEL_VALIDATOR_VERSION = "C6C8C23.1";
+export const GALLERY_STRUCTURAL_SIGNATURE_SCHEMA = "exhibition-platform-gallery-runtime-mesh-signatures.v1";
+export const GALLERY_STRUCTURAL_SIGNATURE_STAGE = "V14.3.3";
 export const REQUIRED_GALLERY_MODEL_ROLES = Object.freeze(["floor", "walls", "ceiling"]);
 export const OPTIONAL_GALLERY_MODEL_ROLES = Object.freeze(["props"]);
 export const ALL_GALLERY_MODEL_ROLES = Object.freeze([...REQUIRED_GALLERY_MODEL_ROLES, ...OPTIONAL_GALLERY_MODEL_ROLES]);
 
 let sequence = 0;
 function nextId() { sequence += 1; return `gallery-model-${Date.now().toString(36)}-${sequence}`; }
-function workerUrl() { return new URL("../workers/gallery-glb-validator-worker.js?v=c6c8c24_exhibition_gallery_assignment", import.meta.url); }
+function workerUrl() { return new URL("../workers/gallery-glb-validator-worker.js?v=v14_3_3_structural_compatibility", import.meta.url); }
 
 function validateWithWorker(payload, onProgress) {
   return new Promise((resolve, reject) => {
@@ -63,6 +65,24 @@ export function isCurrentGalleryModelValidation(asset, role) {
   return true;
 }
 
+
+export function hasCurrentGalleryStructuralSignatures(asset, role) {
+  if (!isCurrentGalleryModelValidation(asset, role)) return false;
+  const report = asset.metadata.c23ModelValidation;
+  const glb = report && report.glb && typeof report.glb === "object" ? report.glb : null;
+  if (!glb || glb.structuralSignatureSchema !== GALLERY_STRUCTURAL_SIGNATURE_SCHEMA || !Array.isArray(glb.runtimeMeshes)) return false;
+  const names = new Set();
+  for (const mesh of glb.runtimeMeshes) {
+    if (!mesh || typeof mesh !== "object") return false;
+    const name = String(mesh.name || "").trim();
+    if (!name || names.has(name)) return false;
+    names.add(name);
+    if (!/^sha256:[0-9a-f]{64}$/.test(String(mesh.geometryFingerprint || ""))) return false;
+    if (!/^sha256:[0-9a-f]{64}$/.test(String(mesh.transformFingerprint || ""))) return false;
+  }
+  return true;
+}
+
 export function summarizeGalleryModelValidation(asset, role) {
   const metadata = asset && asset.metadata && typeof asset.metadata === "object" ? asset.metadata : {};
   const report = metadata.c23ModelValidation && typeof metadata.c23ModelValidation === "object" ? metadata.c23ModelValidation : null;
@@ -71,5 +91,6 @@ export function summarizeGalleryModelValidation(asset, role) {
   if (!isCurrentGalleryModelValidation(asset, role)) return { state: report.valid === false ? "invalid" : "stale", label: report.valid === false ? "Deep validation failed" : "Validation is stale", report };
   const meshCount = Number(report.glb && report.glb.meshCount) || 0;
   const warningCount = Array.isArray(report.warnings) ? report.warnings.length : 0;
-  return { state: warningCount ? "warning" : "valid", label: `Validated · ${meshCount} mesh${meshCount===1?"":"es"}${warningCount ? ` · ${warningCount} warning${warningCount===1?"":"s"}` : ""}`, report };
+  const structural = hasCurrentGalleryStructuralSignatures(asset, role);
+  return { state: warningCount ? "warning" : "valid", label: `Validated · ${meshCount} mesh${meshCount===1?"":"es"}${structural ? " · structural signatures" : " · legacy structural metadata"}${warningCount ? ` · ${warningCount} warning${warningCount===1?"":"s"}` : ""}`, report, structural };
 }

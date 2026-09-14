@@ -14,6 +14,9 @@ const spaceFixture=fs.readFileSync(new URL('../src/config/space-fixture.js',impo
 const spaceResolver=fs.readFileSync(new URL('../src/runtime/space-definition-resolver.js',import.meta.url),'utf8');
 const exhibitionApi=fs.readFileSync(new URL('../src/data/exhibition-api.js',import.meta.url),'utf8');
 const galleryManagementApi=fs.readFileSync(new URL('../src/data/gallery-management-api.js',import.meta.url),'utf8');
+const galleryStructuralCompatibility=fs.readFileSync(new URL('../src/validation/gallery-structural-compatibility.js',import.meta.url),'utf8');
+const galleryModelValidation=fs.readFileSync(new URL('../src/validation/gallery-model-validation.js',import.meta.url),'utf8');
+const galleryGlbValidator=fs.readFileSync(new URL('../src/workers/gallery-glb-validator-worker.js',import.meta.url),'utf8');
 const galleryTestBootstrap=fs.readFileSync(new URL('../src/bootstrap/gallery-test-bootstrap.js',import.meta.url),'utf8');
 const galleryTestHtml=fs.readFileSync(new URL('../gallery-test.html',import.meta.url),'utf8');
 const assetCacheBootstrap=fs.readFileSync(new URL('../src/bootstrap/asset-cache-bootstrap.js',import.meta.url),'utf8');
@@ -45,7 +48,12 @@ assert(adminBootstrap.includes('const STAGE = "V14.1.10.1"'),'Admin stage identi
 assert(bootstrap.includes('v14_2_6_draft_publish_20260914'),'Current engine cache key missing');
 assert(index.includes('gallery-viewer-bootstrap.js?v=v14_2_6_draft_publish_20260914'),'Index viewer cache key missing');
 const currentPackage=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
-assert(currentPackage.version==='0.14.2-v14-2-6-canonical-draft-publish-model'&&currentPackage.description.includes('V14.2.6 Canonical Draft / Publish Model'),'V14.2.5 package identity missing');
+assert(currentPackage.version==='0.14.2-v14-2-6-canonical-draft-publish-model'&&currentPackage.description.includes('V14.2.6 Canonical Draft / Publish Model'),'V14.2.6 package identity missing');
+
+assert(galleryGlbValidator.includes('exhibition-platform-gallery-runtime-mesh-signatures.v1')&&galleryGlbValidator.includes('geometryFingerprint')&&galleryGlbValidator.includes('transformFingerprint'),'V14.3.3 worker structural signatures missing');
+assert(galleryModelValidation.includes('GALLERY_STRUCTURAL_SIGNATURE_SCHEMA')&&galleryModelValidation.includes('hasCurrentGalleryStructuralSignatures'),'V14.3.3 browser structural signature contract missing');
+assert(galleryStructuralCompatibility.includes('STRUCTURAL_SIGNATURES_MISSING')&&galleryStructuralCompatibility.includes('IDENTICAL_FILE_HASH')&&galleryStructuralCompatibility.includes('classification: sameGeometry ? (sameTransform ? "UNCHANGED" : "MOVED") : "CHANGED"'),'V14.3.3 compatibility classifier missing');
+assert(galleryManagementApi.includes('admin_refresh_venue_asset_structural_metadata')&&galleryManagementApi.includes('venue_version_structural_signature_report'),'V14.3.3 metadata hydration adapter missing');
 assert(adminBootstrap.includes('newExhibitionGallery')&&adminBootstrap.includes('exhibitionData.create({ name, venueId, venueVersionId })'),'V14.2.2 explicit Gallery-target create flow missing');
 assert(adminBootstrap.includes('selectAndSwitchExhibition(created.id, {')&&adminBootstrap.includes('reason: "admin-exhibition-create-enter"'),'V14.2.3 post-create orchestrated Scene entry missing');
 assert(adminBootstrap.includes('CREATE EXHIBITION IN THIS GALLERY')&&adminBootstrap.includes('handleCreateExhibitionForGallery'),'V14.2.3 creation shortcut regression missing');
