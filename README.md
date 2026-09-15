@@ -1,17 +1,25 @@
 # Exhibition Platform
 
-Current repository release candidate: **V14.3.8 — Simplified Shared Asset Lifecycle**.
+Current repository release candidate: **V14.3.9 — Unified Asset Placement**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
 
+## V14.3.9 Unified Asset Placement
+
+Shared Props and artwork-only Frames now use one pointer-driven placement model across mouse, pen and touch. Asset tiles use Pointer Events with movement threshold + pointer capture instead of normal HTML5 `dragstart`/DataTransfer placement. Prop drops are accepted only on the current Gallery floor; Frame drops are accepted only on artworks.
+
+The old normal `PLACE PROP / CANCEL PLACE` ceremony is removed. Prop drag keeps the existing floor ghost and creates exactly one Exhibition-owned instance on a valid drop. Frame drag binds the exact current immutable Asset Version to the dropped artwork. Existing Frame `CHANGE` click-binding remains only as a compatibility shortcut.
+
+Drop revalidates the active Exhibition, logical Gallery and exact `venueVersionId` before mutating state. Exact immutable `assetVersionId` serialization remains unchanged. Touch tiles keep `touch-action: pan-y`, so vertical Asset Library scrolling remains possible while intentional cross-panel placement uses the same pointer path.
+
+V14.3.9 changes no schema, RPC, RLS or Storage policy. V14.3.8 Add/Replace/Delete lifecycle and Public/Scene lifecycle contracts remain unchanged.
+
 ## V14.3.8 Simplified Shared Asset Lifecycle
 
-Normal Shared Asset authoring now follows the product model `Add / Replace -> Use -> Delete`. Add creates an Asset with a validated GLB in one workflow; Replace validates and technically publishes a new immutable Asset Version automatically, while existing placed Props/Frames keep their exact historical `assetVersionId`. Normal Asset Manager UI no longer exposes Draft/Published/Previous version ceremony, manual Publish Version, Version History, Archive/Restore or raw retained-reference inventory.
+Shared Asset normal lifecycle is `Add / Replace -> Use -> Delete`. Add creates a validated immediately usable Asset; Replace publishes a new immutable technical version only after validation and affects future placements only. Existing Props/Frames stay pinned to their exact historical `assetVersionId`. Permanent Delete uses retained-reference guards, deletion-pending state, exact Storage cleanup and final DB recheck.
 
-Permanent Delete uses a guarded prepare -> Storage cleanup -> final-delete protocol. Any retained Draft/Published/Previous Exhibition usage blocks deletion. While deletion is pending, new versions and new usages are rejected; immutable model deletion is authorized only for the Asset being permanently deleted. Model/thumbnail Storage objects are inventoried before final DB deletion, including legacy seeded Frame paths.
-
-V14.3.8 intentionally does not redesign placement. Existing Prop/Frame placement and binding behavior remains until V14.3.9. Gallery/Public resolution, Scene lifecycle, V14.3.7.1 product Save and Published ON/OFF semantics are unchanged.
+V14.3.8 is PASS/CLOSED. Its applied migration is archive-only in the release package.
 
 ## V14.3.7.1 Product Save Workflow Correction
 

@@ -286,14 +286,14 @@ const primaryTabsStart = source.indexOf('{ key: "exhibits", label: "EXHIBITS" }'
 const primaryTabs = source.slice(primaryTabsStart, source.indexOf('].forEach(function (definition)', primaryTabsStart) + 2);
 assert.ok(primaryTabs.includes('EXHIBITS') && primaryTabs.includes('SPACE') && primaryTabs.includes('LIGHTING') && primaryTabs.includes('SETTINGS'), 'Right inspector contextual tabs changed unexpectedly');
 assert.ok(!primaryTabs.includes('ASSETS'), 'ASSETS was incorrectly added to the right inspector');
-assert.ok(assetWorkspace.includes('application/x-exhibition-shared-asset') && assetWorkspace.includes('PLACE PROP'), 'V13.3 Prop Browser placement affordances are missing');
-assert.ok(admin.includes('beginSharedAssetPropPlacement') && admin.includes('getPlacementContext'), 'V13.3 live Scene placement bridge is missing');
+assert.ok(assetWorkspace.includes('installUnifiedPointerPlacement') && assetWorkspace.includes('pointerdown') && assetWorkspace.includes('pointermove') && assetWorkspace.includes('pointerup') && assetWorkspace.includes('pointercancel') && !assetWorkspace.includes('PLACE PROP') && !assetWorkspace.includes('CANCEL PLACE'), 'V14.3.9 unified Prop/Frame pointer placement affordances are missing');
+assert.ok(admin.includes('beginSharedAssetPropPlacement') && admin.includes('updateSharedAssetPropPointerPlacement') && admin.includes('commitSharedAssetPropPointerPlacement') && admin.includes('updateSharedAssetFramePointerDrag') && admin.includes('commitSharedAssetFramePointerDrag') && admin.includes('getPlacementContext'), 'V14.3.9 live Scene pointer placement bridge is missing');
 assert.ok(source.includes('createEditorSection("PROP")') && source.includes('PROP TRANSFORM'), 'V13.3 right contextual Prop inspector is missing');
 assert.ok(source.includes('assetInstances: artSpheres.filter(isSharedAssetPropSlot)'), 'V13.3 Prop instances are not serialized as a separate Exhibition state domain');
-assert.ok(assetWorkspace.includes('application/x-exhibition-shared-frame') && assetWorkspace.includes('beginFrameBinding(target)'), 'V13.4 left Frame Browser binding/drag affordances are missing');
+assert.ok(assetWorkspace.includes('exhibition-platform-frame-binding.v1') && assetWorkspace.includes('installUnifiedPointerPlacement') && assetWorkspace.includes('bindFrameToTarget') && assetWorkspace.includes('beginFrameBinding(target)'), 'V14.3.9 left Frame Browser pointer binding affordances are missing');
 assert.ok(admin.includes('exhibition-platform:open-frame-browser') && admin.includes('applySharedAssetFrameToSelectedArtwork'), 'V13.4 Frame Browser workspace bridge is missing');
 assert.ok(admin.includes('__exhibitionPlatformOpenFrameBrowserHandler') && admin.includes('removeEventListener("exhibition-platform:open-frame-browser"'), 'V13.4 Frame Browser bridge is not remount-safe');
 assert.ok(source.includes('artworkFrameChangeButton.innerText = "CHANGE"') && source.includes('artworkFrameRemoveButton.innerText = "REMOVE"') && !source.includes('var artworkFrameGrid = document.createElement("div")'), 'V13.4 old right Frame grid was not removed');
 
-console.log('V13.2 Asset Manager + V13.3 Prop placement + V13.4 Frame Browser + V13.5 hardening regression passed under V13.6 closure candidate.');
+console.log('V13 Asset Manager/Frame Browser hardening plus V14.3.9 unified pointer placement regression passed.');
 })();

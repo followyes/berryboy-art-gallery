@@ -1,10 +1,10 @@
-/* Exhibition Platform — V14.3.8 Simplified Shared Asset lifecycle.
-   Asset catalog remains in the left workspace; technical Asset versions stay hidden. */
+/* Exhibition Platform — V14.3.9 Unified Asset Placement.
+   Asset catalog remains in the left workspace; Props and Frames share one pointer-driven drag model. */
 
-import { createSharedAssetApi } from "../data/shared-asset-api.js?v=v14_3_8_shared_asset_lifecycle";
-import { getDefaultSharedAssetRuntimeMetadata } from "../validation/shared-asset-validation.js?v=v14_3_8_shared_asset_lifecycle";
+import { createSharedAssetApi } from "../data/shared-asset-api.js?v=v14_3_9_unified_asset_placement";
+import { getDefaultSharedAssetRuntimeMetadata } from "../validation/shared-asset-validation.js?v=v14_3_9_unified_asset_placement";
 
-export const ADMIN_ASSET_WORKSPACE_STAGE = "V14.3.8";
+export const ADMIN_ASSET_WORKSPACE_STAGE = "V14.3.9";
 
 const MAX_THUMBNAIL_SOURCE_BYTES = 12 * 1024 * 1024;
 const THUMBNAIL_MAX_SIDE = 640;
@@ -100,7 +100,7 @@ function ensureStyles() {
     .assetTile{min-width:0;display:grid;grid-template-rows:92px auto;gap:7px;padding:7px;border:1px solid transparent;border-radius:12px;background:rgba(255,255,255,.02);color:rgba(255,255,255,.92);text-align:left;cursor:pointer}
     .assetTile:hover{background:rgba(255,255,255,.045)}
     .assetTile.active{border-color:rgba(154,180,155,.42);background:rgba(125,160,127,.13)}
-    .assetTile.is-placeable,.assetTile.is-bindable{cursor:grab}.assetTile.is-placeable:active,.assetTile.is-bindable:active{cursor:grabbing}.assetTile.is-placeable .assetThumb,.assetTile.is-bindable .assetThumb{box-shadow:inset 0 0 0 1px rgba(154,180,155,.18)}
+    .assetTile.is-placeable,.assetTile.is-bindable{cursor:grab;touch-action:pan-y}.assetTile.is-placeable:active,.assetTile.is-bindable:active,.assetTile.is-pointer-dragging{cursor:grabbing}.assetTile.is-placeable .assetThumb,.assetTile.is-bindable .assetThumb{box-shadow:inset 0 0 0 1px rgba(154,180,155,.18)}
     .assetTile.is-placement-active,.assetTile.is-binding-target{border-color:rgba(180,205,181,.72);background:rgba(125,160,127,.20)}
     .assetPlaceHint{position:absolute;right:6px;top:6px;padding:3px 5px;border-radius:6px;background:rgba(83,111,85,.90);font-size:8px;font-weight:800;letter-spacing:.07em;color:#edf4ee}
     .assetPlacementPanel{display:grid;gap:7px;padding:10px;border:1px solid rgba(154,180,155,.28);border-radius:10px;background:rgba(125,160,127,.075)}
@@ -140,9 +140,13 @@ export function createAdminAssetWorkspace({
   getPlacementContext = () => null,
   onBeginPropPlacement = async () => false,
   onCancelPropPlacement = () => {},
+  onUpdatePropPointerPlacement = () => false,
+  onCommitPropPointerPlacement = async () => false,
   getFrameBindingContext = () => null,
   onBeginFrameDrag = async () => false,
   onCancelFrameDrag = () => {},
+  onUpdateFramePointerDrag = () => false,
+  onCommitFramePointerDrag = async () => false,
   onBindFrame = async () => false,
   onFrameBindingComplete = () => {}
 } = {}) {
@@ -328,7 +332,7 @@ export function createAdminAssetWorkspace({
     if (descriptor.scopeType === "venue" && (!context.venueId || String(descriptor.scopeVenueId) !== String(context.venueId))) {
       return { allowed: false, reason: "This Frame is scoped to another Gallery.", descriptor, context };
     }
-    return { allowed: true, reason: "Drag onto an artwork, or use FRAME → CHANGE and click this Frame.", descriptor, context };
+    return { allowed: true, reason: "Drag this Frame onto an artwork.", descriptor, context };
   }
 
   async function bindFrameToTarget(source) {
@@ -361,19 +365,9 @@ export function createAdminAssetWorkspace({
     if (descriptor.scopeType === "venue" && (!context.venueId || String(descriptor.scopeVenueId) !== String(context.venueId))) {
       return { allowed: false, reason: "This Prop is scoped to another Gallery.", descriptor, context };
     }
-    return { allowed: true, reason: "Drag to the floor on desktop, or use PLACE PROP for tap placement.", descriptor, context };
+    return { allowed: true, reason: "Drag this Prop onto the Gallery floor.", descriptor, context };
   }
 
-  async function beginPropPlacement(detail) {
-    const capability = getPropPlacementCapability(detail);
-    if (!capability.allowed || !capability.descriptor) throw new Error(capability.reason);
-    state.placementDescriptor = capability.descriptor;
-    renderCatalog();
-    const ok = await onBeginPropPlacement(capability.descriptor, { context: capability.context || null, drag: false });
-    if (ok === false) { state.placementDescriptor = null; renderCatalog(); return false; }
-    showToast("Prop placement active. Choose a point on the Gallery floor.");
-    return true;
-  }
 
   function renderHostNote() {
     const note = $("assetWorkspaceHostNote");
@@ -384,7 +378,7 @@ export function createAdminAssetWorkspace({
       const label = escapeHtml(state.frameBindingTarget.artworkLabel || state.frameBindingTarget.artworkId || "selected artwork");
       note.innerHTML = `<strong>Choose a Frame for ${label}.</strong> Click a Published Frame to bind it. The artwork selection and unsaved Exhibition Draft stay active.`;
     } else {
-      note.innerHTML = `<strong>Exhibition preview preserved.</strong> Props drag to the floor; Frames drag only onto artworks. FRAME → CHANGE opens this library in Frame binding mode without reloading the Scene.`;
+      note.innerHTML = `<strong>Exhibition preview preserved.</strong> Drag Props onto the floor and Frames onto artworks with mouse, pen or touch. FRAME → CHANGE remains available as a compatibility shortcut.`;
     }
   }
 
@@ -396,6 +390,100 @@ export function createAdminAssetWorkspace({
     select.replaceChildren(new Option("All categories", "all"), ...values.map((value) => new Option(value, value)));
     select.value = selected;
     state.category = selected;
+  }
+
+  function installUnifiedPointerPlacement(tile, row, kind) {
+    const isProp = kind === "prop";
+    const capabilityFor = isProp ? getPropPlacementCapability : getFrameDragCapability;
+    const begin = isProp ? onBeginPropPlacement : onBeginFrameDrag;
+    const cancel = isProp ? onCancelPropPlacement : onCancelFrameDrag;
+    const update = isProp ? onUpdatePropPointerPlacement : onUpdateFramePointerDrag;
+    const commit = isProp ? onCommitPropPointerPlacement : onCommitFramePointerDrag;
+    const threshold = 8;
+    let session = null;
+    let suppressNextClick = false;
+
+    const clearDescriptor = () => {
+      if (isProp) state.placementDescriptor = null;
+      else state.frameDragDescriptor = null;
+    };
+
+    const finish = async (event, canceled) => {
+      if (!session || !event || event.pointerId !== session.pointerId) return;
+      const current = session;
+      session = null;
+      try { if (tile.hasPointerCapture && tile.hasPointerCapture(current.pointerId)) tile.releasePointerCapture(current.pointerId); } catch (_error) {}
+      tile.classList.remove("is-pointer-dragging");
+      if (!current.active || canceled) {
+        cancel({ reason: canceled ? "pointer-cancel" : "pointer-click" });
+        clearDescriptor();
+        return;
+      }
+      suppressNextClick = true;
+      event.preventDefault();
+      try {
+        const begun = await current.beginPromise;
+        if (begun === false) throw new Error(isProp ? "Prop placement context is no longer valid." : "Frame assignment context is no longer valid.");
+        const result = await commit(event.clientX, event.clientY, { descriptor: current.descriptor, context: current.context, pointerType: event.pointerType || "mouse" });
+        if (result === false) showToast(isProp ? "Drop the Prop on the Gallery floor." : "Drop the Frame directly on an artwork.");
+      } catch (error) {
+        cancel({ reason: "pointer-drop-failed" });
+        showToast(error && error.message ? error.message : String(error));
+      } finally {
+        clearDescriptor();
+        renderCatalog();
+      }
+    };
+
+    tile.addEventListener("pointerdown", (event) => {
+      if (event.isPrimary === false || (event.button != null && event.button !== 0)) return;
+      const capability = capabilityFor(row);
+      if (!capability.allowed || !capability.descriptor) return;
+      const descriptor = capability.descriptor;
+      if (isProp) state.placementDescriptor = descriptor;
+      else state.frameDragDescriptor = descriptor;
+      const beginPromise = Promise.resolve(begin(descriptor, { drag: true, pointer: true, context: capability.context || null })).catch((error) => {
+        clearDescriptor();
+        cancel({ reason: "pointer-begin-failed" });
+        showToast(error && error.message ? error.message : String(error));
+        return false;
+      });
+      session = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        active: false,
+        descriptor,
+        context: capability.context || null,
+        beginPromise
+      };
+      try { tile.setPointerCapture(event.pointerId); } catch (_error) {}
+    });
+
+    tile.addEventListener("pointermove", (event) => {
+      if (!session || event.pointerId !== session.pointerId) return;
+      const distance = Math.hypot(event.clientX - session.startX, event.clientY - session.startY);
+      if (!session.active && distance < threshold) return;
+      if (!session.active) {
+        session.active = true;
+        tile.classList.add("is-pointer-dragging");
+      }
+      event.preventDefault();
+      try { update(event.clientX, event.clientY, { descriptor: session.descriptor, context: session.context, pointerType: event.pointerType || "mouse" }); }
+      catch (_error) {}
+    });
+
+    tile.addEventListener("pointerup", (event) => { void finish(event, false); });
+    tile.addEventListener("pointercancel", (event) => { void finish(event, true); });
+    tile.addEventListener("lostpointercapture", (event) => {
+      if (session && event.pointerId === session.pointerId) void finish(event, true);
+    });
+    tile.addEventListener("click", (event) => {
+      if (!suppressNextClick) return;
+      suppressNextClick = false;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }, true);
   }
 
   function renderCatalog() {
@@ -447,65 +535,8 @@ export function createAdminAssetWorkspace({
         if (state.frameBindingTarget && rowFrameCandidate) void bindFrameToTarget(row).catch((error) => showToast(error.message || String(error)));
         else void selectAsset(row.id);
       });
-      if (rowPlacementCandidate) {
-        tile.draggable = true;
-        tile.addEventListener("dragstart", (event) => {
-          try {
-            // DataTransfer must be populated synchronously inside dragstart. V13.3 therefore
-            // carries the Published version runtime descriptor directly in the catalog RPC.
-            const capability = getPropPlacementCapability(row);
-            if (!capability.allowed || !capability.descriptor) { event.preventDefault(); showToast(capability.reason); return; }
-            state.placementDescriptor = capability.descriptor;
-            if (event.dataTransfer) {
-              event.dataTransfer.effectAllowed = "copy";
-              const payload = JSON.stringify(capability.descriptor);
-              event.dataTransfer.setData("application/x-exhibition-shared-asset", payload);
-              event.dataTransfer.setData("text/plain", payload);
-            }
-            const beginResult = onBeginPropPlacement(capability.descriptor, { drag: true, context: capability.context || null });
-            if (beginResult && typeof beginResult.catch === "function") {
-              beginResult.catch((error) => {
-                state.placementDescriptor = null;
-                onCancelPropPlacement({ reason: "drag-begin-failed" });
-                renderCatalog();
-                showToast(error && error.message ? error.message : String(error));
-              });
-            }
-            renderCatalog();
-          } catch (error) { event.preventDefault(); showToast(error.message || String(error)); }
-        });
-        tile.addEventListener("dragend", () => {
-          state.placementDescriptor = null;
-          onCancelPropPlacement({ reason: "drag-end" });
-          renderCatalog();
-        });
-      }
-      if (rowFrameCandidate) {
-        tile.draggable = true;
-        tile.addEventListener("dragstart", (event) => {
-          try {
-            const capability = getFrameDragCapability(row);
-            if (!capability.allowed || !capability.descriptor) { event.preventDefault(); showToast(capability.reason); return; }
-            state.frameDragDescriptor = capability.descriptor;
-            if (event.dataTransfer) {
-              event.dataTransfer.effectAllowed = "copy";
-              const payload = JSON.stringify(capability.descriptor);
-              event.dataTransfer.setData("application/x-exhibition-shared-frame", payload);
-              event.dataTransfer.setData("text/plain", payload);
-            }
-            const beginResult = onBeginFrameDrag(capability.descriptor, { context: capability.context || null });
-            if (beginResult && typeof beginResult.catch === "function") beginResult.catch((error) => {
-              state.frameDragDescriptor = null;
-              onCancelFrameDrag({ reason: "drag-begin-failed" });
-              showToast(error && error.message ? error.message : String(error));
-            });
-          } catch (error) { event.preventDefault(); showToast(error.message || String(error)); }
-        });
-        tile.addEventListener("dragend", () => {
-          state.frameDragDescriptor = null;
-          onCancelFrameDrag({ reason: "drag-end" });
-        });
-      }
+      if (rowPlacementCandidate) installUnifiedPointerPlacement(tile, row, "prop");
+      else if (rowFrameCandidate) installUnifiedPointerPlacement(tile, row, "frame");
       root.appendChild(tile);
     });
   }
@@ -540,10 +571,6 @@ export function createAdminAssetWorkspace({
 
   function bindDetailActions(detail) {
     const asset = detail.asset;
-    const placeProp = $("sharedAssetPlacePropButton");
-    if (placeProp) placeProp.addEventListener("click", () => { void beginPropPlacement(detail).catch((error) => showToast(error.message || String(error))); });
-    const cancelPlacement = $("sharedAssetCancelPlacementButton");
-    if (cancelPlacement) cancelPlacement.addEventListener("click", () => { state.placementDescriptor = null; onCancelPropPlacement({ reason: "ui-cancel" }); renderCatalog(); renderDetail(); });
     const metadataForm = $("sharedAssetMetadataForm");
     if (metadataForm) metadataForm.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -647,7 +674,7 @@ export function createAdminAssetWorkspace({
     const scope = asset.scope_type === "venue" ? `Gallery scoped · ${state.venues.find((v) => v.id === asset.scope_venue_id)?.name || asset.scope_venue_id || "Gallery"}` : "Shared across Galleries";
     const description = text(assetMetadata(asset).description);
     const placement = getPropPlacementCapability(detail);
-    const placementMarkup = text(asset.asset_type).toLowerCase() === "prop" ? `<div class="assetPlacementPanel"><strong>Exhibition placement</strong><p class="assetMuted">${escapeHtml(placement.reason)}</p><div class="assetActionRow"><button id="sharedAssetPlacePropButton" class="adminButton primary" type="button" ${placement.allowed ? "" : "disabled"}>PLACE PROP</button>${state.placementDescriptor && state.placementDescriptor.assetId === asset.id ? `<button id="sharedAssetCancelPlacementButton" class="adminButton" type="button">CANCEL PLACE</button>` : ""}</div></div>` : "";
+    const placementMarkup = text(asset.asset_type).toLowerCase() === "prop" ? `<div class="assetPlacementPanel"><strong>Use in Exhibition</strong><p class="assetMuted">${escapeHtml(placement.reason)}</p></div>` : "";
     root.innerHTML = `<div class="assetDetailPanel">
       <div class="assetDetailHead"><div><h3>${escapeHtml(asset.name || asset.slug || "Asset")}</h3><p>${escapeHtml(scope)}</p></div><div class="assetBadgeRow"><span class="assetBadge">${escapeHtml(text(asset.asset_type).toUpperCase())}</span>${published ? `<span class="assetBadge published">READY</span>` : `<span class="assetBadge">NEEDS MODEL</span>`}</div></div>
       ${placementMarkup}

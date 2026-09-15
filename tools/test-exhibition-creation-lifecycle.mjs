@@ -73,6 +73,6 @@ assert.ok(!galleryShortcutBody.includes('exhibitionData.create('), 'Gallery shor
 // Cache/version gate makes the new bootstrap transition path deploy-safe.
 assert.equal(pkg.version, '0.14.2-v14-2-6-canonical-draft-publish-model');
 assert.ok(pkg.scripts.test.includes('test:creation-lifecycle'));
-assert.ok(admin.includes('v14_2_6_draft_publish_20260914'));
+assert.ok(admin.includes('v14_3_9_unified_asset_placement_20260915'));
 
 console.log('V14.2.3 creation -> canonical Scene lifecycle + Published Gallery shortcut invariants passed.');

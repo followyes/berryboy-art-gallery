@@ -46,9 +46,9 @@ function extractFunction(text,name){const ms=[`async function ${name}(`,`functio
 assert(index.includes('stage: "V14.1.10.1"'),'Index stage identity missing');
 assert(bootstrap.includes('const STAGE = "V14.1.10.1"'),'Viewer stage identity missing');
 assert(adminBootstrap.includes('const STAGE = "V14.1.10.1"'),'Admin stage identity missing');
-assert(bootstrap.includes('v14_2_6_draft_publish_20260914'),'Current engine cache key missing');
-assert(index.includes('gallery-viewer-bootstrap.js?v=v14_3_8_shared_asset_lifecycle'),'V14.3.8 viewer cache key missing');
-assert(admin.includes('admin-workspace-bootstrap.js?v=v14_3_8_shared_asset_lifecycle'),'V14.3.8 Admin cache key missing');
+assert(bootstrap.includes('v14_3_9_unified_asset_placement_20260915')&&adminBootstrap.includes('v14_3_9_unified_asset_placement_20260915'),'V14.3.9 engine cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=v14_3_9_unified_asset_placement'),'V14.3.9 viewer cache key missing');
+assert(admin.includes('admin-workspace-bootstrap.js?v=v14_3_9_unified_asset_placement'),'V14.3.9 Admin cache key missing');
 const currentPackage=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
 assert(currentPackage.version==='0.14.2-v14-2-6-canonical-draft-publish-model'&&currentPackage.description.includes('V14.2.6 Canonical Draft / Publish Model'),'V14.2.6 core runtime package identity missing');
 
@@ -139,19 +139,19 @@ assert(sculptureValidation.includes('exhibition-platform-sculpture-model-validat
 assert(source.includes('if (loadedMeshes.length < 1)')&&source.includes('Sculpture/model GLB contains no renderable mesh geometry.'),'V14.1.5.1 model runtime can still report loaded without renderable geometry');
 assert(source.includes('createGalleryModel3dApplyResult(queued ? "queued" : "failed"')&&source.includes('isGalleryModel3dApplyLoaded'),'V14.1.5.1 queued/loaded model semantics missing');
 assert(source.includes('validateSculptureModelFile(file)')&&source.includes('MODEL UNAVAILABLE — reference preserved')&&source.includes('RETRY MODEL'),'V14.1.5.1 Sculpture upload/error/retry contract missing');
-assert(assetWorkspace.includes('ADMIN_ASSET_WORKSPACE_STAGE = "V14.3.8"')&&assetWorkspace.includes('Asset Library')&&assetWorkspace.includes('REPLACE MODEL')&&assetWorkspace.includes('ADD MODEL')&&!assetWorkspace.includes('PUBLISH VERSION')&&!assetWorkspace.includes('ARCHIVE ASSET'),'V14.3.8 simplified Asset Workspace lifecycle missing');
+assert(assetWorkspace.includes('ADMIN_ASSET_WORKSPACE_STAGE = "V14.3.9"')&&assetWorkspace.includes('Asset Library')&&assetWorkspace.includes('REPLACE MODEL')&&assetWorkspace.includes('ADD MODEL')&&!assetWorkspace.includes('PUBLISH VERSION')&&!assetWorkspace.includes('ARCHIVE ASSET'),'V14.3.9 Asset Workspace over simplified lifecycle missing');
 assert(adminBootstrap.includes('data-section=\"assets\"')&&adminBootstrap.includes('assetWorkspaceHost')&&adminBootstrap.includes('currentPreviewContextSection'),'V13.2 three-tab/host-context orchestration missing');
 assert(assetWorkspace.includes('api.uploadThumbnail')&&sharedAssetApi.includes('admin_register_shared_asset_thumbnail'),'V13.2 thumbnail management bridge missing');
-assert(assetWorkspace.includes('application/x-exhibition-shared-asset')&&assetWorkspace.includes('PLACE PROP')&&!assetWorkspace.includes('tile.addEventListener("dragstart", async'),'V13.3 synchronous Prop drag/tap placement launcher missing');
-assert(adminBootstrap.includes('beginSharedAssetPropPlacement')&&adminBootstrap.includes('venueVersionId'),'V13.3 Admin-to-live-scene placement context bridge missing');
+assert(assetWorkspace.includes('installUnifiedPointerPlacement')&&assetWorkspace.includes('pointerdown')&&assetWorkspace.includes('pointermove')&&assetWorkspace.includes('pointerup')&&assetWorkspace.includes('pointercancel')&&!assetWorkspace.includes('PLACE PROP')&&!assetWorkspace.includes('CANCEL PLACE')&&!assetWorkspace.includes('tile.draggable'),'V14.3.9 unified pointer placement launcher missing');
+assert(adminBootstrap.includes('beginSharedAssetPropPlacement')&&adminBootstrap.includes('updateSharedAssetPropPointerPlacement')&&adminBootstrap.includes('commitSharedAssetPropPointerPlacement')&&adminBootstrap.includes('venueVersionId'),'V14.3.9 Admin-to-live-scene Prop pointer bridge missing');
 assert(source.includes('assetInstances: artSpheres.filter(isSharedAssetPropSlot)')&&source.includes('beginSharedAssetPropPlacement: beginSharedAssetPropPlacement'),'V13.3 Shared Prop state/runtime bridge missing');
 assert(source.includes('if (isSharedAssetPropSlot(object)) return false')&&source.includes('if (sculptureSlot && isSharedAssetPropSlot(sculptureSlot)) return null'),'V13.3 Prop Tour/Inspect semantic isolation missing');
 assert(source.includes('createEditorSection("PROP")')&&source.includes('PROP TRANSFORM'),'V13.3 contextual Prop inspector missing');
-assert(assetWorkspace.includes('exhibition-platform-frame-binding.v1')&&assetWorkspace.includes('application/x-exhibition-shared-frame'),'V13.4 Frame Browser drag/binding contract missing');
+assert(assetWorkspace.includes('exhibition-platform-frame-binding.v1')&&assetWorkspace.includes('installUnifiedPointerPlacement')&&adminBootstrap.includes('updateSharedAssetFramePointerDrag')&&adminBootstrap.includes('commitSharedAssetFramePointerDrag'),'V14.3.9 Frame pointer drag/binding contract missing');
 assert(adminBootstrap.includes('exhibition-platform:open-frame-browser')&&adminBootstrap.includes('applySharedAssetFrameToSelectedArtwork'),'V13.4 Admin Frame Browser bridge missing');
 assert(source.includes('artworkFrameChangeButton.innerText = \"CHANGE\"')&&source.includes('artworkFrameRemoveButton.innerText = \"REMOVE\"')&&!source.includes('var artworkFrameGrid = document.createElement(\"div\")'),'V13.4 compact right Frame inspector missing');
 assert(source.includes('assetVersionId: frameState.assetVersionId || null')&&source.includes('runtimeMetadata: frameState.runtimeMetadata'),'V13.4 stable Frame ID state/fallback serialization missing');
-assert(source.includes('sharedAssetFrameDrop')&&source.includes('Drop the Frame directly on an artwork.'),'V13.4 artwork-only Frame drop guard missing');
+assert(source.includes('commitSharedAssetFramePointerDrag')&&source.includes('Drop the Frame directly on an artwork.')&&source.includes('isSharedAssetPlacementContextCurrent'),'V14.3.9 artwork-only Frame pointer drop/context guard missing');
 assert(source.includes('getSharedAssetIntegrityDebug')&&source.includes('MODEL UNAVAILABLE — reference preserved')&&source.includes('MODEL UNAVAILABLE — binding preserved'),'V13.5 Shared Asset unavailable-reference hardening missing');
 assert(source.includes('getV13ProductionClosureDebug')&&source.includes('exhibition-platform-v13-production-closure.v1')&&source.includes('currentSnapshotHealthy'),'V13.6 production-closure diagnostic snapshot missing');
 assert(!index.includes('id="galleryBootStart"')&&!index.includes('id="galleryBootAbout"'),'Legacy prestart Enter Gallery popup remains');

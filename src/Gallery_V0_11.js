@@ -35673,14 +35673,94 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         if (!galleryFloorCursorHoverVisible && galleryFloorCursorRing) galleryFloorCursorRing.setEnabled(false);
     }
 
-    function pickGalleryFloorFromPointer(event) {
-        if (!event || !canvas || !canvas.getBoundingClientRect) return null;
+    function pickGalleryFloorFromClientPoint(clientX, clientY) {
+        if (!canvas || !canvas.getBoundingClientRect) return null;
         var rect = canvas.getBoundingClientRect();
-        var x = event.clientX - rect.left;
-        var y = event.clientY - rect.top;
+        var x = Number(clientX) - rect.left;
+        var y = Number(clientY) - rect.top;
+        if (!isFinite(x) || !isFinite(y) || x < 0 || y < 0 || x > rect.width || y > rect.height) return null;
         var visiblePick = scene.pick(x, y, null, false, camera);
         if (!visiblePick || !visiblePick.hit || !visiblePick.pickedMesh || floorMeshes.indexOf(visiblePick.pickedMesh) === -1) return null;
         return visiblePick;
+    }
+
+    function pickGalleryFloorFromPointer(event) {
+        return event ? pickGalleryFloorFromClientPoint(event.clientX, event.clientY) : null;
+    }
+
+    // V14.3.9 — unified pointer placement bridge. Mouse, pen and touch all use
+    // client coordinates from the Asset Library while the Babylon runtime remains the
+    // authoritative floor/artwork picker and exact context guard.
+    function isSharedAssetPlacementContextCurrent(context) {
+        context = context && typeof context === "object" ? context : null;
+        if (!context) return true;
+        if (context.exhibitionId && String(context.exhibitionId) !== String(getActiveGalleryExhibitionId() || "")) return false;
+        if (context.venueVersionId && String(context.venueVersionId) !== String(galleryActiveVenueVersionId || "")) return false;
+        var currentVenueId = String(gallerySpaceDefinition && gallerySpaceDefinition.venueId || "").trim();
+        if (context.venueId && currentVenueId && String(context.venueId) !== currentVenueId) return false;
+        return true;
+    }
+
+    function updateSharedAssetPropPointerPlacement(clientX, clientY) {
+        if (!editMode || !gallerySharedAssetPropPlacementRuntime.dragActive || !gallerySharedAssetPropPlacementRuntime.activeDescriptor) return false;
+        if (!isSharedAssetPlacementContextCurrent(gallerySharedAssetPropPlacementRuntime.activeContext)) {
+            cancelSharedAssetPropPlacement({ silent: true });
+            return false;
+        }
+        var pick = pickGalleryFloorFromClientPoint(clientX, clientY);
+        if (!pick || !pick.pickedPoint) { hideSharedAssetPropPlacementGhost(); return false; }
+        setSharedAssetPropPlacementGhostPoint(pick.pickedPoint);
+        return true;
+    }
+
+    function commitSharedAssetPropPointerPlacement(clientX, clientY, options) {
+        options = options || {};
+        var descriptor = gallerySharedAssetPropPlacementRuntime.activeDescriptor;
+        if (!descriptor || !gallerySharedAssetPropPlacementRuntime.dragActive) return Promise.resolve(false);
+        if (!isSharedAssetPlacementContextCurrent(gallerySharedAssetPropPlacementRuntime.activeContext) ||
+            !isSharedAssetPlacementContextCurrent(options.context)) {
+            cancelSharedAssetPropPlacement({ silent: true });
+            notifyGalleryStatus("Prop placement context changed. Reopen ASSETS from the active Exhibition.");
+            return Promise.resolve(false);
+        }
+        var pick = pickGalleryFloorFromClientPoint(clientX, clientY);
+        if (!pick || !pick.pickedPoint) {
+            cancelSharedAssetPropPlacement({ silent: true });
+            notifyGalleryStatus("Drop the Prop on the Gallery floor.");
+            return Promise.resolve(false);
+        }
+        return placeActiveSharedAssetPropAtPoint(pick.pickedPoint, { descriptor: descriptor, source: "pointer-drag" }).then(function (slot) { return !!slot; });
+    }
+
+    function updateSharedAssetFramePointerDrag(clientX, clientY) {
+        if (!editMode || !gallerySharedAssetFrameDragRuntime.dragActive || !gallerySharedAssetFrameDragRuntime.activeDescriptor) return false;
+        if (!isSharedAssetPlacementContextCurrent(gallerySharedAssetFrameDragRuntime.activeContext)) {
+            cancelSharedAssetFrameDrag();
+            return false;
+        }
+        return !!pickGalleryArtworkFromClientPoint(clientX, clientY);
+    }
+
+    function commitSharedAssetFramePointerDrag(clientX, clientY, options) {
+        options = options || {};
+        var descriptor = gallerySharedAssetFrameDragRuntime.activeDescriptor;
+        var context = gallerySharedAssetFrameDragRuntime.activeContext;
+        if (!descriptor || !gallerySharedAssetFrameDragRuntime.dragActive) return Promise.resolve(false);
+        if (!isSharedAssetPlacementContextCurrent(context) || !isSharedAssetPlacementContextCurrent(options.context)) {
+            cancelSharedAssetFrameDrag();
+            notifyGalleryStatus("Frame assignment context changed. Reopen ASSETS from the active Exhibition.");
+            return Promise.resolve(false);
+        }
+        var checked = validateSharedAssetFrameContext(descriptor, { context: context || options.context || null });
+        var target = pickGalleryArtworkFromClientPoint(clientX, clientY);
+        cancelSharedAssetFrameDrag();
+        if (!checked.ok || !target || !target.artwork) {
+            gallerySharedAssetFrameDragRuntime.rejectedDrops += 1;
+            notifyGalleryStatus("Drop the Frame directly on an artwork.");
+            return Promise.resolve(false);
+        }
+        selectArtwork(target.artwork);
+        return applySharedAssetFrameToArtwork(target.artwork, descriptor, { context: context || options.context || null, markDirty: true, silent: false, source: "pointer-drag" });
     }
 
     // V13.3 — desktop Shared Asset drag/drop. The browser drag payload is only a
@@ -35689,9 +35769,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         if (!editMode || !gallerySharedAssetPropPlacementRuntime.dragActive || !gallerySharedAssetPropPlacementRuntime.activeDescriptor) return;
         event.preventDefault();
         if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
-        var pick = pickGalleryFloorFromPointer(event);
-        if (pick && pick.pickedPoint) setSharedAssetPropPlacementGhostPoint(pick.pickedPoint);
-        else hideSharedAssetPropPlacementGhost();
+        updateSharedAssetPropPointerPlacement(event.clientX, event.clientY);
     });
 
     registerGalleryDomEvent("sharedAssetPropDragLeave", canvas, "dragleave", function (event) {
@@ -35703,47 +35781,36 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     registerGalleryDomEvent("sharedAssetPropDrop", canvas, "drop", function (event) {
         if (!editMode || !gallerySharedAssetPropPlacementRuntime.dragActive || !gallerySharedAssetPropPlacementRuntime.activeDescriptor) return;
         event.preventDefault();
-        var pick = pickGalleryFloorFromPointer(event);
-        if (!pick || !pick.pickedPoint) {
-            hideSharedAssetPropPlacementGhost();
-            notifyGalleryStatus("Drop the Prop on the Gallery floor.");
-            return;
-        }
-        var descriptor = gallerySharedAssetPropPlacementRuntime.activeDescriptor;
-        void placeActiveSharedAssetPropAtPoint(pick.pickedPoint, { descriptor: descriptor, source: "drag-drop" });
+        void commitSharedAssetPropPointerPlacement(event.clientX, event.clientY, { context: gallerySharedAssetPropPlacementRuntime.activeContext });
     });
 
-    function pickGalleryArtworkFromPointer(event) {
-        if (!event || !canvas || !canvas.getBoundingClientRect) return null;
+    function pickGalleryArtworkFromClientPoint(clientX, clientY) {
+        if (!canvas || !canvas.getBoundingClientRect) return null;
         var rect = canvas.getBoundingClientRect();
-        var x = event.clientX - rect.left;
-        var y = event.clientY - rect.top;
+        var x = Number(clientX) - rect.left;
+        var y = Number(clientY) - rect.top;
+        if (!isFinite(x) || !isFinite(y) || x < 0 || y < 0 || x > rect.width || y > rect.height) return null;
         var pick = scene.pick(x, y, null, false, camera);
         if (!pick || !pick.hit || !pick.pickedMesh) return null;
         var artwork = getArtworkFromPopupPickMesh(pick.pickedMesh);
         return artwork ? { artwork: artwork, pick: pick } : null;
     }
 
+    function pickGalleryArtworkFromPointer(event) {
+        return event ? pickGalleryArtworkFromClientPoint(event.clientX, event.clientY) : null;
+    }
+
     registerGalleryDomEvent("sharedAssetFrameDragOver", canvas, "dragover", function (event) {
         if (!editMode || !gallerySharedAssetFrameDragRuntime.dragActive || !gallerySharedAssetFrameDragRuntime.activeDescriptor) return;
         event.preventDefault();
-        var target = pickGalleryArtworkFromPointer(event);
+        var target = updateSharedAssetFramePointerDrag(event.clientX, event.clientY);
         if (event.dataTransfer) event.dataTransfer.dropEffect = target ? "copy" : "none";
     });
 
     registerGalleryDomEvent("sharedAssetFrameDrop", canvas, "drop", function (event) {
         if (!editMode || !gallerySharedAssetFrameDragRuntime.dragActive || !gallerySharedAssetFrameDragRuntime.activeDescriptor) return;
         event.preventDefault();
-        var target = pickGalleryArtworkFromPointer(event);
-        var descriptor = gallerySharedAssetFrameDragRuntime.activeDescriptor;
-        cancelSharedAssetFrameDrag();
-        if (!target || !target.artwork) {
-            gallerySharedAssetFrameDragRuntime.rejectedDrops += 1;
-            notifyGalleryStatus("Drop the Frame directly on an artwork.");
-            return;
-        }
-        selectArtwork(target.artwork);
-        void applySharedAssetFrameToArtwork(target.artwork, descriptor, { markDirty: true, silent: false, source: "drag-drop" });
+        void commitSharedAssetFramePointerDrag(event.clientX, event.clientY, { context: gallerySharedAssetFrameDragRuntime.activeContext });
     });
 
     function startGalleryFloorCursorClickPulse(event) {
@@ -39849,6 +39916,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     var gallerySharedAssetFrameDragRuntime = {
         schema: "exhibition-platform-frame-binding.v1",
         activeDescriptor: null,
+        activeContext: null,
         dragActive: false,
         assignedCount: 0,
         rejectedDrops: 0
@@ -39926,6 +39994,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         if (!checked.ok || !checked.descriptor) { notifyGalleryStatus("Frame drag context is invalid."); return false; }
         cancelSharedAssetPropPlacement({ silent: true });
         gallerySharedAssetFrameDragRuntime.activeDescriptor = checked.descriptor;
+        gallerySharedAssetFrameDragRuntime.activeContext = options && options.context && typeof options.context === "object" ? cloneGalleryJson(options.context) : null;
         gallerySharedAssetFrameDragRuntime.dragActive = true;
         return true;
     }
@@ -39933,6 +40002,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     function cancelSharedAssetFrameDrag() {
         var active = !!gallerySharedAssetFrameDragRuntime.activeDescriptor;
         gallerySharedAssetFrameDragRuntime.activeDescriptor = null;
+        gallerySharedAssetFrameDragRuntime.activeContext = null;
         gallerySharedAssetFrameDragRuntime.dragActive = false;
         return active;
     }
@@ -39949,6 +40019,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     var gallerySharedAssetPropPlacementRuntime = {
         schema: "exhibition-platform-prop-placement.v1",
         activeDescriptor: null,
+        activeContext: null,
         tapActive: false,
         dragActive: false,
         ghost: null,
@@ -40226,6 +40297,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         options = options || {};
         var wasActive = !!gallerySharedAssetPropPlacementRuntime.activeDescriptor;
         gallerySharedAssetPropPlacementRuntime.activeDescriptor = null;
+        gallerySharedAssetPropPlacementRuntime.activeContext = null;
         gallerySharedAssetPropPlacementRuntime.tapActive = false;
         gallerySharedAssetPropPlacementRuntime.dragActive = false;
         hideSharedAssetPropPlacementGhost();
@@ -40264,11 +40336,13 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             notifyGalleryStatus("This Prop belongs to another Gallery.");
             return false;
         }
+        cancelSharedAssetFrameDrag();
         cancelSharedAssetPropPlacement({ silent: true });
         gallerySharedAssetPropPlacementRuntime.activeDescriptor = normalized;
+        gallerySharedAssetPropPlacementRuntime.activeContext = expectedContext ? cloneGalleryJson(expectedContext) : null;
         gallerySharedAssetPropPlacementRuntime.dragActive = options.drag === true;
         gallerySharedAssetPropPlacementRuntime.tapActive = options.drag !== true;
-        if (!options.drag) notifyGalleryStatus("PLACE PROP: click/tap a point on the Gallery floor. Esc cancels.");
+        if (!options.drag) notifyGalleryStatus("Prop placement active. Choose a point on the Gallery floor. Esc cancels.");
         return true;
     }
 
@@ -40285,6 +40359,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         // Placement is one-shot. Clear the placement tool before async GLB hydration so
         // a slow network cannot accidentally create multiple instances from one click/drop.
         gallerySharedAssetPropPlacementRuntime.activeDescriptor = null;
+        gallerySharedAssetPropPlacementRuntime.activeContext = null;
         gallerySharedAssetPropPlacementRuntime.tapActive = false;
         gallerySharedAssetPropPlacementRuntime.dragActive = false;
         hideSharedAssetPropPlacementGhost();
@@ -44967,7 +45042,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 var tapPlacementDescriptor = gallerySharedAssetPropPlacementRuntime.activeDescriptor;
                 void placeActiveSharedAssetPropAtPoint(pickResult.pickedPoint, { descriptor: tapPlacementDescriptor, source: "tap-place" });
             } else {
-                notifyGalleryStatus("PLACE PROP: choose a point on the Gallery floor. Esc cancels.");
+                notifyGalleryStatus("Choose a point on the Gallery floor. Esc cancels.");
             }
             return;
         }
@@ -48098,6 +48173,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         // V13.3 — Shared Asset Prop placement bridge used by the left ASSETS workspace.
         beginSharedAssetPropPlacement: beginSharedAssetPropPlacement,
         cancelSharedAssetPropPlacement: cancelSharedAssetPropPlacement,
+        updateSharedAssetPropPointerPlacement: updateSharedAssetPropPointerPlacement,
+        commitSharedAssetPropPointerPlacement: commitSharedAssetPropPointerPlacement,
         getSharedAssetPropPlacementDebug: getSharedAssetPropPlacementDebug,
         getSharedAssetIntegrityDebug: getSharedAssetIntegrityDebug,
         getV13ProductionClosureDebug: getV13ProductionClosureDebug,
@@ -48106,6 +48183,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         applySharedAssetFrameToSelectedArtwork: applySharedAssetFrameToSelectedArtwork,
         beginSharedAssetFrameDrag: beginSharedAssetFrameDrag,
         cancelSharedAssetFrameDrag: cancelSharedAssetFrameDrag,
+        updateSharedAssetFramePointerDrag: updateSharedAssetFramePointerDrag,
+        commitSharedAssetFramePointerDrag: commitSharedAssetFramePointerDrag,
         getSharedAssetFrameBindingDebug: getSharedAssetFrameBindingDebug,
         duplicateSelectedSharedAssetProp: function () {
             var slot = getActiveModel3dSlot();

@@ -17,12 +17,12 @@ import {
 import { getRuntimeVenueVersionKey } from "../runtime/scene-lifecycle-controller.js?v=v14_2_6_draft_publish_20260914";
 import { createSceneLoadingRuntimeHost } from "../runtime/scene-loading-orchestrator.js?v=v14_2_6_draft_publish_20260914";
 import { buildAuthoringSpaceDefinition } from "../runtime/space-definition-resolver.js?v=c6c8c25_2_admin_gallery_preview";
-import { createAdminAssetWorkspace } from "./admin-asset-workspace.js?v=v14_3_8_shared_asset_lifecycle";
+import { createAdminAssetWorkspace } from "./admin-asset-workspace.js?v=v14_3_9_unified_asset_placement";
 
 const STAGE = "V14.1.10.1";
 const ADMIN_PRODUCT_MODEL_STAGE = "V14.3.7";
 const ADMIN_PRODUCT_CORRECTION_STAGE = "V14.3.7.1";
-const ENGINE_CACHE_KEY = "v14_2_6_draft_publish_20260914";
+const ENGINE_CACHE_KEY = "v14_3_9_unified_asset_placement_20260915";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
 const inlineRuntimeContext = window.__EXHIBITION_INLINE_ADMIN_CONTEXT__ || null;
@@ -1553,6 +1553,14 @@ function ensureGalleryManagementUi() {
     onCancelPropPlacement: (options = {}) => {
       if (window.GalleryApp && typeof window.GalleryApp.cancelSharedAssetPropPlacement === "function") window.GalleryApp.cancelSharedAssetPropPlacement(options || {});
     },
+    onUpdatePropPointerPlacement: (clientX, clientY) => {
+      if (!window.GalleryApp || typeof window.GalleryApp.updateSharedAssetPropPointerPlacement !== "function") return false;
+      return window.GalleryApp.updateSharedAssetPropPointerPlacement(clientX, clientY);
+    },
+    onCommitPropPointerPlacement: async (clientX, clientY, options = {}) => {
+      if (!window.GalleryApp || typeof window.GalleryApp.commitSharedAssetPropPointerPlacement !== "function") throw new Error("Live Gallery Prop pointer placement bridge is unavailable.");
+      return window.GalleryApp.commitSharedAssetPropPointerPlacement(clientX, clientY, options || {});
+    },
     getFrameBindingContext: () => {
       if (assetWorkspaceHost !== "exhibitions" || !window.GalleryApp || typeof window.GalleryApp.getSelectedArtworkFrameBindingContext !== "function") return null;
       return window.GalleryApp.getSelectedArtworkFrameBindingContext();
@@ -1564,6 +1572,14 @@ function ensureGalleryManagementUi() {
     },
     onCancelFrameDrag: () => {
       if (window.GalleryApp && typeof window.GalleryApp.cancelSharedAssetFrameDrag === "function") window.GalleryApp.cancelSharedAssetFrameDrag();
+    },
+    onUpdateFramePointerDrag: (clientX, clientY) => {
+      if (!window.GalleryApp || typeof window.GalleryApp.updateSharedAssetFramePointerDrag !== "function") return false;
+      return window.GalleryApp.updateSharedAssetFramePointerDrag(clientX, clientY);
+    },
+    onCommitFramePointerDrag: async (clientX, clientY, options = {}) => {
+      if (!window.GalleryApp || typeof window.GalleryApp.commitSharedAssetFramePointerDrag !== "function") throw new Error("Live Gallery Frame pointer placement bridge is unavailable.");
+      return window.GalleryApp.commitSharedAssetFramePointerDrag(clientX, clientY, options || {});
     },
     onBindFrame: async (descriptor, options = {}) => {
       if (assetWorkspaceHost !== "exhibitions") throw new Error("Frame assignment requires an active Exhibition.");
