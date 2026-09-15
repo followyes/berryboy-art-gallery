@@ -1,10 +1,10 @@
-/* Exhibition Platform — V13.6 Left Workspace Asset Manager + production closure.
-   Asset catalog remains in the left workspace; scene placement/binding is delegated to the live Gallery runtime. */
+/* Exhibition Platform — V14.3.8 Simplified Shared Asset lifecycle.
+   Asset catalog remains in the left workspace; technical Asset versions stay hidden. */
 
-import { createSharedAssetApi } from "../data/shared-asset-api.js?v=v13_6_production_closure";
-import { getDefaultSharedAssetRuntimeMetadata } from "../validation/shared-asset-validation.js?v=v13_6_production_closure";
+import { createSharedAssetApi } from "../data/shared-asset-api.js?v=v14_3_8_shared_asset_lifecycle";
+import { getDefaultSharedAssetRuntimeMetadata } from "../validation/shared-asset-validation.js?v=v14_3_8_shared_asset_lifecycle";
 
-export const ADMIN_ASSET_WORKSPACE_STAGE = "V13.6";
+export const ADMIN_ASSET_WORKSPACE_STAGE = "V14.3.8";
 
 const MAX_THUMBNAIL_SOURCE_BYTES = 12 * 1024 * 1024;
 const THUMBNAIL_MAX_SIDE = 640;
@@ -93,7 +93,7 @@ function ensureStyles() {
     .assetFilterRow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
     .assetFilterButton{height:32px;border:1px solid rgba(255,255,255,.10);border-radius:9px;background:rgba(255,255,255,.025);color:rgba(255,255,255,.62);font-size:9px;font-weight:800;letter-spacing:.08em;cursor:pointer}
     .assetFilterButton.active{background:rgba(125,160,127,.16);border-color:rgba(154,180,155,.38);color:rgba(255,255,255,.92)}
-    .assetCategoryRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:center}
+    .assetCategoryRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:center}.assetCategoryRow.assetCategoryOnly{grid-template-columns:minmax(0,1fr)}
     .assetSelect{height:38px;width:100%;border:1px solid rgba(255,255,255,.18);border-radius:10px;background:#202321;color:rgba(255,255,255,.92);padding:0 10px;font:inherit;outline:none}
     .assetToggle{display:flex;align-items:center;gap:6px;font-size:9px;color:rgba(255,255,255,.62);white-space:nowrap}
     .assetCatalog{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:420px;overflow:auto;padding-right:2px}
@@ -124,7 +124,7 @@ function ensureStyles() {
     .assetRuntimeFields{display:grid;gap:8px;padding:9px;border:1px solid rgba(255,255,255,.10);border-radius:10px;background:rgba(255,255,255,.018)}
     .assetRuntimeFields h4{margin:0;font-size:9px;letter-spacing:.08em;text-transform:uppercase}.assetRuntimeGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
     .assetVersionList,.assetUsageList{display:grid;gap:6px}.assetVersionRow,.assetUsageRow{display:grid;gap:5px;padding:8px 9px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:rgba(255,255,255,.018);font-size:9px}.assetVersionLine,.assetUsageLine{display:flex;align-items:center;justify-content:space-between;gap:8px}.assetVersionLine strong,.assetUsageLine strong{font-size:9px}.assetVersionRow span,.assetUsageRow span{color:rgba(255,255,255,.58);line-height:1.4}
-    .assetActionRow{display:flex;flex-wrap:wrap;gap:7px}.assetDangerNote{font-size:9px;color:#d8a7a7;line-height:1.45}.assetMuted{font-size:9px;color:rgba(255,255,255,.58);line-height:1.45}
+    .assetActionRow{display:flex;flex-wrap:wrap;gap:7px}.assetActionRowRight{justify-content:flex-end}.assetDeleteButton{min-width:38px;padding:0 10px}.assetFileInput{padding:8px;height:auto}.assetDangerNote{font-size:9px;color:#d8a7a7;line-height:1.45}.assetMuted{font-size:9px;color:rgba(255,255,255,.58);line-height:1.45}
     .assetManagementSection .adminButton.small{min-height:31px;padding:0 9px;font-size:9px}
     @media(max-width:520px){.assetCatalog{grid-template-columns:1fr}.assetTwoCols,.assetRuntimeGrid{grid-template-columns:1fr}.assetThumbnailCard{grid-template-columns:74px minmax(0,1fr)}.assetThumbnailPreview{width:74px;height:74px}}
   `;
@@ -163,7 +163,6 @@ export function createAdminAssetWorkspace({
     filter: "all",
     category: "all",
     search: "",
-    includeArchived: false,
     busy: false,
     requestId: 0,
     placementDescriptor: null,
@@ -174,20 +173,20 @@ export function createAdminAssetWorkspace({
   const catalogSection = document.createElement("section");
   catalogSection.className = "workspaceSection assetManagementSection hidden";
   catalogSection.innerHTML = `
-    <div class="sectionHead"><div><h2>Asset Library</h2><p>Reusable Props and artwork-only Frames. Models are versioned and shared without duplicating GLBs.</p></div><button id="refreshSharedAssetsButton" class="adminButton" type="button">↻</button></div>
+    <div class="sectionHead"><div><h2>Asset Library</h2><p>Reusable Props and artwork-only Frames.</p></div><button id="refreshSharedAssetsButton" class="adminButton" type="button">↻</button></div>
     <div class="sectionBody assetWorkspaceBody">
       <div id="assetWorkspaceHostNote" class="assetWorkspaceHostNote"></div>
       <div class="assetToolbar">
         <div class="assetSearchRow"><input id="sharedAssetSearch" class="adminInput" maxlength="120" placeholder="Search assets…" autocomplete="off"><button id="addSharedAssetButton" class="adminButton primary" type="button">+ ADD</button></div>
         <div id="sharedAssetFilterRow" class="assetFilterRow"><button class="assetFilterButton active" type="button" data-asset-filter="all">ALL</button><button class="assetFilterButton" type="button" data-asset-filter="prop">PROPS</button><button class="assetFilterButton" type="button" data-asset-filter="frame">FRAMES</button></div>
-        <div class="assetCategoryRow"><select id="sharedAssetCategory" class="assetSelect"><option value="all">All categories</option></select><label class="assetToggle"><input id="sharedAssetIncludeArchived" type="checkbox"> Archived</label></div>
+        <div class="assetCategoryRow assetCategoryOnly"><select id="sharedAssetCategory" class="assetSelect"><option value="all">All categories</option></select></div>
       </div>
       <div id="sharedAssetCatalog" class="assetCatalog"><div class="assetEmpty">Loading Asset Library…</div></div>
     </div>`;
 
   const detailSection = document.createElement("section");
   detailSection.className = "workspaceSection assetManagementSection hidden";
-  detailSection.innerHTML = `<div class="sectionHead"><div><h2>Asset details</h2><p>Catalog metadata, immutable model versions and reference status.</p></div></div><div id="sharedAssetDetailBody" class="sectionBody"><div class="assetMuted">Select an asset.</div></div>`;
+  detailSection.innerHTML = `<div class="sectionHead"><div><h2>Asset details</h2><p>Edit, replace the model, use it, or delete it safely.</p></div></div><div id="sharedAssetDetailBody" class="sectionBody"><div class="assetMuted">Select an asset.</div></div>`;
 
   sidebar.append(catalogSection, detailSection);
 
@@ -442,7 +441,7 @@ export function createAdminAssetWorkspace({
       const meta = document.createElement("div"); meta.className = "assetTileMeta";
       const name = document.createElement("strong"); name.textContent = row.name || row.slug || "Untitled Asset";
       const line = document.createElement("span");
-      line.textContent = `${row.category || "Uncategorized"} · ${row.scope_type === "venue" ? "Gallery" : "Shared"}${row.status === "archived" ? " · Archived" : row.published_version_number ? ` · v${row.published_version_number}` : " · No published version"}`;
+      line.textContent = `${row.category || "Uncategorized"} · ${row.scope_type === "venue" ? "Gallery" : "Shared"} · ${row.published_version_number ? "Ready" : "Needs model"}`;
       meta.append(name, line); tile.append(thumb, meta);
       tile.addEventListener("click", () => {
         if (state.frameBindingTarget && rowFrameCandidate) void bindFrameToTarget(row).catch((error) => showToast(error.message || String(error)));
@@ -539,24 +538,6 @@ export function createAdminAssetWorkspace({
     return { ...defaults, defaultScale: safeNumber($("assetRuntimeDefaultScale") && $("assetRuntimeDefaultScale").value, defaults.defaultScale) };
   }
 
-  function versionRowsMarkup(detail) {
-    const versions = Array.isArray(detail && detail.versions) ? detail.versions : [];
-    if (!versions.length) return `<div class="assetMuted">No model versions yet.</div>`;
-    return `<div class="assetVersionList">${versions.map((version) => {
-      const validation = version.validation_report && typeof version.validation_report === "object" ? version.validation_report : {};
-      const server = validation.serverValidation && typeof validation.serverValidation === "object" ? validation.serverValidation : {};
-      const valid = validation.valid === true && (server.valid !== false);
-      const bytes = Number(version.file_size) || 0;
-      const size = bytes ? `${(bytes / (1024 * 1024)).toFixed(bytes > 10 * 1024 * 1024 ? 0 : 1)} MB` : "binary pending";
-      return `<div class="assetVersionRow"><div class="assetVersionLine"><strong>v${version.version_number}</strong><span class="assetBadge ${versionStatusClass(version.status)}">${escapeHtml(text(version.status).toUpperCase())}</span></div><span>${escapeHtml(size)} · ${valid ? "validated" : version.status === "draft" ? "validation pending" : "legacy/grandfathered"}</span>${version.status === "draft" ? `<div class="assetActionRow"><button class="adminButton small primary" type="button" data-asset-publish-version="${version.id}">PUBLISH VERSION</button><button class="adminButton small danger" type="button" data-asset-discard-version="${version.id}">DISCARD DRAFT</button></div>` : ""}</div>`;
-    }).join("")}</div>`;
-  }
-
-  function usageRowsMarkup() {
-    if (!state.usages.length) return `<div class="assetMuted">No indexed Draft/Published/Previous Exhibition references.</div>`;
-    return `<div class="assetUsageList">${state.usages.map((usage) => `<div class="assetUsageRow"><div class="assetUsageLine"><strong>${escapeHtml(usage.exhibition_title || usage.exhibition_slug || "Exhibition")}</strong><span>${escapeHtml(text(usage.channel).toUpperCase())}</span></div><span>v${escapeHtml(usage.version_number)} · ${escapeHtml(usage.usage_type)} · ${escapeHtml(usage.usage_key)}</span></div>`).join("")}</div>`;
-  }
-
   function bindDetailActions(detail) {
     const asset = detail.asset;
     const placeProp = $("sharedAssetPlacePropButton");
@@ -611,7 +592,7 @@ export function createAdminAssetWorkspace({
         if (progress) progress.classList.add("active");
         if (bar) bar.style.width = "4%";
         try {
-          await api.uploadNewVersion(asset.id, file, {
+          await api.replaceModel(asset.id, file, {
             runtimeMetadata: readRuntimeMetadata(asset.asset_type),
             onProgress: ({ loaded, total }) => {
               if (!bar) return;
@@ -620,7 +601,7 @@ export function createAdminAssetWorkspace({
             }
           });
           if (bar) bar.style.width = "100%";
-          showToast("GLB uploaded and validated. Publish the Draft version when ready.");
+          showToast(asset.published_version_id ? "Asset model replaced." : "Asset model added.");
           await refreshCatalog({ preserveSelection: true, forceDetail: true });
         } finally {
           if (progress) setTimeout(() => progress.classList.remove("active"), 250);
@@ -628,37 +609,26 @@ export function createAdminAssetWorkspace({
       }).catch((error) => showToast(error.message || String(error)));
     });
 
-    detailEl().querySelectorAll("[data-asset-publish-version]").forEach((button) => button.addEventListener("click", () => {
-      const versionId = button.dataset.assetPublishVersion;
-      void withBusy(async () => {
-        await api.publishVersion(versionId);
-        showToast("Asset version published.");
-        await refreshCatalog({ preserveSelection: true, forceDetail: true });
-      }).catch((error) => showToast(error.message || String(error)));
-    }));
-    detailEl().querySelectorAll("[data-asset-discard-version]").forEach((button) => button.addEventListener("click", () => {
-      const version = (detail.versions || []).find((item) => item.id === button.dataset.assetDiscardVersion);
-      if (!version || !window.confirm(`Discard Draft Asset version v${version.version_number}?`)) return;
-      void withBusy(async () => {
-        await api.discardVersion(version);
-        showToast("Draft Asset version discarded.");
-        await refreshCatalog({ preserveSelection: true, forceDetail: true });
-      }).catch((error) => showToast(error.message || String(error)));
-    }));
-
-    const archive = $("sharedAssetArchiveButton");
-    if (archive) archive.addEventListener("click", () => {
+    const deleteButton = $("sharedAssetDeleteButton");
+    if (deleteButton) deleteButton.addEventListener("click", () => {
       const referenceCount = state.usages.length || Number(detail.usageCount) || 0;
-      const message = referenceCount > 0
-        ? `Archive this Shared Asset? ${referenceCount} indexed Exhibition reference${referenceCount === 1 ? "" : "s"} will remain readable, but new Prop placement / Frame assignment will be blocked until Restore.`
-        : "Archive this Shared Asset? Existing Published versions remain immutable; new placement/assignment will be blocked until Restore.";
-      if (!window.confirm(message)) return;
-      void withBusy(async () => { await api.archive(asset.id); showToast("Asset archived. Existing references were preserved."); await refreshCatalog({ preserveSelection: true, forceDetail: true }); }).catch((error) => showToast(error.message || String(error)));
+      if (referenceCount > 0) {
+        showToast(`Delete blocked: this Asset is still used by ${referenceCount} retained Exhibition state reference${referenceCount === 1 ? "" : "s"}.`);
+        return;
+      }
+      if (!window.confirm(`Permanently delete ${asset.name || "this Asset"} and its stored model/thumbnail files? This cannot be undone.`)) return;
+      void withBusy(async () => {
+        await api.deletePermanent(asset.id);
+        state.selectedAssetId = "";
+        state.selectedDetail = null;
+        state.usages = [];
+        showToast("Asset deleted.");
+        await refreshCatalog({ preserveSelection: false });
+        renderDetail();
+        emitUiState();
+      }).catch((error) => showToast(error.message || String(error)));
     });
-    const restore = $("sharedAssetRestoreButton");
-    if (restore) restore.addEventListener("click", () => {
-      void withBusy(async () => { await api.restore(asset.id); showToast("Asset restored."); await refreshCatalog({ preserveSelection: true, forceDetail: true }); }).catch((error) => showToast(error.message || String(error)));
-    });
+
   }
 
   function renderDetail() {
@@ -671,7 +641,6 @@ export function createAdminAssetWorkspace({
     const detail = state.selectedDetail;
     const asset = detail.asset;
     const versions = Array.isArray(detail.versions) ? detail.versions : [];
-    const draft = versions.find((version) => version.status === "draft") || null;
     const published = versions.find((version) => version.id === asset.published_version_id) || versions.find((version) => version.status === "published") || null;
     const defaults = getDefaultSharedAssetRuntimeMetadata(asset.asset_type);
     const thumbUrl = currentThumbnailUrl(asset);
@@ -680,15 +649,12 @@ export function createAdminAssetWorkspace({
     const placement = getPropPlacementCapability(detail);
     const placementMarkup = text(asset.asset_type).toLowerCase() === "prop" ? `<div class="assetPlacementPanel"><strong>Exhibition placement</strong><p class="assetMuted">${escapeHtml(placement.reason)}</p><div class="assetActionRow"><button id="sharedAssetPlacePropButton" class="adminButton primary" type="button" ${placement.allowed ? "" : "disabled"}>PLACE PROP</button>${state.placementDescriptor && state.placementDescriptor.assetId === asset.id ? `<button id="sharedAssetCancelPlacementButton" class="adminButton" type="button">CANCEL PLACE</button>` : ""}</div></div>` : "";
     root.innerHTML = `<div class="assetDetailPanel">
-      <div class="assetDetailHead"><div><h3>${escapeHtml(asset.name || asset.slug || "Asset")}</h3><p>${escapeHtml(scope)}</p></div><div class="assetBadgeRow"><span class="assetBadge">${escapeHtml(text(asset.asset_type).toUpperCase())}</span><span class="assetBadge ${asset.status === "archived" ? "archived" : ""}">${escapeHtml(statusLabel(asset.status).toUpperCase())}</span>${published ? `<span class="assetBadge published">PUBLISHED v${published.version_number}</span>` : ""}${draft ? `<span class="assetBadge draft">DRAFT v${draft.version_number}</span>` : ""}</div></div>
+      <div class="assetDetailHead"><div><h3>${escapeHtml(asset.name || asset.slug || "Asset")}</h3><p>${escapeHtml(scope)}</p></div><div class="assetBadgeRow"><span class="assetBadge">${escapeHtml(text(asset.asset_type).toUpperCase())}</span>${published ? `<span class="assetBadge published">READY</span>` : `<span class="assetBadge">NEEDS MODEL</span>`}</div></div>
       ${placementMarkup}
       <form id="sharedAssetMetadataForm" class="assetDetailGrid"><label class="fieldLabel">Name<input id="sharedAssetDetailName" class="adminInput" maxlength="120" value="${escapeHtml(asset.name || "")}"></label><div class="assetTwoCols"><label class="fieldLabel">Category<input id="sharedAssetDetailCategory" class="adminInput" maxlength="80" value="${escapeHtml(asset.category || "")}"></label><div class="assetTypeLock">Type / scope<br><strong>${escapeHtml(text(asset.asset_type).toUpperCase())} · ${escapeHtml(asset.scope_type === "venue" ? "GALLERY" : "SHARED")}</strong></div></div><label class="fieldLabel">Description<textarea id="sharedAssetDetailDescription" class="adminTextarea" maxlength="1000" placeholder="Internal catalog note">${escapeHtml(description)}</textarea></label><button class="adminButton" type="submit">SAVE ASSET DETAILS</button></form>
       <div><div class="fieldLabel" style="margin-bottom:7px">Thumbnail</div><div class="assetThumbnailCard"><div class="assetThumbnailPreview">${thumbUrl ? `<img src="${escapeHtml(thumbUrl)}" alt="">` : `<span class="assetThumbGlyph">${assetTypeGlyph(asset.asset_type)}</span>`}</div><div class="assetThumbnailActions"><button id="sharedAssetChooseThumbnail" class="adminButton small" type="button">UPLOAD THUMBNAIL</button><button id="sharedAssetRemoveThumbnail" class="adminButton small danger" type="button" ${thumbUrl ? "" : "disabled"}>REMOVE</button><input id="sharedAssetThumbnailInput" class="assetHiddenInput" type="file" accept="image/jpeg,image/png,image/webp,image/avif"><div class="assetMuted">Images are optimized locally to WebP; the catalog never downloads GLBs just to draw tiles.</div></div></div></div>
-      <div><div class="fieldLabel" style="margin-bottom:7px">Model version</div>${runtimeFieldsMarkup(asset.asset_type, defaults)}<div style="height:8px"></div><button id="sharedAssetChooseVersion" class="adminButton primary" type="button" ${draft ? "disabled" : ""}>UPLOAD NEW GLB VERSION</button><input id="sharedAssetVersionInput" class="assetHiddenInput" type="file" accept=".glb,model/gltf-binary"><div id="sharedAssetUploadProgress" class="assetProgress"><span></span></div>${draft ? `<div class="assetMuted">Publish or discard the current Draft version before uploading another one.</div>` : ""}</div>
-      <div><div class="fieldLabel" style="margin-bottom:7px">Version history</div>${versionRowsMarkup(detail)}</div>
-      <div><div class="fieldLabel" style="margin-bottom:7px">References · ${Number(detail.usageCount) || state.usages.length || 0}</div>${usageRowsMarkup()}</div>
-      <div class="assetActionRow">${asset.status === "archived" ? `<button id="sharedAssetRestoreButton" class="adminButton" type="button">RESTORE ASSET</button>` : `<button id="sharedAssetArchiveButton" class="adminButton danger" type="button">ARCHIVE ASSET</button>`}</div>
-      <div class="assetMuted">Archive never rewrites existing Exhibition references. Published model versions stay immutable.</div>
+      <div><div class="fieldLabel" style="margin-bottom:7px">Model</div>${runtimeFieldsMarkup(asset.asset_type, published && published.runtime_metadata && typeof published.runtime_metadata === "object" ? published.runtime_metadata : defaults)}<div style="height:8px"></div><button id="sharedAssetChooseVersion" class="adminButton primary" type="button">${published ? "REPLACE MODEL" : "ADD MODEL"}</button><input id="sharedAssetVersionInput" class="assetHiddenInput" type="file" accept=".glb,model/gltf-binary"><div id="sharedAssetUploadProgress" class="assetProgress"><span></span></div></div>
+      <div class="assetActionRow assetActionRowRight"><button id="sharedAssetDeleteButton" class="adminButton small danger assetDeleteButton" type="button" title="Delete" aria-label="Delete">🗑</button></div>
     </div>`;
     bindDetailActions(detail);
   }
@@ -708,7 +674,7 @@ export function createAdminAssetWorkspace({
   }
 
   async function refreshCatalog({ preserveSelection = true, forceDetail = false, localAsset = null } = {}) {
-    const rows = await api.list({ includeArchived: state.includeArchived });
+    const rows = await api.list({ includeArchived: false });
     state.catalog = rows;
     if (localAsset && localAsset.id) {
       const index = state.catalog.findIndex((item) => item.id === localAsset.id);
@@ -717,9 +683,9 @@ export function createAdminAssetWorkspace({
     renderCatalog();
     const wanted = preserveSelection ? state.selectedAssetId : "";
     if (wanted && (forceDetail || !state.selectedDetail || state.selectedDetail.asset.id !== wanted)) {
-      if (state.catalog.some((item) => item.id === wanted) || state.includeArchived) await selectAsset(wanted, { emit: false });
+      if (state.catalog.some((item) => item.id === wanted)) await selectAsset(wanted, { emit: false });
       else await selectAsset("", { emit: false });
-    } else if (wanted && !state.catalog.some((item) => item.id === wanted) && !state.includeArchived) {
+    } else if (wanted && !state.catalog.some((item) => item.id === wanted)) {
       await selectAsset("", { emit: false });
     }
   }
@@ -734,7 +700,7 @@ export function createAdminAssetWorkspace({
     await loadVenues();
     const root = detailEl();
     if (!root) return;
-    root.innerHTML = `<form id="sharedAssetCreateForm" class="assetCreatePanel"><div class="assetDetailHead"><div><h3>New Shared Asset</h3><p>Create catalog identity first, then upload a validated immutable GLB version.</p></div></div><div class="assetCreateGrid"><label class="fieldLabel">Name<input id="newSharedAssetName" class="adminInput" maxlength="120" required placeholder="Wooden Bench"></label><div class="assetTwoCols"><label class="fieldLabel">Type<select id="newSharedAssetType" class="assetSelect"><option value="prop">PROP</option><option value="frame">FRAME</option></select></label><label class="fieldLabel">Category<input id="newSharedAssetCategory" class="adminInput" maxlength="80" placeholder="Furniture"></label></div><label class="fieldLabel">Scope<select id="newSharedAssetScope" class="assetSelect"><option value="platform">SHARED — all Galleries</option><option value="venue">GALLERY — one Gallery</option></select></label><label id="newSharedAssetVenueLabel" class="fieldLabel hidden">Gallery<select id="newSharedAssetVenue" class="assetSelect"><option value="">Choose Gallery…</option>${state.venues.filter((v) => v.status !== "archived").map((v) => `<option value="${escapeHtml(v.id)}">${escapeHtml(v.name)}</option>`).join("")}</select></label><label class="fieldLabel">Description<textarea id="newSharedAssetDescription" class="adminTextarea" maxlength="1000" placeholder="Internal catalog note (optional)"></textarea></label><button class="adminButton primary" type="submit">CREATE ASSET</button><button id="cancelSharedAssetCreate" class="adminButton" type="button">CANCEL</button></div><div class="assetMuted">Type and scope are identity-level choices. Model binaries are uploaded as versioned GLBs after creation.</div></form>`;
+    root.innerHTML = `<form id="sharedAssetCreateForm" class="assetCreatePanel"><div class="assetDetailHead"><div><h3>Add Asset</h3><p>Create one reusable Prop or Frame.</p></div></div><div class="assetCreateGrid"><label class="fieldLabel">Name<input id="newSharedAssetName" class="adminInput" maxlength="120" required placeholder="Wooden Bench"></label><div class="assetTwoCols"><label class="fieldLabel">Type<select id="newSharedAssetType" class="assetSelect"><option value="prop">PROP</option><option value="frame">FRAME</option></select></label><label class="fieldLabel">Category<input id="newSharedAssetCategory" class="adminInput" maxlength="80" placeholder="Furniture"></label></div><label class="fieldLabel">Scope<select id="newSharedAssetScope" class="assetSelect"><option value="platform">SHARED — all Galleries</option><option value="venue">GALLERY — one Gallery</option></select></label><label id="newSharedAssetVenueLabel" class="fieldLabel hidden">Gallery<select id="newSharedAssetVenue" class="assetSelect"><option value="">Choose Gallery…</option>${state.venues.filter((v) => v.status !== "archived").map((v) => `<option value="${escapeHtml(v.id)}">${escapeHtml(v.name)}</option>`).join("")}</select></label><label class="fieldLabel">Description<textarea id="newSharedAssetDescription" class="adminTextarea" maxlength="1000" placeholder="Internal catalog note (optional)"></textarea></label><label class="fieldLabel">Model GLB<input id="newSharedAssetModel" class="adminInput assetFileInput" type="file" accept=".glb,model/gltf-binary" required></label><div id="newSharedAssetProgress" class="assetProgress"><span></span></div><button class="adminButton primary" type="submit">ADD ASSET</button><button id="cancelSharedAssetCreate" class="adminButton" type="button">CANCEL</button></div></form>`;
     const scope = $("newSharedAssetScope");
     const venueLabel = $("newSharedAssetVenueLabel");
     scope.addEventListener("change", () => venueLabel.classList.toggle("hidden", scope.value !== "venue"));
@@ -745,16 +711,31 @@ export function createAdminAssetWorkspace({
         const scopeType = scope.value;
         const scopeVenueId = scopeType === "venue" ? text($("newSharedAssetVenue").value) : null;
         if (scopeType === "venue" && !scopeVenueId) throw new Error("Choose the Gallery scope for this Asset.");
-        const created = await api.create({
+        const file = $("newSharedAssetModel").files && $("newSharedAssetModel").files[0];
+        if (!file) throw new Error("Choose a GLB model for the Asset.");
+        const type = $("newSharedAssetType").value;
+        const progress = $("newSharedAssetProgress");
+        const bar = progress && progress.querySelector("span");
+        if (progress) progress.classList.add("active");
+        if (bar) bar.style.width = "4%";
+        const created = await api.addWithModel({
           name: text($("newSharedAssetName").value),
-          assetType: $("newSharedAssetType").value,
+          assetType: type,
           category: text($("newSharedAssetCategory").value),
           scopeType,
           scopeVenueId,
-          metadata: { description: text($("newSharedAssetDescription").value) }
+          metadata: { description: text($("newSharedAssetDescription").value) },
+          file,
+          runtimeMetadata: getDefaultSharedAssetRuntimeMetadata(type),
+          onProgress: ({ loaded, total }) => {
+            if (!bar) return;
+            const percent = total ? Math.max(4, Math.min(92, Math.round((loaded / total) * 92))) : 32;
+            bar.style.width = `${percent}%`;
+          }
         });
-        state.selectedAssetId = created.id;
-        showToast("Asset created. Upload its first GLB version.");
+        if (bar) bar.style.width = "100%";
+        state.selectedAssetId = created.asset.id;
+        showToast("Asset added and ready to use.");
         await refreshCatalog({ preserveSelection: true, forceDetail: true });
         emitUiState();
       }).catch((error) => showToast(error.message || String(error)));
@@ -765,7 +746,6 @@ export function createAdminAssetWorkspace({
   $("addSharedAssetButton").addEventListener("click", () => { void showCreateForm().catch((error) => showToast(error.message || String(error))); });
   $("sharedAssetSearch").addEventListener("input", (event) => { state.search = text(event.target.value); renderCatalog(); });
   $("sharedAssetCategory").addEventListener("change", (event) => { state.category = event.target.value || "all"; renderCatalog(); });
-  $("sharedAssetIncludeArchived").addEventListener("change", (event) => { state.includeArchived = !!event.target.checked; void withBusy(() => refreshCatalog({ preserveSelection: true, forceDetail: true })).catch((error) => showToast(error.message || String(error))); });
   $("sharedAssetFilterRow").querySelectorAll("[data-asset-filter]").forEach((button) => button.addEventListener("click", () => {
     state.filter = button.dataset.assetFilter || "all";
     $("sharedAssetFilterRow").querySelectorAll("[data-asset-filter]").forEach((node) => node.classList.toggle("active", node === button));

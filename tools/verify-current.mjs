@@ -47,8 +47,8 @@ assert(index.includes('stage: "V14.1.10.1"'),'Index stage identity missing');
 assert(bootstrap.includes('const STAGE = "V14.1.10.1"'),'Viewer stage identity missing');
 assert(adminBootstrap.includes('const STAGE = "V14.1.10.1"'),'Admin stage identity missing');
 assert(bootstrap.includes('v14_2_6_draft_publish_20260914'),'Current engine cache key missing');
-assert(index.includes('gallery-viewer-bootstrap.js?v=v14_3_7_1_ui_layout'),'V14.3.7.1 viewer cache key missing');
-assert(admin.includes('admin-workspace-bootstrap.js?v=v14_3_7_1_ui_layout'),'V14.3.7.1 Admin cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=v14_3_8_shared_asset_lifecycle'),'V14.3.8 viewer cache key missing');
+assert(admin.includes('admin-workspace-bootstrap.js?v=v14_3_8_shared_asset_lifecycle'),'V14.3.8 Admin cache key missing');
 const currentPackage=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
 assert(currentPackage.version==='0.14.2-v14-2-6-canonical-draft-publish-model'&&currentPackage.description.includes('V14.2.6 Canonical Draft / Publish Model'),'V14.2.6 core runtime package identity missing');
 
@@ -132,14 +132,14 @@ assert(bootstrap.includes('reuseResidentLayer: true')&&bootstrap.includes('opaqu
 assert(source.includes('residentRevision === canonicalRevision')&&source.includes('stale-revision-evict'),'V14.1.10.1 revision-aware resident layer reuse missing');
 assert(!extractFunction(source,'finishGalleryStartup').includes('Math.PI / 50')&&extractFunction(source,'finishGalleryStartup').includes('gallerySpaceEntryTarget'),'V14.1.10.1 exact Entry Point direction reset missing');
 assert(reentryTest.includes('Public fresh-visit + resident re-entry regression passed.'),'V14.1.10.1 executable re-entry regression missing');
-assert(sharedAssetApi.includes('SHARED_ASSET_STAGE = "V13.1"')&&sharedAssetApi.includes('admin_publish_shared_asset_version'),'V13.1 Shared Asset data adapter missing');
+assert(sharedAssetApi.includes('SHARED_ASSET_STAGE = "V14.3.8"')&&sharedAssetApi.includes('admin_publish_shared_asset_version')&&sharedAssetApi.includes('admin_prepare_shared_asset_delete'),'V14.3.8 Shared Asset product adapter missing');
 assert(sharedAssetState.includes('exhibition-platform-state-assets.v1')&&sharedAssetState.includes('collectSharedAssetReferences'),'V13.1 Shared Asset state contract missing');
 assert(sharedAssetValidation.includes('exhibition-platform-shared-asset-validation.v1')&&sharedAssetWorker.includes('["prop","frame","sculpture"]'),'V13.1 Shared Asset GLB validation contract missing');
 assert(sculptureValidation.includes('exhibition-platform-sculpture-model-validation.v1')&&sculptureValidation.includes('SCULPTURE_MODEL_VALIDATOR_VERSION = "V14.1.5.1"'),'V14.1.5.1 Sculpture validation contract missing');
 assert(source.includes('if (loadedMeshes.length < 1)')&&source.includes('Sculpture/model GLB contains no renderable mesh geometry.'),'V14.1.5.1 model runtime can still report loaded without renderable geometry');
 assert(source.includes('createGalleryModel3dApplyResult(queued ? "queued" : "failed"')&&source.includes('isGalleryModel3dApplyLoaded'),'V14.1.5.1 queued/loaded model semantics missing');
 assert(source.includes('validateSculptureModelFile(file)')&&source.includes('MODEL UNAVAILABLE — reference preserved')&&source.includes('RETRY MODEL'),'V14.1.5.1 Sculpture upload/error/retry contract missing');
-assert(assetWorkspace.includes('ADMIN_ASSET_WORKSPACE_STAGE = "V13.6"')&&assetWorkspace.includes('Asset Library')&&assetWorkspace.includes('UPLOAD NEW GLB VERSION'),'V13.2 left Asset Workspace module missing');
+assert(assetWorkspace.includes('ADMIN_ASSET_WORKSPACE_STAGE = "V14.3.8"')&&assetWorkspace.includes('Asset Library')&&assetWorkspace.includes('REPLACE MODEL')&&assetWorkspace.includes('ADD MODEL')&&!assetWorkspace.includes('PUBLISH VERSION')&&!assetWorkspace.includes('ARCHIVE ASSET'),'V14.3.8 simplified Asset Workspace lifecycle missing');
 assert(adminBootstrap.includes('data-section=\"assets\"')&&adminBootstrap.includes('assetWorkspaceHost')&&adminBootstrap.includes('currentPreviewContextSection'),'V13.2 three-tab/host-context orchestration missing');
 assert(assetWorkspace.includes('api.uploadThumbnail')&&sharedAssetApi.includes('admin_register_shared_asset_thumbnail'),'V13.2 thumbnail management bridge missing');
 assert(assetWorkspace.includes('application/x-exhibition-shared-asset')&&assetWorkspace.includes('PLACE PROP')&&!assetWorkspace.includes('tile.addEventListener("dragstart", async'),'V13.3 synchronous Prop drag/tap placement launcher missing');

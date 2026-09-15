@@ -31,13 +31,13 @@ function expect(label, ok) {
 }
 
 expect('current package identity remains V14 runtime with V14.2.3 corrective shell', pkg.version === '0.14.2-v14-2-6-canonical-draft-publish-model');
-expect('Shared Asset constants expose V13.1 / shared-assets', SHARED_ASSET_STAGE === 'V13.1' && SHARED_ASSET_BUCKET === 'shared-assets');
+expect('Shared Asset product adapter is V14.3.8 over the existing shared-assets domain', SHARED_ASSET_STAGE === 'V14.3.8' && SHARED_ASSET_BUCKET === 'shared-assets');
 expect('independent Shared Asset validator schema is frozen', SHARED_ASSET_VALIDATION_SCHEMA === 'exhibition-platform-shared-asset-validation.v1' && SHARED_ASSET_VALIDATOR_VERSION === 'V13.1');
 expect('renderable GLB worker preserves Shared Asset prop/frame and adds Sculpture validation without Gallery Space roles', workerSource.includes('["prop","frame","sculpture"]') && workerSource.includes('assetType') && !workerSource.includes('["floor","walls","ceiling","props"]'));
 expect('Shared Asset API uses guarded canonical RPCs', apiSource.includes('admin_create_shared_asset') && apiSource.includes('admin_create_shared_asset_version') && apiSource.includes('admin_register_shared_asset_version_binary') && apiSource.includes('admin_publish_shared_asset_version'));
 expect('immutable upload uses UUID version path returned by server and no upsert', apiSource.includes('version.storage_path') && apiSource.includes('upsert: false'));
 expect('Shared Asset state contract remains separate from Venue props', stateSource.includes('exhibition-platform-state-assets.v1') && !stateSource.includes('venue_assets'));
-expect('V13.2 Asset Manager is a separate left-workspace module', assetWorkspaceSource.includes('ADMIN_ASSET_WORKSPACE_STAGE = "V13.6"') && assetWorkspaceSource.includes('Asset Library') && assetWorkspaceSource.includes('UPLOAD NEW GLB VERSION'));
+expect('V14.3.8 Asset Manager exposes product Add/Replace without technical versions', assetWorkspaceSource.includes('ADMIN_ASSET_WORKSPACE_STAGE = "V14.3.8"') && assetWorkspaceSource.includes('Asset Library') && assetWorkspaceSource.includes('REPLACE MODEL') && assetWorkspaceSource.includes('ADD MODEL') && !assetWorkspaceSource.includes('PUBLISH VERSION') && !assetWorkspaceSource.includes('Version history'));
 expect('V13.2 admin exposes three left top-level sections', adminSource.includes('data-section=\"exhibitions\"') && adminSource.includes('data-section=\"galleries\"') && adminSource.includes('data-section=\"assets\"'));
 expect('V13.2 thumbnail API uses guarded Shared Asset RPCs', apiSource.includes('admin_register_shared_asset_thumbnail') && apiSource.includes('admin_clear_shared_asset_thumbnail') && apiSource.includes('/thumbnails/'));
 expect('V13.3 catalog exposes desktop drag and tap PLACE without async dragstart', assetWorkspaceSource.includes('application/x-exhibition-shared-asset') && assetWorkspaceSource.includes('PLACE PROP') && !assetWorkspaceSource.includes('tile.addEventListener("dragstart", async'));
@@ -61,7 +61,10 @@ assert.throws(() => normalizeSharedAssetRuntimeMetadata('prop', { defaultScale: 
 expect('V13.5 unavailable Prop runtime preserves references and exposes retry', gallerySource.includes('MODEL UNAVAILABLE — reference preserved') && gallerySource.includes('retrySharedAssetPropRuntime') && gallerySource.includes('sharedAssetUnavailable'));
 expect('V13.5 unavailable Frame binding preserves state and exposes retry', gallerySource.includes('MODEL UNAVAILABLE — binding preserved') && gallerySource.includes('artworkFrameRetryButton') && gallerySource.includes('artworkFrameUnavailable'));
 expect('V13.5 shared asset integrity diagnostics expose unavailable Props and Frames', gallerySource.includes('exhibition-platform-shared-asset-integrity.v1') && gallerySource.includes('getSharedAssetIntegrityDebug'));
-expect('V13.5 archive confirmation is reference-aware', assetWorkspaceSource.includes('indexed Exhibition reference') && assetWorkspaceSource.includes('Existing references were preserved'));
+expect('V14.3.8 normal Asset lifecycle removes Archive/Restore and uses guarded permanent Delete', !assetWorkspaceSource.includes('ARCHIVE ASSET') && !assetWorkspaceSource.includes('RESTORE ASSET') && assetWorkspaceSource.includes('sharedAssetDeleteButton') && assetWorkspaceSource.includes('api.deletePermanent'));
+expect('V14.3.8 Replace auto-publishes hidden technical versions and preserves exact placement references', apiSource.includes('async function replaceModel') && apiSource.includes('admin_publish_shared_asset_version') && apiSource.includes('discardDraftVersion(uploaded.version') && stateSource.includes('assetVersionId'));
+expect('V14.3.8 Add creates one usable Asset and cleans a failed new identity best-effort', apiSource.includes('async addWithModel') && apiSource.includes('await replaceModel(created.id') && apiSource.includes('await deletePermanent(created.id)'));
+expect('V14.3.8 permanent Delete is two-phase and removes returned Storage inventory before final DB delete', apiSource.includes('admin_prepare_shared_asset_delete') && apiSource.includes('removeStorageItemsOrThrow') && apiSource.includes('admin_delete_shared_asset'));
 
 
 const assetId = '11111111-1111-4111-8111-111111111111';
@@ -114,6 +117,8 @@ assert.deepEqual(refs, [
   { assetVersionId: propVersionId, usageType: 'prop-instance', usageKey: propInstanceId },
   { assetVersionId: frameVersionId, usageType: 'artwork-frame', usageKey: artworkId }
 ]);
+expect('V14.3.8 permanent Delete never auto-cancels deletion-pending after Storage cleanup begins', apiSource.includes('Once prepare-delete succeeds, never automatically reactivate the Asset') && !apiSource.includes('if (prepared) await supabase.rpc("admin_cancel_shared_asset_delete"'));
+
 expect('state reference extractor finds Prop instances and artwork-only Frames', true);
 
 const legacy = findLegacyFrameCatalogMatch(
@@ -152,6 +157,6 @@ assert.equal(listed.length, 1);
 assert.equal(rpcCalls[0][0], 'admin_list_shared_assets');
 assert.equal(rpcCalls[0][1].p_asset_type, 'prop');
 assert.equal((await api.get(assetId)).asset.id, assetId);
-expect('data adapter maps catalog/get reads to V13.1 RPC surface', true);
+expect('data adapter keeps catalog/get reads compatible while V14.3.8 adds product lifecycle orchestration', true);
 
-console.log('V13.1 foundation + V13.2 Asset Manager + V13.3 Prop placement + V13.4 Frame migration + V13.5 hardening invariants passed under V13.6 closure candidate.');
+console.log('Shared Asset foundation/runtime invariants plus V14.3.8 Add/Replace/Delete product lifecycle passed.');

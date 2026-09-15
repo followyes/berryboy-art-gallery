@@ -278,9 +278,9 @@ assert.ok(admin.includes('const host = assetHost === "galleries" || assetHost ==
 assert.ok(admin.includes('Returning from Assets to its host is also UI-only') && admin.includes('adminWorkspaceSection === "assets" && next === assetWorkspaceHost'), 'Assets round-trip is not a non-destructive tool switch');
 assert.ok(admin.includes('const sceneEditContext = section === "exhibitions" || (section === "assets" && assetWorkspaceHost === "exhibitions")'), 'Scene Save state is not preserved while Assets overlays an Exhibition');
 assert.ok(assetWorkspace.includes('Gallery preview preserved.') && assetWorkspace.includes('placement and Frame binding stay disabled in Gallery context'), 'Gallery-host Assets capability boundary is missing');
-assert.ok(assetWorkspace.includes('UPLOAD NEW GLB VERSION') && assetWorkspace.includes('api.uploadNewVersion'), 'Asset Manager cannot upload immutable GLB versions');
-assert.ok(assetWorkspace.includes('api.publishVersion') && assetWorkspace.includes('api.archive') && assetWorkspace.includes('api.restore'), 'Asset Manager lifecycle actions are incomplete');
-assert.ok(assetWorkspace.includes('api.listUsages') && assetWorkspace.includes('References'), 'Asset usage/reference visibility is missing');
+assert.ok(assetWorkspace.includes('REPLACE MODEL') && assetWorkspace.includes('ADD MODEL') && assetWorkspace.includes('api.replaceModel'), 'V14.3.8 Asset Manager Add/Replace workflow is missing');
+assert.ok(assetWorkspace.includes('api.deletePermanent') && assetWorkspace.includes('sharedAssetDeleteButton') && !assetWorkspace.includes('ARCHIVE ASSET') && !assetWorkspace.includes('RESTORE ASSET'), 'V14.3.8 permanent Delete or lifecycle simplification is missing');
+assert.ok(assetWorkspace.includes('api.listUsages') && assetWorkspace.includes('Delete blocked: this Asset is still used'), 'V14.3.8 retained-reference Delete guard is missing');
 assert.ok(assetWorkspace.includes('loading = "lazy"') && !assetWorkspace.includes('getPublicVersionUrl(row)'), 'Catalog tiles should use thumbnails/metadata and must not prefetch GLBs');
 const primaryTabsStart = source.indexOf('{ key: "exhibits", label: "EXHIBITS" }');
 const primaryTabs = source.slice(primaryTabsStart, source.indexOf('].forEach(function (definition)', primaryTabsStart) + 2);

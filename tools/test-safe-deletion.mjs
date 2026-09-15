@@ -8,6 +8,8 @@ const viewer = fs.readFileSync(new URL('src/bootstrap/gallery-viewer-bootstrap.j
 const admin = fs.readFileSync(new URL('src/bootstrap/admin-workspace-bootstrap.js', root), 'utf8');
 const exhibitionApi = fs.readFileSync(new URL('src/data/exhibition-api.js', root), 'utf8');
 const galleryApi = fs.readFileSync(new URL('src/data/gallery-management-api.js', root), 'utf8');
+const sharedAssetApi = fs.readFileSync(new URL('src/data/shared-asset-api.js', root), 'utf8');
+const assetWorkspace = fs.readFileSync(new URL('src/bootstrap/admin-asset-workspace.js', root), 'utf8');
 const sql = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/ALL_IN_ONE.sql', import.meta.url), 'utf8');
 
 assert.equal(pkg.version, '0.14.2-v14-2-6-canonical-draft-publish-model');
@@ -21,7 +23,13 @@ assert.ok(admin.includes('title="Delete Gallery"') && admin.includes('aria-label
 assert.ok(admin.includes('deleteAssetSlot(draft.id, role)') && admin.includes('The Gallery cannot be published until this required model is uploaded again.'));
 assert.ok(sql.includes('deletion_pending_at') && sql.includes('admin_prepare_exhibition_delete') && sql.includes('admin_delete_exhibition'));
 assert.ok(sql.includes('admin_prepare_venue_delete') && sql.includes('admin_delete_venue'));
+assert.ok(sharedAssetApi.includes('admin_prepare_shared_asset_delete') && sharedAssetApi.includes('admin_delete_shared_asset'));
+assert.ok(sharedAssetApi.includes('Once prepare-delete succeeds, never automatically reactivate the Asset') && !sharedAssetApi.includes('if (prepared) await supabase.rpc(\"admin_cancel_shared_asset_delete\"'));
+assert.ok(assetWorkspace.includes('sharedAssetDeleteButton') && assetWorkspace.includes('api.deletePermanent') && !assetWorkspace.includes('ARCHIVE ASSET'));
+assert.ok(sql.includes('admin_prepare_shared_asset_delete') && sql.includes('admin_delete_shared_asset') && sql.includes('admin_cancel_shared_asset_delete'));
+assert.ok(sql.includes('cms_guard_shared_asset_usage_pending_delete') && sql.includes('can_delete_shared_asset_storage_path'));
+assert.ok(sql.includes('Delete blocked: Shared Asset is used by % retained Exhibition state reference(s)'));
 assert.ok(sql.includes("role_name not in ('floor','walls','ceiling','props')"));
 assert.ok(sql.includes("Shared Asset(s) still belong to this Gallery") && sql.includes('Exhibition reference(s) still use this Gallery'));
 assert.ok(sql.includes('storageObjectCount') && sql.includes("storage.objects"));
-console.log('V14.2.5 safe deletion regression passed.');
+console.log('V14.2.5 Gallery/Exhibition safe deletion + V14.3.8 Shared Asset permanent deletion regression passed.');

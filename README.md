@@ -1,9 +1,17 @@
 # Exhibition Platform
 
-Current repository corrective release: **V14.3.7.1 — Product Save Workflow Correction**.
+Current repository release candidate: **V14.3.8 — Simplified Shared Asset Lifecycle**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
+
+## V14.3.8 Simplified Shared Asset Lifecycle
+
+Normal Shared Asset authoring now follows the product model `Add / Replace -> Use -> Delete`. Add creates an Asset with a validated GLB in one workflow; Replace validates and technically publishes a new immutable Asset Version automatically, while existing placed Props/Frames keep their exact historical `assetVersionId`. Normal Asset Manager UI no longer exposes Draft/Published/Previous version ceremony, manual Publish Version, Version History, Archive/Restore or raw retained-reference inventory.
+
+Permanent Delete uses a guarded prepare -> Storage cleanup -> final-delete protocol. Any retained Draft/Published/Previous Exhibition usage blocks deletion. While deletion is pending, new versions and new usages are rejected; immutable model deletion is authorized only for the Asset being permanently deleted. Model/thumbnail Storage objects are inventoried before final DB deletion, including legacy seeded Frame paths.
+
+V14.3.8 intentionally does not redesign placement. Existing Prop/Frame placement and binding behavior remains until V14.3.9. Gallery/Public resolution, Scene lifecycle, V14.3.7.1 product Save and Published ON/OFF semantics are unchanged.
 
 ## V14.3.7.1 Product Save Workflow Correction
 

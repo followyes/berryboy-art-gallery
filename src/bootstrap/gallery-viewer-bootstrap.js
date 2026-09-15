@@ -8,7 +8,7 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { registerExhibitionAssetCache, getExhibitionAssetDeliveryStats } from "./asset-cache-bootstrap.js?v=c6c8c22_gallery_management_20260908";
 import { beginTransitionGuard, endTransitionGuard, isTransitionGuardActive } from "./transition-guard.js?v=v14_2_6_draft_publish_20260914";
-import { createExhibitionDataAdapter, resolveInitialPublicRuntime, listPublicExhibitionCards } from "../data/exhibition-api.js?v=v14_3_7_1_ui_layout";
+import { createExhibitionDataAdapter, resolveInitialPublicRuntime, listPublicExhibitionCards } from "../data/exhibition-api.js?v=v14_3_8_shared_asset_lifecycle";
 import { getRuntimeVenueVersionKey } from "../runtime/scene-lifecycle-controller.js?v=v14_2_6_draft_publish_20260914";
 import { createSceneLoadingRuntimeHost } from "../runtime/scene-loading-orchestrator.js?v=v14_2_6_draft_publish_20260914";
 import { shouldShowPublicSpaceIntro } from "../runtime/public-space-entry-policy.js?v=v14_2_6_draft_publish_20260914";
@@ -825,7 +825,7 @@ async function openInlineAdminWorkspace(exhibitionId) {
     if (window.ExhibitionPlatformDataAdapter && typeof window.ExhibitionPlatformDataAdapter.setMode === "function") window.ExhibitionPlatformDataAdapter.setMode("admin");
     if (window.GalleryApp && typeof window.GalleryApp.setExhibitionDataMode === "function") window.GalleryApp.setExhibitionDataMode("admin");
     if (window.GalleryApp.enterAdminWorkspaceMode) window.GalleryApp.enterAdminWorkspaceMode();
-    if (!inlineAdminModulePromise) inlineAdminModulePromise = import(`./admin-workspace-bootstrap.js?v=v14_3_7_1_ui_layout`);
+    if (!inlineAdminModulePromise) inlineAdminModulePromise = import(`./admin-workspace-bootstrap.js?v=v14_3_8_shared_asset_lifecycle`);
     const adminModule = await inlineAdminModulePromise;
     if (adminModule && typeof adminModule.resumeAdminWorkspace === "function") await adminModule.resumeAdminWorkspace();
     window.requestAnimationFrame(() => { if (activeEngine) activeEngine.resize(); });
