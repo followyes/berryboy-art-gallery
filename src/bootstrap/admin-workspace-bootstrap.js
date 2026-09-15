@@ -5,7 +5,7 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { registerExhibitionAssetCache, getExhibitionAssetCacheStatus, getExhibitionAssetDeliveryStats, evictExhibitionAssetCacheUrl } from "./asset-cache-bootstrap.js?v=c6c8c22_gallery_management_20260908";
 import { beginTransitionGuard, endTransitionGuard, isTransitionGuardActive } from "./transition-guard.js?v=v14_2_6_draft_publish_20260914";
-import { createExhibitionDataAdapter, resolveInitialAdminRuntime } from "../data/exhibition-api.js?v=v14_2_6_draft_publish_20260914";
+import { createExhibitionDataAdapter, resolveInitialAdminRuntime } from "../data/exhibition-api.js?v=v14_3_5_canonical_gallery_resolution";
 import { createGalleryManagementApi, CONTROLLED_GALLERY_ASSET_ROLES } from "../data/gallery-management-api.js?v=v14_3_3_structural_compatibility";
 import {
   REQUIRED_GALLERY_MODEL_ROLES,
@@ -1076,6 +1076,19 @@ window.addEventListener("gallery-status", (event) => {
   if (!workspaceActive) return;
   const detail = event.detail || {};
   if (detail.message) showToast(detail.message);
+});
+
+// V14.3.4 — UI consumes the compatibility authority without exposing technical Gallery Versions.
+// This path becomes user-visible once V14.3.5 starts resolving a newer current Gallery shell.
+window.addEventListener("gallery-placement-repair-required", (event) => {
+  if (!workspaceActive) return;
+  const summary = event.detail && event.detail.summary ? event.detail.summary : {};
+  const repair = Number(summary.repair) || 0;
+  const review = Number(summary.review) || 0;
+  const parts = [];
+  if (repair) parts.push(`${repair} item${repair === 1 ? "" : "s"} need placement repair`);
+  if (review) parts.push(`${review} item${review === 1 ? "" : "s"} need compatibility review`);
+  showToast(parts.length ? `Gallery update: ${parts.join("; ")}.` : "Gallery update needs placement compatibility review.");
 });
 
 window.addEventListener("exhibition-network-diagnostic", () => {

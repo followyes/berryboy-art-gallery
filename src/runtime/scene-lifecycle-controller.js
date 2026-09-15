@@ -200,6 +200,19 @@ export function createSceneLifecycleController(options = {}) {
         exhibitionData: runtimeExhibitionData,
         exhibitionId: runtime.exhibition.id,
         initialExhibitionSnapshot: createOptions.initialSnapshot || null,
+        // V14.3.4: source-state provenance / structural evidence travels with the exact
+        // physical Scene request. Current pinned runtimes simply resolve SAME_EXACT_VERSION.
+        stateCompatibilityContext: sceneOptions.stateCompatibilityContext || runtime.stateCompatibilityContext || (runtime.stateProvenance ? {
+          provenance: runtime.stateProvenance,
+          source: {
+            venueId: runtime.stateProvenance.venueId || runtime.exhibition.venue_id || null,
+            venueVersionId: runtime.stateProvenance.venueVersionId || null
+          },
+          current: {
+            venueId: runtime.exhibition.venue_id || null,
+            venueVersionId: runtime.exhibition.venue_version_id || null
+          }
+        } : null),
         lifecycleId
       });
       await waiter.promise;

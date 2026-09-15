@@ -5,7 +5,9 @@ const sql = fs.readFileSync(new URL("../../../OUTSIDE_REPO/SQL/ALL_IN_ONE.sql", 
 const api = fs.readFileSync(new URL("../src/data/exhibition-api.js", import.meta.url), "utf8");
 const workspace = fs.readFileSync(new URL("../src/bootstrap/admin-workspace-bootstrap.js", import.meta.url), "utf8");
 
-const lastSave = sql.slice(sql.lastIndexOf("create or replace function public.save_exhibition_runtime_state("), sql.lastIndexOf("create or replace function public.admin_publish_exhibition_bundle("));
+const lastSaveStart = sql.lastIndexOf("create or replace function public.save_exhibition_runtime_state(");
+const lastSaveEnd = sql.indexOf("\n$$;", lastSaveStart);
+const lastSave = sql.slice(lastSaveStart, lastSaveEnd + 4);
 const lastPublishStart = sql.lastIndexOf("create or replace function public.admin_publish_exhibition_bundle(");
 const lastPublishEnd = sql.indexOf("create or replace function public.admin_set_exhibition_runtime_visibility", lastPublishStart);
 const lastPublish = sql.slice(lastPublishStart, lastPublishEnd);

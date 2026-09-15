@@ -8,7 +8,7 @@ const viewer = fs.readFileSync(new URL('src/bootstrap/gallery-viewer-bootstrap.j
 const admin = fs.readFileSync(new URL('src/bootstrap/admin-workspace-bootstrap.js', root), 'utf8');
 const exhibitionApi = fs.readFileSync(new URL('src/data/exhibition-api.js', root), 'utf8');
 const galleryApi = fs.readFileSync(new URL('src/data/gallery-management-api.js', root), 'utf8');
-const sql = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/V14_2_5_CONTENT_LIFECYCLE_SAFE_DELETION.sql', import.meta.url), 'utf8');
+const sql = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/ALL_IN_ONE.sql', import.meta.url), 'utf8');
 
 assert.equal(pkg.version, '0.14.2-v14-2-6-canonical-draft-publish-model');
 assert.ok(adminHtml.includes('id="deleteExhibitionButton"'));

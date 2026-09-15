@@ -103,9 +103,10 @@ assert.equal(getExhibitionGalleryMigration(rebound).status, 'needs-layout-confir
 assert.equal(isExhibitionGalleryMigrationPending({ content: { venueMigration: { status: 'resolved' } } }), false);
 assert.equal(galleryBindingLabel({ venueName: 'Gallery B', versionId: 'id', versionNumber: 'v1' }), 'Gallery B · v1');
 
-// Production client contract: runtime Admin state is pinned to the Draft Version channel.
-assert.ok(api.includes('const targetVersionId = s.draft_venue_version_id;'));
-assert.ok(!api.includes('s.draft_venue_version_id || venueDetail.venue.draft_version_id'));
+// V14.3.5: logical Gallery resolves the current Published shell; Draft exact Version remains provenance.
+assert.ok(api.includes('const sourceVersionId = text(s.draft_venue_version_id);'));
+assert.ok(api.includes('const targetVersionId = text(venueDetail.venue.published_version_id);'));
+assert.ok(api.includes('source: "exhibition_states.draft_venue_version_id"'));
 assert.ok(api.includes('admin_assign_exhibition_gallery'));
 assert.ok(api.includes('admin_confirm_exhibition_gallery_layout'));
 assert.ok(api.includes('admin_publish_exhibition_bundle'));

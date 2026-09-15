@@ -8,6 +8,44 @@ import { buildSpaceDefinition } from "../runtime/space-definition-resolver.js?v=
 import { isExhibitionGalleryMigrationPending } from "./exhibition-gallery-assignment.js?v=c6c8c25_cross_space_runtime";
 
 export const EXHIBITION_STATE_SCHEMA = "exhibition-platform-exhibition-state.v1";
+export const CANONICAL_GALLERY_RESOLUTION_STAGE = "V14.3.5";
+
+function galleryStructuralSnapshotFromVersion(version) {
+  if (!version || typeof version !== "object") return null;
+  const assets = Array.isArray(version.assets) ? version.assets : [];
+  return {
+    venueId: text(version.venue_id),
+    venueVersionId: text(version.id),
+    versionNumber: text(version.version_number),
+    assets: assets.map((asset) => ({
+      role: text(asset && asset.role),
+      asset_id: text(asset && asset.asset_id),
+      file_hash: text(asset && asset.file_hash) || null,
+      file_size: asset && asset.file_size != null ? Number(asset.file_size) : null,
+      metadata: asset && asset.metadata && typeof asset.metadata === "object" ? asset.metadata : {}
+    }))
+  };
+}
+
+function createStateCompatibilityContext({ provenance, sourceSnapshot = null, currentSnapshot = null, currentVenueId = "", currentVenueVersionId = "", currentVersionNumber = "" } = {}) {
+  if (!provenance) return null;
+  return Object.freeze({
+    stage: CANONICAL_GALLERY_RESOLUTION_STAGE,
+    provenance: Object.freeze({ ...provenance }),
+    source: Object.freeze({
+      venueId: text(provenance.venueId),
+      venueVersionId: text(provenance.venueVersionId),
+      versionNumber: text(provenance.versionNumber),
+      snapshot: sourceSnapshot || null
+    }),
+    current: Object.freeze({
+      venueId: text(currentVenueId),
+      venueVersionId: text(currentVenueVersionId),
+      versionNumber: text(currentVersionNumber),
+      snapshot: currentSnapshot || null
+    })
+  });
+}
 
 function text(value) { return String(value == null ? "" : value).trim(); }
 function isUuid(value) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(text(value)); }
@@ -109,11 +147,15 @@ async function loadAdminRuntime(supabase, reference) {
   const s = detail.state || {};
   const venueDetail = rpcOne(await supabase.rpc("admin_get_venue", { p_venue_id: e.venue_id }));
   if (!venueDetail || !venueDetail.venue) throw new Error("Venue could not be resolved for Exhibition.");
-  const targetVersionId = s.draft_venue_version_id;
-  if (!targetVersionId) throw new Error("Exhibition Draft has no explicit Gallery Version assignment.");
+  const sourceVersionId = text(s.draft_venue_version_id);
+  if (!sourceVersionId) throw new Error("Exhibition Draft has no exact Gallery provenance.");
+  const targetVersionId = text(venueDetail.venue.published_version_id);
+  if (!targetVersionId) throw new Error("Gallery has no current Published Version.");
   const versions = Array.isArray(venueDetail.versions) ? venueDetail.versions : [];
-  const version = versions.find((item) => text(item.id) === text(targetVersionId)) || null;
-  if (!version) throw new Error("Draft Venue Version could not be resolved for Exhibition.");
+  const sourceVersion = versions.find((item) => text(item.id) === sourceVersionId) || null;
+  const version = versions.find((item) => text(item.id) === targetVersionId) || null;
+  if (!sourceVersion) throw new Error("Draft source Gallery Version could not be resolved for Exhibition.");
+  if (!version || text(version.status) !== "published" || !version.frozen_at) throw new Error("Gallery current Published Version could not be resolved for Exhibition.");
   const coverPath = await fetchCoverPath(supabase, e.cover_media_id).catch(() => null);
   const exhibition = canonicalToRuntimeExhibition(e, {
     coverPath,
@@ -126,6 +168,28 @@ async function loadAdminRuntime(supabase, reference) {
     mode: "admin",
     exhibition,
     state: unwrapState(s.draft_state || s.published_state),
+    stateProvenance: Object.freeze({
+      kind: "relational-channel",
+      channel: "draft",
+      venueId: text(sourceVersion.venue_id || e.venue_id),
+      venueVersionId: sourceVersionId,
+      versionNumber: text(sourceVersion.version_number),
+      source: "exhibition_states.draft_venue_version_id"
+    }),
+    stateCompatibilityContext: createStateCompatibilityContext({
+      provenance: {
+        kind: "relational-channel", channel: "draft",
+        venueId: text(sourceVersion.venue_id || e.venue_id),
+        venueVersionId: sourceVersionId,
+        versionNumber: text(sourceVersion.version_number),
+        source: "exhibition_states.draft_venue_version_id"
+      },
+      sourceSnapshot: galleryStructuralSnapshotFromVersion(sourceVersion),
+      currentSnapshot: galleryStructuralSnapshotFromVersion(version),
+      currentVenueId: text(e.venue_id),
+      currentVenueVersionId: text(version.id),
+      currentVersionNumber: text(version.version_number)
+    }),
     revision: Number(s.draft_revision) || 0,
     lockVersion: Number(s.lock_version) || 0,
     updatedAt: s.draft_updated_at || s.updated_at || null,
@@ -170,6 +234,28 @@ async function resolvePublicRuntime(supabase, reference) {
     mode: "public",
     exhibition,
     state: unwrapState(row.published_state),
+    stateProvenance: Object.freeze({
+      kind: "relational-channel",
+      channel: "published",
+      venueId: text(row.state_venue_id || row.database_venue_id),
+      venueVersionId: text(row.state_venue_version_id),
+      versionNumber: text(row.state_venue_version_number),
+      source: "exhibition_states.published_venue_version_id"
+    }),
+    stateCompatibilityContext: createStateCompatibilityContext({
+      provenance: {
+        kind: "relational-channel", channel: "published",
+        venueId: text(row.state_venue_id || row.database_venue_id),
+        venueVersionId: text(row.state_venue_version_id),
+        versionNumber: text(row.state_venue_version_number),
+        source: "exhibition_states.published_venue_version_id"
+      },
+      sourceSnapshot: row.state_gallery_snapshot || null,
+      currentSnapshot: row.current_gallery_snapshot || null,
+      currentVenueId: text(row.database_venue_id),
+      currentVenueVersionId: text(row.database_venue_version_id),
+      currentVersionNumber: text(row.venue_version_number)
+    }),
     revision: Number(row.published_revision) || 0,
     lockVersion: Number(row.lock_version) || 0,
     updatedAt: row.published_at || null,
@@ -297,6 +383,7 @@ export function createExhibitionDataAdapter({ supabase, mode = "public", initial
         revision: runtime.revision,
         lock_version: runtime.lockVersion,
         rowExists: runtime.rowExists !== false,
+        provenance: runtime.stateProvenance ? { ...runtime.stateProvenance } : null,
         exhibition: { ...runtime.exhibition }
       };
     },
@@ -330,14 +417,14 @@ export function createExhibitionDataAdapter({ supabase, mode = "public", initial
       const venueId = text(request.venueId);
       const venueVersionId = text(request.venueVersionId);
       if (!name) throw new Error("Exhibition name is required.");
-      if (!venueId || !venueVersionId) throw new Error("Choose a Published Gallery before creating an Exhibition.");
+      if (!venueId) throw new Error("Choose a Published Gallery before creating an Exhibition.");
       const id = globalThis.crypto && typeof globalThis.crypto.randomUUID === "function" ? globalThis.crypto.randomUUID() : null;
       const suffix = id ? id.slice(-6) : Date.now().toString(36).slice(-6);
       const base = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 56) || "exhibition";
       const slug = `${base}-${suffix}`;
       const created = rpcOne(await supabase.rpc("admin_create_exhibition", {
         p_venue_id: venueId,
-        p_venue_version_id: venueVersionId,
+        p_venue_version_id: venueVersionId || null,
         p_slug: slug,
         p_title: name,
         p_patch: { display_order: 0 }
@@ -404,7 +491,7 @@ export function createExhibitionDataAdapter({ supabase, mode = "public", initial
       const response = rpcOne(await supabase.rpc("admin_assign_exhibition_gallery", {
         p_exhibition_id: runtime.exhibition.id,
         p_venue_id: text(target.venueId),
-        p_venue_version_id: text(target.venueVersionId),
+        p_venue_version_id: text(target.venueVersionId) || null,
         p_expected_draft_revision: Number(runtime.revision) || 0,
         p_expected_lock_version: Number(runtime.lockVersion) || 0
       }));

@@ -64,7 +64,8 @@ assert.ok(api.includes('async create(input)'));
 assert.ok(api.includes('const venueId = text(request.venueId)'));
 assert.ok(api.includes('const venueVersionId = text(request.venueVersionId)'));
 assert.ok(api.includes('p_venue_id: venueId'));
-assert.ok(api.includes('p_venue_version_id: venueVersionId'));
+assert.ok(api.includes('p_venue_version_id: venueVersionId || null'));
+assert.ok(api.includes('if (!venueId) throw new Error("Choose a Published Gallery before creating an Exhibition.")'));
 assert.ok(!api.includes('p_venue_id: current.venue.id'));
 assert.ok(!api.includes('const current = initialRuntime || Array.from(runtimeByKey.values())'));
 

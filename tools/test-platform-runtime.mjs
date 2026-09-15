@@ -599,6 +599,8 @@ const publishedRow = {
   id: '11111111-1111-4111-8111-111111111111', slug: 'main', title: 'Main Exhibition', status: 'published', display_order: 0,
   database_venue_id: 'venue-1', venue_slug: 'main-gallery', venue_name: 'Main Gallery',
   database_venue_version_id: 'version-2', venue_version_number: 'v2', manifest: venueManifest(),
+  state_venue_id: 'venue-1', state_venue_version_id: 'version-2', state_venue_version_number: 'v2',
+  state_gallery_snapshot: { venueId:'venue-1',venueVersionId:'version-2',assets:[] }, current_gallery_snapshot: { venueId:'venue-1',venueVersionId:'version-2',assets:[] },
   published_state: { schema: EXHIBITION_STATE_SCHEMA, content: { editor: { artworks: [] }, version: 1 } },
   published_revision: 21, lock_version: 3, published_at: '2026-09-07T00:00:00Z'
 };
@@ -636,7 +638,7 @@ const adminDetail = {
 };
 const venueDetail = {
   venue: { id: venueId, slug: 'main-gallery', name: 'Main Gallery', published_version_id: versionId, draft_version_id: null },
-  versions: [{ id: versionId, version_number: 'v2', status: 'published', manifest: venueManifest() }]
+  versions: [{ id: versionId, venue_id: venueId, version_number: 'v2', status: 'published', frozen_at: '2026-09-07T00:00:00Z', manifest: venueManifest(), assets: [] }]
 };
 const adminCalls = [];
 const adminSupabase = {
@@ -673,4 +675,44 @@ assert.ok(engine.includes('runtimeOptions.spaceDefinition'));
 assert.ok(apiSource.includes('exhibition-platform-canonical-data-adapter.v1'));
 assert.ok(resolverSource.includes('exhibition-platform-venue-manifest.v1'));
 console.log('C6C8C21 Multi-Space Foundation canonical runtime invariants passed.');
+})();
+
+// --- V14.3.5 Canonical Gallery Resolution ---
+await (async () => {
+  const v1435Root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const sql = fs.readFileSync(path.resolve(v1435Root, '..', '..', 'OUTSIDE_REPO', 'SQL', 'V14_3_5_CANONICAL_GALLERY_RESOLUTION.sql'), 'utf8');
+  const venueId='11111111-1111-4111-8111-111111111111';
+  const oldVersionId='22222222-2222-4222-8222-222222222222';
+  const currentVersionId='33333333-3333-4333-8333-333333333333';
+  const exhibitionId='44444444-4444-4444-8444-444444444444';
+  const vManifest=(versionNumber)=>({schema:'exhibition-platform-venue-manifest.v1',venueId:'gallery-x',versionId:versionNumber,coordinateSystem:{upAxis:'Y',units:'meters'},spawnPoints:[{visitor:true,safe:true,position:{x:0,y:1.7,z:0},target:{x:0,y:1.7,z:1}}],assets:[
+    {role:'floor',storageBucket:'venue-runtime',storagePath:`${versionNumber}/floor.glb`},
+    {role:'walls',storageBucket:'venue-runtime',storagePath:`${versionNumber}/walls.glb`},
+    {role:'ceiling',storageBucket:'venue-runtime',storagePath:`${versionNumber}/ceiling.glb`}
+  ]});
+  const snap=(versionId,hash)=>({venueId,venueVersionId:versionId,assets:['floor','walls','ceiling'].map(role=>({role,file_hash:`sha256:${hash.repeat(64).slice(0,64)}`,metadata:{}}))});
+  const storage={from(){return{getPublicUrl(p){return{data:{publicUrl:`https://example.invalid/${p}`}}}}}};
+  const publicRow={id:exhibitionId,slug:'canonical-ex',title:'Canonical',status:'published',display_order:0,database_venue_id:venueId,venue_slug:'gallery-x',venue_name:'Gallery X',database_venue_version_id:currentVersionId,venue_version_number:'v5',manifest:vManifest('v5'),state_venue_id:venueId,state_venue_version_id:oldVersionId,state_venue_version_number:'v4',state_gallery_snapshot:snap(oldVersionId,'a'),current_gallery_snapshot:snap(currentVersionId,'a'),published_state:{content:{context:{venueId,venueVersionId:oldVersionId},editor:{artworks:[]}}},published_revision:7,lock_version:1};
+  const publicSupabase={storage,async rpc(name){if(name==='resolve_published_exhibition')return{data:publicRow,error:null};if(name==='list_published_exhibitions')return{data:[publicRow],error:null};throw new Error(name)}};
+  const publicRuntime=await resolveInitialPublicRuntime(publicSupabase,'canonical-ex');
+  assert.equal(publicRuntime.exhibition.venue_version_id,currentVersionId);
+  assert.equal(publicRuntime.stateProvenance.venueVersionId,oldVersionId);
+  assert.equal(publicRuntime.stateCompatibilityContext.source.venueVersionId,oldVersionId);
+  assert.equal(publicRuntime.stateCompatibilityContext.current.venueVersionId,currentVersionId);
+
+  const oldVersion={id:oldVersionId,venue_id:venueId,version_number:'v4',status:'previous',frozen_at:'2026-09-01T00:00:00Z',manifest:vManifest('v4'),assets:snap(oldVersionId,'a').assets};
+  const currentVersion={id:currentVersionId,venue_id:venueId,version_number:'v5',status:'published',frozen_at:'2026-09-15T00:00:00Z',manifest:vManifest('v5'),assets:snap(currentVersionId,'a').assets};
+  const adminDetail={exhibition:{id:exhibitionId,slug:'canonical-ex',title:'Canonical',status:'published',venue_id:venueId},state:{draft_venue_version_id:oldVersionId,draft_state:{content:{editor:{artworks:[]}}},draft_revision:8,lock_version:2}};
+  const venueDetail={venue:{id:venueId,slug:'gallery-x',name:'Gallery X',published_version_id:currentVersionId},versions:[oldVersion,currentVersion]};
+  const adminSupabase={storage,async rpc(name){if(name==='admin_list_exhibitions')return{data:[adminDetail.exhibition],error:null};if(name==='admin_get_exhibition')return{data:adminDetail,error:null};if(name==='admin_get_venue')return{data:venueDetail,error:null};throw new Error(name)}};
+  const adminRuntime=await resolveInitialAdminRuntime(adminSupabase,'canonical-ex');
+  assert.equal(adminRuntime.venueVersion.id,currentVersionId);
+  assert.equal(adminRuntime.stateProvenance.venueVersionId,oldVersionId);
+  assert.equal(adminRuntime.stateCompatibilityContext.current.venueVersionId,currentVersionId);
+  assert.match(sql,/join public\.venue_versions svv on svv\.id=es\.published_venue_version_id/i);
+  assert.match(sql,/join public\.venues v on v\.id=svv\.venue_id/i);
+  assert.match(sql,/join public\.venue_versions vv on vv\.id=v\.published_version_id/i);
+  assert.match(sql,/legacy-only mismatch[\s\S]*physical shell still resolves/i);
+  assert.match(sql,/Gallery changed while editing; reload the current Gallery before saving/i);
+  console.log('V14.3.5 Canonical Gallery Resolution invariants passed.');
 })();
