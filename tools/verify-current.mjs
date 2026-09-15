@@ -47,8 +47,8 @@ assert(index.includes('stage: "V14.1.10.1"'),'Index stage identity missing');
 assert(bootstrap.includes('const STAGE = "V14.1.10.1"'),'Viewer stage identity missing');
 assert(adminBootstrap.includes('const STAGE = "V14.1.10.1"'),'Admin stage identity missing');
 assert(bootstrap.includes('v14_2_6_draft_publish_20260914'),'Current engine cache key missing');
-assert(index.includes('gallery-viewer-bootstrap.js?v=v14_3_7_unified_admin_product_model'),'V14.3.7 viewer cache key missing');
-assert(admin.includes('admin-workspace-bootstrap.js?v=v14_3_7_unified_admin_product_model'),'V14.3.7 Admin cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=v14_3_7_1_product_save'),'V14.3.7.1 viewer cache key missing');
+assert(admin.includes('admin-workspace-bootstrap.js?v=v14_3_7_1_product_save'),'V14.3.7.1 Admin cache key missing');
 const currentPackage=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
 assert(currentPackage.version==='0.14.2-v14-2-6-canonical-draft-publish-model'&&currentPackage.description.includes('V14.2.6 Canonical Draft / Publish Model'),'V14.2.6 core runtime package identity missing');
 
@@ -196,16 +196,16 @@ assert(source.includes('same-space-exhibition-preview-ready')&&source.includes('
 assert(!source.includes('.eq("id", "main")'),'Hard-coded gallery_state main query remains');
 assert(spaceFixture.includes('Floor_segment.glb')&&spaceFixture.includes('Wall_segments.glb')&&spaceFixture.includes('Ceiling.glb')&&spaceFixture.includes('Props.glb'),'Development Space fixture missing current geometry');
 assert(spaceResolver.includes('exhibition-platform-venue-manifest.v1')&&spaceResolver.includes('REQUIRED_SPACE_ASSET_ROLES'),'Canonical Space resolver missing');
-assert(exhibitionApi.includes('resolve_published_exhibition')&&exhibitionApi.includes('save_exhibition_runtime_state'),'Canonical Exhibition adapter missing');
+assert(exhibitionApi.includes('resolve_published_exhibition')&&exhibitionApi.includes('admin_save_exhibition_runtime_product'),'Canonical Exhibition adapter missing');
 assert(galleryManagementApi.includes('admin_create_gallery_with_initial_draft')&&galleryManagementApi.includes('admin_set_venue_asset_slot'),'C22 Gallery Management adapter missing');
 assert(galleryManagementApi.includes('GALLERY_PUBLICATION_VISIBILITY_STAGE = "V14.3.6"')&&galleryManagementApi.includes('admin_set_venue_publication'),'V14.3.6 Gallery Published ON/OFF adapter missing');
-assert(adminBootstrap.includes('ADMIN_PRODUCT_MODEL_STAGE = "V14.3.7"'),'V14.3.7 Admin product-model marker missing');
+assert(adminBootstrap.includes('ADMIN_PRODUCT_MODEL_STAGE = "V14.3.7"')&&adminBootstrap.includes('ADMIN_PRODUCT_CORRECTION_STAGE = "V14.3.7.1"'),'V14.3.7.1 Admin product-model marker missing');
 assert(admin.includes('toggleExhibitionPublishedButton')&&!admin.includes('unpublishExhibitionButton'),'V14.3.7 Exhibition Published ON/OFF UI contract missing');
-assert(adminBootstrap.includes('handleToggleExhibitionPublished')&&adminBootstrap.includes('PUBLISH CHANGES'),'V14.3.7 Exhibition publication workflow missing');
+assert(adminBootstrap.includes('handleToggleExhibitionPublished')&&!adminBootstrap.includes('PUBLISH CHANGES')&&exhibitionApi.includes('admin_save_exhibition_product_details')&&exhibitionApi.includes('admin_save_exhibition_runtime_product'),'V14.3.7.1 Exhibition product Save workflow missing');
 const v1437GalleryDetail=extractFunction(adminBootstrap,'renderGalleryDetail');
-assert(v1437GalleryDetail.includes('SET START POSITION')&&v1437GalleryDetail.includes('ADJUST')&&v1437GalleryDetail.includes('PUBLISH CHANGES'),'V14.3.7 Gallery product actions missing');
+assert(v1437GalleryDetail.includes('SET START POSITION')&&v1437GalleryDetail.includes('ADJUST')&&v1437GalleryDetail.includes('SAVE CHANGES')&&!v1437GalleryDetail.includes('PUBLISH CHANGES')&&!v1437GalleryDetail.includes('SAVE ADJUSTMENT'),'V14.3.7.1 Gallery product actions missing');
 assert(!v1437GalleryDetail.includes('CREATE NEXT VERSION')&&!v1437GalleryDetail.includes('EDIT DRAFT')&&!v1437GalleryDetail.includes('VALIDATE DRAFT')&&!v1437GalleryDetail.includes('ROLLBACK')&&!v1437GalleryDetail.includes('Version history'),'V14.3.7 Gallery technical lifecycle still exposed');
-assert(galleryTestHtml.includes('SET START POSITION')&&galleryTestHtml.includes('Gallery preview'),'V14.3.7 camera-first start-position flow missing');
+assert(adminBootstrap.includes('GalleryApp.getCameraPose')&&adminBootstrap.includes('activeRuntime.context !== "gallery-authoring"')&&!adminBootstrap.includes('new URL("./gallery-test.html"')&&galleryTestHtml.includes('Gallery preview'),'V14.3.7.1 current-preview start-position flow missing');
 
 assert(adminBootstrap.includes('toggleGalleryPublishedButton')&&adminBootstrap.includes('handleToggleGalleryPublished')&&adminBootstrap.includes('PUBLISHED: ON'),'V14.3.6 Admin Gallery publication control missing');
 assert(galleryManagementApi.includes('venues/${venue}/versions/${version}/assets/${normalizedRole}/'),'C22 UUID Gallery asset path missing');

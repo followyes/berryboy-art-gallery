@@ -268,7 +268,7 @@ async function resolvePublicRuntime(supabase, reference) {
 }
 
 async function saveCanonicalState(supabase, runtime, state) {
-  const response = await supabase.rpc("save_exhibition_runtime_state", {
+  const response = await supabase.rpc("admin_save_exhibition_runtime_product", {
     p_exhibition_id: runtime.exhibition.id,
     p_expected_draft_revision: Number(runtime.revision) || 0,
     p_expected_lock_version: Number(runtime.lockVersion) || 0,
@@ -463,21 +463,56 @@ export function createExhibitionDataAdapter({ supabase, mode = "public", initial
       if (patch.description !== undefined) detailsPatch.short_description = text(patch.description);
       if (patch.sort_order !== undefined) detailsPatch.display_order = Number(patch.sort_order) || 0;
       if (Object.keys(detailsPatch).length) {
-        const response = await supabase.rpc("admin_update_exhibition", { p_exhibition_id: runtime.exhibition.id, p_patch: detailsPatch });
-        rpcOne(response);
+        const detail = rpcOne(await supabase.rpc("admin_get_exhibition", { p_exhibition_id: runtime.exhibition.id }));
+        if (!detail) throw new Error("Exhibition detail returned no record before product Save.");
+        const state = detail.state || {};
+        const card = detail.card || {};
+        const response = rpcOne(await supabase.rpc("admin_save_exhibition_product_details", {
+          p_exhibition_id: runtime.exhibition.id,
+          p_patch: detailsPatch,
+          p_expected_draft_revision: Number(state.draft_revision) || 0,
+          p_expected_state_lock_version: Number(state.lock_version) || 0,
+          p_expected_card_revision: Number(card.draft_revision) || 0,
+          p_expected_card_lock_version: Number(card.lock_version) || 0
+        }));
+        if (!response || response.saved !== true) throw new Error("Exhibition product Save returned no result.");
       }
       if (patch.cover_path !== undefined) {
-        const response = await supabase.rpc("admin_set_exhibition_runtime_cover", {
+        const detail = rpcOne(await supabase.rpc("admin_get_exhibition", { p_exhibition_id: runtime.exhibition.id }));
+        if (!detail) throw new Error("Exhibition detail returned no record before poster Save.");
+        const card = detail.card || {};
+        const response = rpcOne(await supabase.rpc("admin_set_exhibition_runtime_cover_product", {
           p_exhibition_id: runtime.exhibition.id,
           p_storage_path: patch.cover_path ? text(patch.cover_path) : null,
           p_mime_type: patch.cover_mime_type ? text(patch.cover_mime_type) : null,
-          p_file_size: patch.cover_file_size != null ? Number(patch.cover_file_size) : null
-        });
-        rpcOne(response);
+          p_file_size: patch.cover_file_size != null ? Number(patch.cover_file_size) : null,
+          p_expected_card_revision: Number(card.draft_revision) || 0,
+          p_expected_card_lock_version: Number(card.lock_version) || 0
+        }));
+        if (!response || response.saved !== true) throw new Error("Exhibition poster product Save returned no result.");
       }
       const refreshed = await loadAdminRuntime(supabase, runtime.exhibition.id);
       cacheRuntime(refreshed, "admin");
       return { ...refreshed.exhibition };
+    },
+    async updateCover(reference, patch = {}) {
+      if (modeName !== "admin") throw new Error("Public Viewer cannot update Exhibition poster.");
+      const runtime = await resolve(reference, false);
+      const detail = rpcOne(await supabase.rpc("admin_get_exhibition", { p_exhibition_id: runtime.exhibition.id }));
+      if (!detail) throw new Error("Exhibition detail returned no record before poster Save.");
+      const card = detail.card || {};
+      const result = rpcOne(await supabase.rpc("admin_set_exhibition_runtime_cover_product", {
+        p_exhibition_id: runtime.exhibition.id,
+        p_storage_path: patch.cover_path ? text(patch.cover_path) : null,
+        p_mime_type: patch.cover_mime_type ? text(patch.cover_mime_type) : null,
+        p_file_size: patch.cover_file_size != null ? Number(patch.cover_file_size) : null,
+        p_expected_card_revision: Number(card.draft_revision) || 0,
+        p_expected_card_lock_version: Number(card.lock_version) || 0
+      }));
+      if (!result || result.saved !== true) throw new Error("Exhibition poster product Save returned no result.");
+      const refreshed = await loadAdminRuntime(supabase, runtime.exhibition.id);
+      cacheRuntime(refreshed, "admin");
+      return { ...result, exhibition: { ...refreshed.exhibition } };
     },
     async getAdminDetail(reference) {
       if (modeName !== "admin") throw new Error("Public Viewer cannot read Admin Exhibition detail.");
@@ -529,17 +564,20 @@ export function createExhibitionDataAdapter({ supabase, mode = "public", initial
       runtimeByKey.delete(runtimeKey("admin", detail.exhibition.id));
       return response;
     },
-    async unpublish(reference) {
-      if (modeName !== "admin") throw new Error("Public Viewer cannot unpublish Exhibitions.");
+    async setPublished(reference, published) {
+      if (modeName !== "admin") throw new Error("Public Viewer cannot change Exhibition visibility.");
       const runtime = await resolve(reference, true);
       const response = rpcOne(await supabase.rpc("admin_set_exhibition_runtime_visibility", {
         p_exhibition_id: runtime.exhibition.id,
-        p_published: false
+        p_published: published === true
       }));
-      if (!response) throw new Error("Exhibition unpublish returned no result.");
+      if (!response) throw new Error("Exhibition Published visibility update returned no result.");
       runtimeByKey.delete(runtimeKey("admin", runtime.exhibition.id));
       runtimeByKey.delete(runtimeKey("public", runtime.exhibition.id));
       return response;
+    },
+    async unpublish(reference) {
+      return this.setPublished(reference, false);
     },
     async rollbackBundle(reference) {
       if (modeName !== "admin") throw new Error("Public Viewer cannot rollback Exhibitions.");

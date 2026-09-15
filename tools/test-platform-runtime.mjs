@@ -648,7 +648,7 @@ const adminSupabase = {
     if (name === 'admin_list_exhibitions') return { data: [{ id: exhibitionId, slug: 'main', title: 'Main Exhibition', status: 'published', venue_id: venueId }], error: null };
     if (name === 'admin_get_exhibition') return { data: adminDetail, error: null };
     if (name === 'admin_get_venue') return { data: venueDetail, error: null };
-    if (name === 'save_exhibition_runtime_state') return { data: { draft_revision: 22, lock_version: 3, updated_at: '2026-09-07T02:00:00Z', published: false }, error: null };
+    if (name === 'admin_save_exhibition_runtime_product') return { data: { draft_revision: 22, published_revision: 22, lock_version: 4, updated_at: '2026-09-07T02:00:00Z', published: true }, error: null };
     throw new Error(`Unexpected RPC ${name}`);
   }
 };
@@ -659,8 +659,9 @@ assert.deepEqual(resolvedAdmin.state, { editor: { artworks: [1] } });
 const adminAdapter = createExhibitionDataAdapter({ supabase: adminSupabase, mode: 'admin', initialRuntime: resolvedAdmin });
 const save = await adminAdapter.saveState(exhibitionId, { editor: { artworks: [2] } });
 assert.equal(save.revision, 22);
-assert.equal(save.lockVersion, 3);
-assert.ok(adminCalls.some(([name]) => name === 'save_exhibition_runtime_state'));
+assert.equal(save.lockVersion, 4);
+assert.equal(save.published, true);
+assert.ok(adminCalls.some(([name]) => name === 'admin_save_exhibition_runtime_product'));
 
 assert.equal(fs.existsSync(path.join(root, 'src/config/gallery-space-config.js')), false);
 assert.equal(viewer.includes('space-fixture.js'), false);

@@ -1,8 +1,17 @@
 # Exhibition Platform
 
-Current repository release: **V14.2.6 — Canonical Draft / Publish Model**.
+Current repository corrective release: **V14.3.7.1 — Product Save Workflow Correction**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
+
+
+## V14.3.7.1 Product Save Workflow Correction
+
+Normal Admin no longer exposes a second `PUBLISH CHANGES` ceremony. Product-facing `SAVE CHANGES` is one operation: it writes the hidden Draft and, when the Gallery/Exhibition is currently Published ON, performs authoritative validation and the technical Published cutover inside one guarded database transaction. Published OFF remains private and `PUBLISHED: ON/OFF` remains the only normal visibility control. Existing low-level Draft-only and Publish RPCs remain available as internal/recovery boundaries.
+
+Gallery `SET START POSITION` captures `GalleryApp.getCameraPose()` from the already-mounted right-side exact Draft authoring preview. It stages position + target into the current form and the main `SAVE CHANGES` commits them; it does not navigate to a second preview Scene. `ADJUST` is only a numeric editing fallback.
+
+V14.3.5 stale-Scene protection, V14.3.6 visibility semantics, immutable Gallery Version publication, active-visit no-hot-swap behavior and safe deletion remain unchanged.
 
 ## V14.2.6 Canonical Draft / Publish Model
 
@@ -64,11 +73,12 @@ V14.1.10 requires **no SQL/schema/RPC change**.
 - **Venue Version** is an immutable published/history version of that environment and its runtime manifest/assets.
 - **Space** is the runtime representation of the resolved Venue Version passed into Babylon.
 - **Exhibition** is the content/publication layer shown inside a Gallery.
-- An Exhibition has independent Draft, Published and Previous state/card/ exact Venue Version channels.
-- `exhibitions.venue_id` / `exhibition_states.venue_id` describe the current **Draft authoring Gallery**.
-- Public Gallery identity is derived from `published_venue_version_id -> venue_versions.venue_id`, not from the current Draft authoring Gallery.
-- Publishing a new Gallery Version does not automatically migrate Exhibitions.
-- Different immutable Venue Versions can now switch in one browser session through the C25 Scene lifecycle controller.
+- An Exhibition keeps independent Draft, Published and Previous state/card/exact Venue Version channels internally.
+- `exhibitions.venue_id` is the stable logical Gallery assignment for normal product flow; retained channel exact Venue Versions remain state provenance.
+- Current physical Gallery resolution is `logical venue_id -> venues.published_version_id -> exact venue_version_id -> Scene`.
+- Publishing a new Gallery Version changes the next explicit entry/transition target but never hot-swaps an already active visit.
+- Product `SAVE CHANGES` hides Draft/Publish mechanics; the backend still preserves guarded Draft, validation, exact-Version and publication boundaries.
+- Different immutable Venue Versions can switch in one browser session through the Scene lifecycle controller.
 
 Specific Gallery names are data. They are not platform/runtime branding.
 
@@ -107,8 +117,9 @@ Public Viewer resolves:
 
 ```text
 Published Exhibition
-  -> published_venue_version_id
-  -> exact Venue / Gallery + Venue Version
+  -> logical Gallery identity
+  -> venues.published_version_id
+  -> exact current Venue Version
   -> Venue Manifest / Venue Assets
   -> Space Definition
   -> Gallery_V0_11 createScene()

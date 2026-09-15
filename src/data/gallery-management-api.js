@@ -5,6 +5,7 @@
 
 export const GALLERY_MANAGEMENT_STAGE = "C6C8C24";
 export const GALLERY_PUBLICATION_VISIBILITY_STAGE = "V14.3.6";
+export const GALLERY_PRODUCT_SAVE_STAGE = "V14.3.7.1";
 export const GALLERY_RUNTIME_BUCKET = "venue-runtime";
 export const CONTROLLED_GALLERY_ASSET_ROLES = Object.freeze(["floor", "walls", "ceiling", "props"]);
 export const REQUIRED_GALLERY_ASSET_ROLES = Object.freeze(["floor", "walls", "ceiling"]);
@@ -95,6 +96,7 @@ export function createGalleryManagementApi({ supabase }) {
   return Object.freeze({
     stage: GALLERY_MANAGEMENT_STAGE,
     publicationStage: GALLERY_PUBLICATION_VISIBILITY_STAGE,
+    productSaveStage: GALLERY_PRODUCT_SAVE_STAGE,
     bucket: GALLERY_RUNTIME_BUCKET,
     controlledRoles: CONTROLLED_GALLERY_ASSET_ROLES,
 
@@ -242,6 +244,23 @@ export function createGalleryManagementApi({ supabase }) {
       if (!bucket || !path) return "";
       const result = supabase.storage.from(bucket).getPublicUrl(path);
       return result && result.data && result.data.publicUrl ? String(result.data.publicUrl) : "";
+    },
+
+    async saveProduct({ venueId, expectedDraftVersionId, name, description = "", entry = null }) {
+      const patch = { name: text(name), description: text(description) };
+      if (!patch.name) throw new Error("Gallery name is required.");
+      const hasEntry = !!entry;
+      const result = one(await supabase.rpc("admin_save_gallery_product", {
+        p_venue_id: text(venueId),
+        p_expected_draft_version_id: text(expectedDraftVersionId),
+        p_patch: patch,
+        p_entry_position: hasEntry ? finiteVec3(entry.position, "Entry position") : null,
+        p_entry_target: hasEntry ? finiteVec3(entry.target, "Entry target") : null
+      }));
+      if (!result || result.saved !== true || !result.venue || !result.publishedVersion) {
+        throw new Error("Gallery product Save returned an incomplete result.");
+      }
+      return result;
     },
 
     async setEntryPoint(versionId, position, target) {

@@ -26,10 +26,11 @@ assert.ok(lastPublish.includes("'changed',changed"), "Publish must return truthf
 assert.ok(lastPublish.includes("stateChanged',state_changed"), "Publish must report stateChanged");
 assert.ok(lastPublish.includes("cardChanged',card_changed"), "Publish must report cardChanged");
 
-assert.ok(api.includes('admin_publish_exhibition_bundle'), "Canonical adapter must keep atomic bundle Publish RPC");
-assert.ok(workspace.includes("Published ON · changes not yet public"), "Admin must expose truthful unpublished-change state without backend channel terminology");
+assert.ok(api.includes('admin_publish_exhibition_bundle'), "Canonical adapter must keep low-level atomic bundle Publish RPC");
+assert.ok(api.includes('admin_save_exhibition_runtime_product'), "V14.3.7.1 runtime product Save RPC missing");
+assert.ok(api.includes('admin_save_exhibition_product_details'), "V14.3.7.1 details product Save RPC missing");
 assert.ok(workspace.includes("Published ON"), "Admin must expose the Published ON product state");
-assert.ok(workspace.includes("PUBLISH CHANGES"), "Admin must distinguish publishing saved Draft changes");
+assert.ok(!workspace.includes("PUBLISH CHANGES"), "Normal Admin must not expose a second Publish Changes ceremony");
 assert.ok(workspace.includes('detail.reason === "save-finished"'), "Admin must refresh publication truth after Draft save");
 
-console.log("V14.2.6 canonical Draft/Publish model tests: PASS");
+console.log("V14.2.6 low-level Draft/Publish + V14.3.7.1 product Save tests: PASS");

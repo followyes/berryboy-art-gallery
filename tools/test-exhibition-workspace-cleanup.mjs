@@ -25,7 +25,7 @@ for (const token of removedUiTokens) {
   assert.ok(!admin.includes(token), `Admin bootstrap still constructs legacy UI token: ${token}`);
 }
 
-for (const token of ['publishExhibitionBundleButton', 'toggleExhibitionPublishedButton', 'exhibitionPublicationNotice']) {
+for (const token of ['toggleExhibitionPublishedButton', 'exhibitionPublicationNotice']) {
   assert.ok(adminHtml.includes(token), `standalone Admin missing ${token}`);
   assert.ok(viewer.includes(token), `inline Admin missing ${token}`);
   assert.ok(admin.includes(token), `Admin bootstrap missing ${token}`);
@@ -37,8 +37,9 @@ assert.ok(!adminHtml.includes('UNPUBLISH EXHIBITION'));
 assert.ok(!viewer.includes('UNPUBLISH EXHIBITION'));
 assert.ok(admin.includes('renderExhibitionPublication'));
 assert.ok(admin.includes('refreshExhibitionAdminDetail'));
-assert.ok(admin.includes('await exhibitionData.publishBundle(selectedExhibition.id)'));
-assert.ok(admin.includes('await exhibitionData.unpublish(selectedExhibition.id)'));
+assert.ok(!admin.includes('publishExhibitionBundleButton'));
+assert.ok(!admin.includes('PUBLISH CHANGES'));
+assert.ok(admin.includes('await exhibitionData.setPublished(selectedExhibition.id, !isPublic)'));
 assert.ok(!admin.includes('handleAssignExhibitionGallery'));
 assert.ok(!admin.includes('handleConfirmExhibitionGalleryLayout'));
 assert.ok(!admin.includes('handleRollbackExhibitionBundle'));

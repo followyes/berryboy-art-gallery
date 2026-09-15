@@ -145,7 +145,7 @@ assert.ok(index.includes('id="exhibitionsButton"'));
 assert.ok(index.includes('href="./index.html"'));
 
 
-// C25.3 publication UI contract: Poster/Cover optional and publication is explicit.
+// Publication UI contract: Poster/Cover is optional; visibility uses one Published ON/OFF adapter.
 assert.ok(!admin.includes('id="exhibitionPublished"'));
 assert.ok(admin.includes('exhibitionPublicationStatus'));
 assert.ok(!read('admin.html').includes('UNPUBLISH EXHIBITION'));
@@ -154,7 +154,9 @@ assert.ok(admin.includes('handleToggleExhibitionPublished'));
 assert.ok(admin.includes('exhibitionPublicationNotice'));
 assert.ok(admin.includes('renderExhibitionPublication'));
 assert.ok(api.includes('async unpublish(reference)'));
-assert.ok(api.includes('p_published: false'));
+assert.ok(api.includes('async setPublished(reference, published)'))
+assert.ok(api.includes('p_published: published === true'));
+assert.ok(api.includes('return this.setPublished(reference, false);'));
 assert.ok(!api.includes('patch.is_published'));
 
 assert.equal(pkg.version, '0.14.2-v14-2-6-canonical-draft-publish-model');

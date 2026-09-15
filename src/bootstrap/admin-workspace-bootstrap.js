@@ -5,8 +5,8 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { registerExhibitionAssetCache, getExhibitionAssetCacheStatus, getExhibitionAssetDeliveryStats, evictExhibitionAssetCacheUrl } from "./asset-cache-bootstrap.js?v=c6c8c22_gallery_management_20260908";
 import { beginTransitionGuard, endTransitionGuard, isTransitionGuardActive } from "./transition-guard.js?v=v14_2_6_draft_publish_20260914";
-import { createExhibitionDataAdapter, resolveInitialAdminRuntime } from "../data/exhibition-api.js?v=v14_3_6_gallery_visibility";
-import { createGalleryManagementApi, CONTROLLED_GALLERY_ASSET_ROLES } from "../data/gallery-management-api.js?v=v14_3_6_gallery_visibility";
+import { createExhibitionDataAdapter, resolveInitialAdminRuntime } from "../data/exhibition-api.js?v=v14_3_7_1_product_save";
+import { createGalleryManagementApi, CONTROLLED_GALLERY_ASSET_ROLES } from "../data/gallery-management-api.js?v=v14_3_7_1_product_save";
 import {
   REQUIRED_GALLERY_MODEL_ROLES,
   validateGalleryModelFile,
@@ -21,6 +21,7 @@ import { createAdminAssetWorkspace } from "./admin-asset-workspace.js?v=v13_6_pr
 
 const STAGE = "V14.1.10.1";
 const ADMIN_PRODUCT_MODEL_STAGE = "V14.3.7";
+const ADMIN_PRODUCT_CORRECTION_STAGE = "V14.3.7.1";
 const ENGINE_CACHE_KEY = "v14_2_6_draft_publish_20260914";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
@@ -59,7 +60,6 @@ const exhibitionSortOrder = el("exhibitionSortOrder");
 const exhibitionPublicationStatus = el("exhibitionPublicationStatus");
 const exhibitionSpaceId = el("exhibitionSpaceId");
 const exhibitionPublicationNotice = el("exhibitionPublicationNotice");
-const publishExhibitionBundleButton = el("publishExhibitionBundleButton");
 const toggleExhibitionPublishedButton = el("toggleExhibitionPublishedButton");
 const deleteExhibitionButton = el("deleteExhibitionButton");
 const saveMetadataButton = el("saveMetadataButton");
@@ -420,21 +420,11 @@ function renderExhibitionPublication(detail) {
   const migrationPending = !!(matchingDetail && detail.migration && detail.migration.status === "needs-layout-confirmation");
   const isPublic = !!selectedExhibition.is_published;
 
-  if (exhibitionPublicationStatus) {
-    exhibitionPublicationStatus.textContent = isPublic
-      ? (publication.hasUnpublishedChanges ? "Published ON · changes not yet public" : "Published ON")
-      : "Published OFF";
-  }
+  if (exhibitionPublicationStatus) exhibitionPublicationStatus.textContent = isPublic ? "Published ON" : "Published OFF";
   if (toggleExhibitionPublishedButton) {
     toggleExhibitionPublishedButton.textContent = isPublic ? "PUBLISHED: ON" : "PUBLISHED: OFF";
     toggleExhibitionPublishedButton.setAttribute("aria-pressed", isPublic ? "true" : "false");
     toggleExhibitionPublishedButton.disabled = exhibitionPublicationInFlight || (!isPublic && (!validation || !validation.valid || migrationPending));
-  }
-  if (publishExhibitionBundleButton) {
-    const showPublishChanges = isPublic && publication.hasUnpublishedChanges;
-    publishExhibitionBundleButton.classList.toggle("hidden", !showPublishChanges);
-    publishExhibitionBundleButton.textContent = "PUBLISH CHANGES";
-    publishExhibitionBundleButton.disabled = exhibitionPublicationInFlight || !showPublishChanges || !validation || !validation.valid || migrationPending;
   }
 
   if (!exhibitionPublicationNotice) return;
@@ -484,34 +474,6 @@ function reloadAdminForExhibition(exhibitionId) {
   location.href = url.href;
 }
 
-async function handlePublishExhibitionBundle() {
-  if (!selectedExhibition || exhibitionPublicationInFlight || !selectedExhibition.is_published) return;
-  syncMetadataDirtyState();
-  if (metadataDirty || hasSceneUnsavedChanges()) { showToast("Save Exhibition changes before publishing them."); return; }
-  const detail = exhibitionAdminDetail || await refreshExhibitionAdminDetail(selectedExhibition.id);
-  const publication = getExhibitionPublicationState(detail);
-  if (!publication.hasUnpublishedChanges) return;
-  if (!detail || !(detail.validation && detail.validation.valid) || (detail.migration && detail.migration.status === "needs-layout-confirmation")) {
-    renderExhibitionPublication(detail);
-    showToast("These changes are not ready to publish.");
-    return;
-  }
-  if (!window.confirm("Publish the saved Exhibition changes to the public site?")) return;
-  exhibitionPublicationInFlight = true;
-  renderExhibitionPublication(detail);
-  try {
-    const publishResult = await exhibitionData.publishBundle(selectedExhibition.id);
-    showToast(publishResult && publishResult.changed === false ? "Public Exhibition is already up to date." : "Exhibition changes published.");
-    await fetchCatalog();
-    syncSelectedFromCatalog(selectedExhibition.id);
-    await refreshExhibitionAdminDetail(selectedExhibition.id);
-  } catch (error) { showToast(error.message || String(error)); }
-  finally {
-    exhibitionPublicationInFlight = false;
-    renderExhibitionPublication(exhibitionAdminDetail);
-  }
-}
-
 async function handleToggleExhibitionPublished() {
   if (!selectedExhibition || exhibitionPublicationInFlight) return;
   const isPublic = !!selectedExhibition.is_published;
@@ -530,14 +492,9 @@ async function handleToggleExhibitionPublished() {
   exhibitionPublicationInFlight = true;
   renderExhibitionPublication(detail);
   try {
-    if (isPublic) {
-      if (!exhibitionData || typeof exhibitionData.unpublish !== "function") throw new Error("Published OFF action is unavailable.");
-      await exhibitionData.unpublish(selectedExhibition.id);
-      showToast("Exhibition Published OFF.");
-    } else {
-      await exhibitionData.publishBundle(selectedExhibition.id);
-      showToast("Exhibition Published ON.");
-    }
+    if (!exhibitionData || typeof exhibitionData.setPublished !== "function") throw new Error("Published visibility action is unavailable.");
+    await exhibitionData.setPublished(selectedExhibition.id, !isPublic);
+    showToast(`Exhibition Published ${isPublic ? "OFF" : "ON"}.`);
     await fetchCatalog();
     syncSelectedFromCatalog(selectedExhibition.id);
     await refreshExhibitionAdminDetail(selectedExhibition.id);
@@ -798,6 +755,14 @@ async function saveMetadata(patch) {
   return exhibitionData.updateMetadata(selectedExhibition.id, patch);
 }
 
+async function savePosterProduct(patch) {
+  if (!selectedExhibition) return null;
+  if (!exhibitionData) exhibitionData = createExhibitionDataAdapter({ supabase, mode: "admin" });
+  if (typeof exhibitionData.setMode === "function") exhibitionData.setMode("admin");
+  if (typeof exhibitionData.updateCover !== "function") throw new Error("Exhibition poster product Save is unavailable.");
+  return exhibitionData.updateCover(selectedExhibition.id, patch);
+}
+
 async function decodePosterImage(file) {
   if (typeof createImageBitmap === "function") {
     try { return await createImageBitmap(file); } catch (_error) {}
@@ -838,7 +803,6 @@ async function uploadPoster(file) {
   if (!selectedExhibition || !file) return;
   if (!/^image\//i.test(file.type || "")) throw new Error("Choose an image file.");
   if (file.size > MAX_POSTER_BYTES) throw new Error("Poster source is too large. Maximum input size is 14 MB.");
-  const oldPath = selectedExhibition.cover_path;
   const base = sanitizeFileName(file.name.replace(/\.[^.]+$/, ""));
   posterStatus.textContent = "Optimizing poster for delivery…";
   const optimized = await optimizePosterForDelivery(file);
@@ -851,15 +815,16 @@ async function uploadPoster(file) {
   });
   if (upload.error) throw upload.error;
   try {
-    const updated = await saveMetadata({ cover_path: path, cover_mime_type: optimized.mimeType, cover_file_size: optimized.size });
-    const localUpdated = upsertLocalCatalogRecord(updated || Object.assign({}, selectedExhibition, { cover_path: path }));
+    const saved = await savePosterProduct({ cover_path: path, cover_mime_type: optimized.mimeType, cover_file_size: optimized.size });
+    const updated = saved && saved.exhibition ? saved.exhibition : Object.assign({}, selectedExhibition, { cover_path: path });
+    const localUpdated = upsertLocalCatalogRecord(updated);
     setSelectedExhibition(localUpdated);
-    if (oldPath && oldPath !== path) {
-      const oldUrl = publicUrlFor(oldPath);
-      supabase.storage.from(STORAGE_BUCKET).remove([oldPath]).catch(() => {});
-      if (oldUrl) evictExhibitionAssetCacheUrl(oldUrl).catch(() => {});
+    const cleanupCandidates = saved && Array.isArray(saved.cleanupCandidates) ? saved.cleanupCandidates.filter(Boolean) : [];
+    if (cleanupCandidates.length) {
+      await supabase.storage.from(STORAGE_BUCKET).remove(cleanupCandidates).catch(() => null);
+      for (const cleanupPath of cleanupCandidates) { const cleanupUrl = publicUrlFor(cleanupPath); if (cleanupUrl) evictExhibitionAssetCacheUrl(cleanupUrl).catch(() => {}); }
     }
-    showToast(`Poster optimized to ${(optimized.size / 1024).toFixed(0)} KB and updated.`);
+    showToast(`Poster optimized to ${(optimized.size / 1024).toFixed(0)} KB and saved.`);
   } catch (error) {
     await supabase.storage.from(STORAGE_BUCKET).remove([path]).catch(() => {});
     throw error;
@@ -868,15 +833,14 @@ async function uploadPoster(file) {
 
 async function removePoster() {
   if (!selectedExhibition || !selectedExhibition.cover_path) return;
-  const oldPath = selectedExhibition.cover_path;
-  const updated = await saveMetadata({ cover_path: null });
-  const localUpdated = upsertLocalCatalogRecord(updated || Object.assign({}, selectedExhibition, { cover_path: null }));
+  const saved = await savePosterProduct({ cover_path: null });
+  const updated = saved && saved.exhibition ? saved.exhibition : Object.assign({}, selectedExhibition, { cover_path: null });
+  const localUpdated = upsertLocalCatalogRecord(updated);
   setSelectedExhibition(localUpdated);
-  const oldUrl = publicUrlFor(oldPath);
-  supabase.storage.from(STORAGE_BUCKET).remove([oldPath]).catch(() => {});
-  if (oldUrl) evictExhibitionAssetCacheUrl(oldUrl).catch(() => {});
+  const cleanupCandidates = saved && Array.isArray(saved.cleanupCandidates) ? saved.cleanupCandidates.filter(Boolean) : [];
+  if (cleanupCandidates.length) await supabase.storage.from(STORAGE_BUCKET).remove(cleanupCandidates).catch(() => null);
   assetCacheStatusReadAt = 0;
-  showToast("Poster removed.");
+  showToast("Poster removed and saved.");
 }
 
 function loadScript(src, id) {
@@ -1169,7 +1133,6 @@ createExhibitionForm.addEventListener("submit", async (event) => {
 
 newExhibitionName.addEventListener("input", renderExhibitionCreationTargets);
 if (newExhibitionGallery) newExhibitionGallery.addEventListener("change", renderExhibitionCreationTargets);
-if (publishExhibitionBundleButton) publishExhibitionBundleButton.addEventListener("click", handlePublishExhibitionBundle);
 if (toggleExhibitionPublishedButton) toggleExhibitionPublishedButton.addEventListener("click", handleToggleExhibitionPublished);
 if (deleteExhibitionButton) deleteExhibitionButton.addEventListener("click", handleDeleteExhibition);
 
@@ -1364,8 +1327,8 @@ function syncGalleryMetadataDirty() {
 
 function syncGalleryEntryDirty() {
   galleryEntryDirty = !!(selectedGalleryDetail && galleryEntryBaseline && galleryEntrySnapshot() !== galleryEntryBaseline);
-  const button = galleryEl("saveGalleryEntryButton");
-  if (button) button.dataset.dirty = galleryEntryDirty ? "true" : "false";
+  const button = galleryEl("saveGalleryDetailsButton");
+  if (button) button.dataset.entryDirty = galleryEntryDirty ? "true" : "false";
   return galleryEntryDirty;
 }
 
@@ -1839,15 +1802,15 @@ function renderGalleryDetail(detail) {
         <div id="galleryEntryAdjustPanel" class="hidden">
           <div class="galleryMuted">Position</div><div class="galleryEntryGrid">${["x","y","z"].map((axis)=>`<label class="galleryEntryLabel">${axis}<input id="galleryEntryPos${axis.toUpperCase()}" class="adminInput" type="number" step="0.01" required ${entryEditable ? "" : "readonly"}></label>`).join("")}</div>
           <div class="galleryMuted">Look target</div><div class="galleryEntryGrid">${["x","y","z"].map((axis)=>`<label class="galleryEntryLabel">${axis}<input id="galleryEntryTarget${axis.toUpperCase()}" class="adminInput" type="number" step="0.01" required ${entryEditable ? "" : "readonly"}></label>`).join("")}</div>
-          <div class="galleryActions"><button id="saveGalleryEntryButton" class="adminButton" type="button" ${entryEditable ? "" : "disabled"}>SAVE ADJUSTMENT</button></div>
         </div>
       </div>
-      <div class="gallerySubsection"><h3>Publish</h3><div class="galleryActions">
+      <div class="gallerySubsection"><h3>Visibility</h3><div class="galleryActions">
         <button id="toggleGalleryPublishedButton" class="adminButton" type="button" aria-pressed="${publicationOn ? "true" : "false"}" ${publicationToggleEnabled ? "" : "disabled"}>${publicationOn ? "PUBLISHED: ON" : "PUBLISHED: OFF"}</button>
-        <button id="publishGalleryButton" class="adminButton primary" type="button" ${canManage && draft && venue.status !== "archived" ? "" : "disabled"}>${hasPublishedSnapshot ? "PUBLISH CHANGES" : "PUBLISH GALLERY"}</button>
+      </div><div id="galleryActionNote" class="galleryDangerNote"></div></div>
+      <div class="gallerySubsection"><h3>Actions</h3><div class="galleryActions">
         <button id="createExhibitionForGalleryButton" class="adminButton" type="button" ${canManage && published && venue.status !== "archived" ? "" : "disabled"}>CREATE EXHIBITION</button>
         <button id="deleteGalleryButton" class="adminButton danger iconButton" type="button" aria-label="Delete" title="Delete Gallery" ${canManage ? "" : "disabled"}>🗑</button>
-      </div><div id="galleryActionNote" class="galleryDangerNote"></div></div>`;
+      </div></div>`;
 
     galleryEl("galleryName").value = venue.name || "";
     galleryEl("galleryDescription").value = venue.description || "";
@@ -1872,7 +1835,6 @@ function renderGalleryDetail(detail) {
       galleryEl(`galleryEntryTarget${axis}`).addEventListener("input", syncGalleryEntryDirty);
     });
     galleryEl("beginGalleryDraftButton").addEventListener("click", handleBeginGalleryDraft);
-    galleryEl("saveGalleryEntryButton").addEventListener("click", handleSaveGalleryEntry);
     galleryEl("testGalleryButton").addEventListener("click", handleTestGallery);
     galleryEl("adjustGalleryEntryButton").addEventListener("click", () => {
       const panel = galleryEl("galleryEntryAdjustPanel");
@@ -1881,7 +1843,6 @@ function renderGalleryDetail(detail) {
       panel.classList.toggle("hidden", !open);
       button.setAttribute("aria-expanded", open ? "true" : "false");
     });
-    galleryEl("publishGalleryButton").addEventListener("click", handlePublishGallery);
     galleryEl("toggleGalleryPublishedButton").addEventListener("click", handleToggleGalleryPublished);
     galleryEl("createExhibitionForGalleryButton").addEventListener("click", handleCreateExhibitionForGallery);
     galleryEl("deleteGalleryButton").addEventListener("click", handleDeleteGallery);
@@ -2056,19 +2017,30 @@ async function handleCreateGallery(event) {
 async function handleSaveGalleryDetails(event) {
   event.preventDefault();
   if (!selectedGalleryDetail || galleryMutationInFlight) return;
-  syncGalleryEntryDirty();
-  if (galleryEntryDirty) {
-    if (!window.confirm("Entry Point has unsaved changes. Discard them and save Gallery details?")) return;
-    restoreGalleryEntryBaseline();
-  }
+  const draft = galleryDraftVersion(selectedGalleryDetail);
+  if (!draft) { showToast("Click EDIT before saving Gallery changes."); return; }
   const name = galleryEl("galleryName").value.trim();
   if (!name) { showToast("Gallery name is required."); return; }
+  syncGalleryEntryDirty();
+  let entry = null;
+  if (galleryEntryDirty) {
+    try { entry = readEntryForm(); } catch (error) { showToast(error.message || String(error)); return; }
+  }
   const button = galleryEl("saveGalleryDetailsButton");
   await withGalleryMutation(button, "SAVING…", async () => {
     try {
-      await galleryManagement.updateDetails(selectedGalleryDetail.venue.id,{name,description:galleryEl("galleryDescription").value});
+      const result = await galleryManagement.saveProduct({
+        venueId: selectedGalleryDetail.venue.id,
+        expectedDraftVersionId: draft.id,
+        name,
+        description: galleryEl("galleryDescription").value,
+        entry
+      });
       await refreshSelectedGallery();
-      showToast("Gallery details saved.");
+      await refreshExhibitionCreationTargets();
+      showToast(result && result.venue && result.venue.status === "hidden"
+        ? "Gallery changes saved. Published remains OFF."
+        : "Gallery changes saved and are now current for the next entry.");
     } catch(error) { showToast(error.message || String(error)); }
   });
 }
@@ -2119,34 +2091,25 @@ function readEntryForm() {
   return { position: read("galleryEntryPos", "Entry position"), target: read("galleryEntryTarget", "Entry target") };
 }
 
-async function handleSaveGalleryEntry() {
-  const draft = galleryDraftVersion(selectedGalleryDetail); if(!draft || galleryMutationInFlight) return;
-  syncGalleryMetadataDirty();
-  if (galleryMetadataDirty) {
-    if (!window.confirm("Gallery details have unsaved changes. Discard them and save the Entry Point?")) return;
-    restoreGalleryMetadataBaseline();
-  }
-  let entry;
-  try { entry = readEntryForm(); }
-  catch (error) { showToast(error.message || String(error)); return; }
-  const button = galleryEl("saveGalleryEntryButton");
-  await withGalleryMutation(button, "SAVING…", async () => {
-    try {
-      await galleryManagement.setEntryPoint(draft.id,entry.position,entry.target);
-      await refreshSelectedGallery();
-      showToast("Entry Point saved.");
-    } catch(error) { showToast(error.message || String(error)); }
-  });
-}
-
 function handleTestGallery() {
-  const version = galleryWorkingVersion(selectedGalleryDetail); if(!version) return;
-  if (hasAnyAdminUnsavedChanges() && !window.confirm("Unsaved Admin changes will be discarded before setting the start position. Continue?")) return;
-  if (hasAnyAdminUnsavedChanges()) discardAdminUnsavedChanges();
-  const url = new URL("./gallery-test.html",location.href);
-  url.searchParams.set("version",version.id);
-  url.searchParams.set("gallery",selectedGalleryDetail.venue.id);
-  location.href = url.href;
+  const detail = selectedGalleryDetail;
+  const draft = galleryDraftVersion(detail);
+  if (!detail || !detail.venue || !draft) { showToast("Click EDIT before setting the start position."); return; }
+  const activeRuntime = sceneLifecycleController && typeof sceneLifecycleController.getActiveRuntime === "function" ? sceneLifecycleController.getActiveRuntime() : null;
+  const activeVenueId = activeRuntime && activeRuntime.venue ? String(activeRuntime.venue.id || "") : String(activeRuntime && activeRuntime.exhibition ? activeRuntime.exhibition.venue_id || "" : "");
+  const activeVersionId = activeRuntime && activeRuntime.venueVersion ? String(activeRuntime.venueVersion.id || "") : String(activeRuntime && activeRuntime.exhibition ? activeRuntime.exhibition.venue_version_id || "" : "");
+  if (!activeRuntime || activeRuntime.context !== "gallery-authoring" || activeVenueId !== String(detail.venue.id) || activeVersionId !== String(draft.id)) {
+    showToast("Gallery preview changed. Reload the current Draft preview before setting the start position.");
+    return;
+  }
+  if (!window.GalleryApp || typeof window.GalleryApp.getCameraPose !== "function") { showToast("Current Gallery camera is unavailable."); return; }
+  const pose = window.GalleryApp.getCameraPose();
+  if (!pose || !pose.position || !pose.target) { showToast("Could not read the current Gallery camera."); return; }
+  const values = [pose.position.x,pose.position.y,pose.position.z,pose.target.x,pose.target.y,pose.target.z].map(Number);
+  if (!values.every(Number.isFinite)) { showToast("Current Gallery camera contains invalid coordinates."); return; }
+  [["galleryEntryPosX",values[0]],["galleryEntryPosY",values[1]],["galleryEntryPosZ",values[2]],["galleryEntryTargetX",values[3]],["galleryEntryTargetY",values[4]],["galleryEntryTargetZ",values[5]]].forEach(([id,value]) => { const input=galleryEl(id); if (input) input.value=String(Math.round(value*1000)/1000); });
+  syncGalleryEntryDirty();
+  showToast("Start position staged from the current preview. Click SAVE CHANGES to apply it.");
 }
 
 async function handleValidateGallery() {
@@ -2177,23 +2140,6 @@ async function handleValidateGallery() {
       const report = await galleryManagement.validate(draft.id);
       await refreshSelectedGallery();
       showToast(report.valid ? "Gallery Draft is READY — deep model validation passed." : "Gallery validation found blockers.");
-    } catch(error) { showToast(error.message || String(error)); }
-  });
-}
-
-async function handlePublishGallery() {
-  const draft = galleryDraftVersion(selectedGalleryDetail); if(!draft || galleryMutationInFlight) return;
-  if (!confirmAndDiscardGalleryFormChanges("Unsaved Gallery fields will be discarded before publishing. Continue?")) return;
-  if(!window.confirm("Publish the saved Gallery changes? Assigned Exhibitions will use the updated Gallery on their next explicit entry. Active visits are not hot-swapped.")) return;
-  const button = galleryEl("publishGalleryButton");
-  await withGalleryMutation(button, "PUBLISHING…", async () => {
-    try {
-      await galleryManagement.publish(draft.id);
-      await refreshSelectedGallery();
-      await refreshExhibitionCreationTargets();
-      showToast(selectedGalleryDetail && selectedGalleryDetail.venue && selectedGalleryDetail.venue.status === "hidden"
-        ? "Gallery changes published. Published remains OFF."
-        : "Gallery changes published. Assigned Exhibitions will use them on their next entry.");
     } catch(error) { showToast(error.message || String(error)); }
   });
 }

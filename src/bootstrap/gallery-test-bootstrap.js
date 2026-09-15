@@ -1,6 +1,6 @@
 /* Exhibition Platform — V14.1.10 isolated Test Gallery bootstrap via shared Scene runtime host + canonical readiness authority (V14.1.10 package). */
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-import { createGalleryManagementApi } from "../data/gallery-management-api.js?v=v14_3_3_structural_compatibility";
+import { createGalleryManagementApi } from "../data/gallery-management-api.js?v=v14_3_7_1_product_save";
 import { buildSpaceDefinition } from "../runtime/space-definition-resolver.js?v=c6c8c25_cross_space_runtime";
 import { createSceneLoadingRuntimeHost } from "../runtime/scene-loading-orchestrator.js?v=v14_1_10_1_public_reentry_20260911";
 
