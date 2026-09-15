@@ -680,7 +680,7 @@ console.log('C6C8C21 Multi-Space Foundation canonical runtime invariants passed.
 // --- V14.3.5 Canonical Gallery Resolution ---
 await (async () => {
   const v1435Root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const sql = fs.readFileSync(path.resolve(v1435Root, '..', '..', 'OUTSIDE_REPO', 'SQL', 'V14_3_5_CANONICAL_GALLERY_RESOLUTION.sql'), 'utf8');
+  const sql = fs.readFileSync(path.resolve(v1435Root, '..', '..', 'OUTSIDE_REPO', 'SQL', 'ALL_IN_ONE.sql'), 'utf8');
   const venueId='11111111-1111-4111-8111-111111111111';
   const oldVersionId='22222222-2222-4222-8222-222222222222';
   const currentVersionId='33333333-3333-4333-8333-333333333333';
@@ -714,5 +714,10 @@ await (async () => {
   assert.match(sql,/join public\.venue_versions vv on vv\.id=v\.published_version_id/i);
   assert.match(sql,/legacy-only mismatch[\s\S]*physical shell still resolves/i);
   assert.match(sql,/Gallery changed while editing; reload the current Gallery before saving/i);
-  console.log('V14.3.5 Canonical Gallery Resolution invariants passed.');
+  assert.match(sql,/V14\.3\.6 GALLERY PUBLICATION & VISIBILITY CONTRACT/i);
+  assert.match(sql,/admin_set_venue_publication\(p_venue_id uuid,p_published boolean\)/i);
+  assert.match(sql,/and e\.archived_at is null and v\.status='published' and v\.archived_at is null/i);
+  assert.match(sql,/status=case when v\.status='hidden' then 'hidden' else 'published' end/i);
+  assert.match(sql,/status=case when published_version_id is not null then 'hidden' else 'draft' end/i);
+  console.log('V14.3.5 Canonical Gallery Resolution + V14.3.6 Gallery visibility invariants passed.');
 })();

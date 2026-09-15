@@ -394,19 +394,21 @@ export function createExhibitionDataAdapter({ supabase, mode = "public", initial
     },
     async listCreationTargets() {
       if (modeName !== "admin") throw new Error("Public Viewer cannot list Exhibition creation targets.");
-      const venues = asRows(await supabase.rpc("admin_list_venues", { p_status: "published", p_search: null }));
+      const venues = asRows(await supabase.rpc("admin_list_venues", { p_status: null, p_search: null }));
       return venues.map((venue) => {
         const venueId = text(venue && venue.id);
+        const venueStatus = text(venue && venue.status);
         const venueVersionId = text(venue && venue.published_version_id);
         const versions = Array.isArray(venue && venue.versions) ? venue.versions : [];
         const publishedVersion = versions.find((version) => text(version && version.id) === venueVersionId) || null;
-        if (!venueId || !venueVersionId || !publishedVersion || text(publishedVersion.status) !== "published") return null;
+        if (!venueId || !["published", "hidden"].includes(venueStatus) || !venueVersionId || !publishedVersion || text(publishedVersion.status) !== "published") return null;
         return {
           venueId,
           venueVersionId,
           venueName: text(venue.name || venue.slug || venueId),
           venueSlug: text(venue.slug),
-          versionNumber: text(publishedVersion.version_number || venueVersionId)
+          versionNumber: text(publishedVersion.version_number || venueVersionId),
+          publicationStatus: venueStatus
         };
       }).filter(Boolean);
     },
@@ -417,7 +419,7 @@ export function createExhibitionDataAdapter({ supabase, mode = "public", initial
       const venueId = text(request.venueId);
       const venueVersionId = text(request.venueVersionId);
       if (!name) throw new Error("Exhibition name is required.");
-      if (!venueId) throw new Error("Choose a Published Gallery before creating an Exhibition.");
+      if (!venueId) throw new Error("Choose a Gallery with a current Published snapshot before creating an Exhibition.");
       const id = globalThis.crypto && typeof globalThis.crypto.randomUUID === "function" ? globalThis.crypto.randomUUID() : null;
       const suffix = id ? id.slice(-6) : Date.now().toString(36).slice(-6);
       const base = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 56) || "exhibition";

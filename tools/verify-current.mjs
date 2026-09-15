@@ -47,7 +47,8 @@ assert(index.includes('stage: "V14.1.10.1"'),'Index stage identity missing');
 assert(bootstrap.includes('const STAGE = "V14.1.10.1"'),'Viewer stage identity missing');
 assert(adminBootstrap.includes('const STAGE = "V14.1.10.1"'),'Admin stage identity missing');
 assert(bootstrap.includes('v14_2_6_draft_publish_20260914'),'Current engine cache key missing');
-assert(index.includes('gallery-viewer-bootstrap.js?v=v14_3_5_canonical_gallery_resolution'),'V14.3.5 viewer cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=v14_3_6_gallery_visibility'),'V14.3.6 viewer cache key missing');
+assert(admin.includes('admin-workspace-bootstrap.js?v=v14_3_6_gallery_visibility'),'V14.3.6 Admin cache key missing');
 const currentPackage=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
 assert(currentPackage.version==='0.14.2-v14-2-6-canonical-draft-publish-model'&&currentPackage.description.includes('V14.2.6 Canonical Draft / Publish Model'),'V14.2.6 core runtime package identity missing');
 
@@ -197,6 +198,8 @@ assert(spaceFixture.includes('Floor_segment.glb')&&spaceFixture.includes('Wall_s
 assert(spaceResolver.includes('exhibition-platform-venue-manifest.v1')&&spaceResolver.includes('REQUIRED_SPACE_ASSET_ROLES'),'Canonical Space resolver missing');
 assert(exhibitionApi.includes('resolve_published_exhibition')&&exhibitionApi.includes('save_exhibition_runtime_state'),'Canonical Exhibition adapter missing');
 assert(galleryManagementApi.includes('admin_create_gallery_with_initial_draft')&&galleryManagementApi.includes('admin_set_venue_asset_slot'),'C22 Gallery Management adapter missing');
+assert(galleryManagementApi.includes('GALLERY_PUBLICATION_VISIBILITY_STAGE = "V14.3.6"')&&galleryManagementApi.includes('admin_set_venue_publication'),'V14.3.6 Gallery Published ON/OFF adapter missing');
+assert(adminBootstrap.includes('toggleGalleryPublishedButton')&&adminBootstrap.includes('handleToggleGalleryPublished')&&adminBootstrap.includes('PUBLISHED: ON'),'V14.3.6 Admin Gallery publication control missing');
 assert(galleryManagementApi.includes('venues/${venue}/versions/${version}/assets/${normalizedRole}/'),'C22 UUID Gallery asset path missing');
 assert(adminBootstrap.includes('EXHIBITIONS')&&adminBootstrap.includes('GALLERIES')&&adminBootstrap.includes('createGalleryManagementApi'),'C22 Gallery Management workspace missing');
 assert(galleryTestHtml.includes('data-gallery-test="true"')&&galleryTestBootstrap.includes('admin_resolve_venue_version_for_test')===false&&galleryTestBootstrap.includes('resolveTest('),'C22 Test Gallery shell missing');

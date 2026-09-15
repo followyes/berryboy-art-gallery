@@ -33,6 +33,14 @@ const mockSupabase = {
       },
       {
         id: '22222222-2222-4222-8222-222222222222',
+        slug: 'gallery-off',
+        name: 'Gallery OFF',
+        status: 'hidden',
+        published_version_id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+        versions: [{ id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', version_number: 'v3', status: 'published' }]
+      },
+      {
+        id: '33333333-3333-4333-8333-333333333333',
         slug: 'broken-gallery',
         name: 'Broken Gallery',
         status: 'published',
@@ -50,14 +58,24 @@ assert.deepEqual(targets, [{
   venueVersionId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   venueName: 'Gallery A',
   venueSlug: 'gallery-a',
-  versionNumber: 'v1'
+  versionNumber: 'v1',
+  publicationStatus: 'published'
+}, {
+  venueId: '22222222-2222-4222-8222-222222222222',
+  venueVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+  venueName: 'Gallery OFF',
+  venueSlug: 'gallery-off',
+  versionNumber: 'v3',
+  publicationStatus: 'hidden'
 }]);
-assert.deepEqual(rpcCalls[0], { name: 'admin_list_venues', args: { p_status: 'published', p_search: null } });
+assert.deepEqual(rpcCalls[0], { name: 'admin_list_venues', args: { p_status: null, p_search: null } });
 
-// V14.2.2 product contract: creation requires an explicit current Published Gallery Version.
+// V14.3.6: Gallery Published OFF is a Public-visibility state, not an authoring ban.
+// Creation still requires a valid current immutable Published snapshot, regardless of ON/OFF.
 assert.ok(api.includes('async listCreationTargets()'));
 assert.ok(api.includes('admin_list_venues'));
-assert.ok(api.includes('p_status: "published"'));
+assert.ok(api.includes('p_status: null'));
+assert.ok(api.includes('["published", "hidden"].includes(venueStatus)'));
 assert.ok(api.includes('venue.published_version_id'));
 assert.ok(api.includes('text(publishedVersion.status) !== "published"'));
 assert.ok(api.includes('async create(input)'));
@@ -65,15 +83,15 @@ assert.ok(api.includes('const venueId = text(request.venueId)'));
 assert.ok(api.includes('const venueVersionId = text(request.venueVersionId)'));
 assert.ok(api.includes('p_venue_id: venueId'));
 assert.ok(api.includes('p_venue_version_id: venueVersionId || null'));
-assert.ok(api.includes('if (!venueId) throw new Error("Choose a Published Gallery before creating an Exhibition.")'));
+assert.ok(api.includes('if (!venueId) throw new Error("Choose a Gallery with a current Published snapshot before creating an Exhibition.")'));
 assert.ok(!api.includes('p_venue_id: current.venue.id'));
 assert.ok(!api.includes('const current = initialRuntime || Array.from(runtimeByKey.values())'));
 
 // Standalone + inline Admin both expose the canonical explicit target selector.
 for (const shell of [adminHtml, inline]) {
   assert.ok(shell.includes('id="newExhibitionGallery"'));
-  assert.ok(shell.includes('Choose Published Gallery') || shell.includes('Loading Published Galleries'));
-  assert.ok(shell.includes('explicit Published Gallery'));
+  assert.ok(shell.includes('Loading Galleries'));
+  assert.ok(shell.includes('current Published snapshot'));
 }
 
 // V14.2.2.1 visual contract: native Chromium option popup must remain legible in dark Admin UI.

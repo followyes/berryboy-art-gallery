@@ -4,6 +4,7 @@
 */
 
 export const GALLERY_MANAGEMENT_STAGE = "C6C8C24";
+export const GALLERY_PUBLICATION_VISIBILITY_STAGE = "V14.3.6";
 export const GALLERY_RUNTIME_BUCKET = "venue-runtime";
 export const CONTROLLED_GALLERY_ASSET_ROLES = Object.freeze(["floor", "walls", "ceiling", "props"]);
 export const REQUIRED_GALLERY_ASSET_ROLES = Object.freeze(["floor", "walls", "ceiling"]);
@@ -93,6 +94,7 @@ export function createGalleryManagementApi({ supabase }) {
 
   return Object.freeze({
     stage: GALLERY_MANAGEMENT_STAGE,
+    publicationStage: GALLERY_PUBLICATION_VISIBILITY_STAGE,
     bucket: GALLERY_RUNTIME_BUCKET,
     controlledRoles: CONTROLLED_GALLERY_ASSET_ROLES,
 
@@ -267,6 +269,15 @@ export function createGalleryManagementApi({ supabase }) {
     async rollback(venueId) {
       const result = one(await supabase.rpc("admin_rollback_venue_version", { p_venue_id: venueId }));
       if (!result) throw new Error("Gallery rollback returned no result.");
+      return result;
+    },
+
+    async setPublication(venueId, published) {
+      const result = one(await supabase.rpc("admin_set_venue_publication", {
+        p_venue_id: venueId,
+        p_published: published === true
+      }));
+      if (!result || !result.venue) throw new Error("Gallery Published visibility update returned no result.");
       return result;
     },
 

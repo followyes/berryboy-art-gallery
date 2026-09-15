@@ -5,8 +5,8 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { registerExhibitionAssetCache, getExhibitionAssetCacheStatus, getExhibitionAssetDeliveryStats, evictExhibitionAssetCacheUrl } from "./asset-cache-bootstrap.js?v=c6c8c22_gallery_management_20260908";
 import { beginTransitionGuard, endTransitionGuard, isTransitionGuardActive } from "./transition-guard.js?v=v14_2_6_draft_publish_20260914";
-import { createExhibitionDataAdapter, resolveInitialAdminRuntime } from "../data/exhibition-api.js?v=v14_3_5_canonical_gallery_resolution";
-import { createGalleryManagementApi, CONTROLLED_GALLERY_ASSET_ROLES } from "../data/gallery-management-api.js?v=v14_3_3_structural_compatibility";
+import { createExhibitionDataAdapter, resolveInitialAdminRuntime } from "../data/exhibition-api.js?v=v14_3_6_gallery_visibility";
+import { createGalleryManagementApi, CONTROLLED_GALLERY_ASSET_ROLES } from "../data/gallery-management-api.js?v=v14_3_6_gallery_visibility";
 import {
   REQUIRED_GALLERY_MODEL_ROLES,
   validateGalleryModelFile,
@@ -583,21 +583,21 @@ function renderExhibitionCreationTargets() {
   if (!exhibitionCreationTargets.length) {
     const option = document.createElement("option");
     option.value = "";
-    option.textContent = "No Published Galleries available";
+    option.textContent = "No Galleries with a current Published snapshot available";
     newExhibitionGallery.appendChild(option);
     createExhibitionButton.disabled = true;
     return;
   }
   const placeholder = document.createElement("option");
   placeholder.value = "";
-  placeholder.textContent = "Choose Published Gallery…";
+  placeholder.textContent = "Choose Gallery…";
   newExhibitionGallery.appendChild(placeholder);
   for (const target of exhibitionCreationTargets) {
     const option = document.createElement("option");
     option.value = `${target.venueId}|${target.venueVersionId}`;
     option.dataset.venueId = target.venueId;
     option.dataset.versionId = target.venueVersionId;
-    option.textContent = `${target.venueName} · ${target.versionNumber}`;
+    option.textContent = `${target.venueName} · ${target.versionNumber}${target.publicationStatus === "hidden" ? " · Published OFF" : ""}`;
     newExhibitionGallery.appendChild(option);
   }
   if ([...newExhibitionGallery.options].some((option) => option.value === previousValue)) newExhibitionGallery.value = previousValue;
@@ -1798,6 +1798,10 @@ function renderGalleryDetail(detail) {
     const rollback = detail.rollback || {};
     const blockers = detail.archiveBlockers || {};
     const activeExhibitionCount = Number(blockers.activeExhibitions) || 0;
+    const hasPublishedSnapshot = !!published;
+    const publicationOn = venue.status === "published" && hasPublishedSnapshot;
+    const publicationOff = venue.status === "hidden" && hasPublishedSnapshot;
+    const publicationToggleEnabled = canManage && hasPublishedSnapshot && venue.status !== "archived";
 
     body.innerHTML = `
       <form id="galleryDetailsForm" class="gallerySubsection">
@@ -1825,6 +1829,7 @@ function renderGalleryDetail(detail) {
       <div class="gallerySubsection"><h3>Validation</h3><div id="galleryValidation" class="galleryValidation ${validationValid ? "valid" : "invalid"}"></div><button id="validateGalleryButton" class="adminButton" type="button" ${canManage && draft && venue.status !== "archived" ? "" : "disabled"}>VALIDATE DRAFT</button></div>
       <div class="gallerySubsection"><h3>Actions</h3><div class="galleryActions">
         <button id="publishGalleryButton" class="adminButton primary" type="button" ${canManage && draft && venue.status !== "archived" ? "" : "disabled"}>PUBLISH VERSION</button>
+        <button id="toggleGalleryPublishedButton" class="adminButton" type="button" aria-pressed="${publicationOn ? "true" : "false"}" ${publicationToggleEnabled ? "" : "disabled"}>${publicationOn ? "PUBLISHED: ON" : "PUBLISHED: OFF"}</button>
         <button id="createExhibitionForGalleryButton" class="adminButton" type="button" ${canManage && published && venue.status !== "archived" ? "" : "disabled"}>CREATE EXHIBITION IN THIS GALLERY</button>
         <button id="rollbackGalleryButton" class="adminButton" type="button" ${canManage && rollback.available && venue.status !== "archived" ? "" : "disabled"}>ROLLBACK</button>
         <button id="deleteGalleryButton" class="adminButton danger" type="button" ${canManage ? "" : "disabled"}>DELETE GALLERY</button>
@@ -1845,6 +1850,7 @@ function renderGalleryDetail(detail) {
     renderGalleryHistory(detail);
     const actionNote = galleryEl("galleryActionNote");
     if (venue.status === "archived") actionNote.textContent = "Archived Gallery is read-only until restored.";
+    else if (publicationOff) actionNote.textContent = "Published is OFF. The current Gallery snapshot is retained, but assigned Published Exhibitions are unavailable on Public until Published is turned ON.";
     else if (draft) actionNote.textContent = "Rollback and Archive are locked while an active Draft Version exists.";
     else if (activeExhibitionCount > 0) actionNote.textContent = `Archive blocked: ${activeExhibitionCount} active Exhibition(s) still belong to this Gallery.`;
     else if (venue.previous_version_id && !rollback.available) actionNote.textContent = "Previous Version is invalid or historical only; rollback is unavailable.";
@@ -1862,6 +1868,7 @@ function renderGalleryDetail(detail) {
     galleryEl("testGalleryButton").addEventListener("click", handleTestGallery);
     galleryEl("validateGalleryButton").addEventListener("click", handleValidateGallery);
     galleryEl("publishGalleryButton").addEventListener("click", handlePublishGallery);
+    galleryEl("toggleGalleryPublishedButton").addEventListener("click", handleToggleGalleryPublished);
     galleryEl("createExhibitionForGalleryButton").addEventListener("click", handleCreateExhibitionForGallery);
     galleryEl("rollbackGalleryButton").addEventListener("click", handleRollbackGallery);
     galleryEl("deleteGalleryButton").addEventListener("click", handleDeleteGallery);
@@ -2164,15 +2171,39 @@ async function handleValidateGallery() {
 async function handlePublishGallery() {
   const draft = galleryDraftVersion(selectedGalleryDetail); if(!draft || galleryMutationInFlight) return;
   if (!confirmAndDiscardGalleryFormChanges("Unsaved Gallery changes will be discarded before publishing. Continue?")) return;
-  if(!window.confirm("Publish this Gallery Version? Existing Exhibitions stay on their currently assigned Gallery Version until deliberately migrated later.")) return;
+  if(!window.confirm("Publish this Gallery Version? Assigned Exhibitions will use the new current Gallery Version on their next explicit entry. Active visits are not hot-swapped.")) return;
   const button = galleryEl("publishGalleryButton");
   await withGalleryMutation(button, "PUBLISHING…", async () => {
     try {
       await galleryManagement.publish(draft.id);
       await refreshSelectedGallery();
       await refreshExhibitionCreationTargets();
-      showToast(`${draft.version_number} published. It is now available when creating an Exhibition.`);
+      showToast(`${draft.version_number} published.${selectedGalleryDetail && selectedGalleryDetail.venue && selectedGalleryDetail.venue.status === "hidden" ? " Gallery remains Published OFF." : " Assigned Exhibitions will use it on their next entry."}`);
     } catch(error) { showToast(error.message || String(error)); }
+  });
+}
+
+async function handleToggleGalleryPublished() {
+  const detail = selectedGalleryDetail;
+  const venue = detail && detail.venue ? detail.venue : null;
+  const published = galleryPublishedVersion(detail);
+  if (!venue || !published || venue.status === "archived" || galleryMutationInFlight) return;
+  if (!confirmAndDiscardGalleryFormChanges("Unsaved Gallery changes will be discarded before changing Published visibility. Continue?")) return;
+  const nextPublished = venue.status !== "published";
+  const verb = nextPublished ? "turn Published ON" : "turn Published OFF";
+  const impact = nextPublished
+    ? "Assigned Published Exhibitions become Public-eligible again immediately."
+    : "Assigned Published Exhibitions are removed from Public discovery and direct resolution immediately. Gallery content and its current Published Version are retained.";
+  if (!window.confirm(`Are you sure you want to ${verb}? ${impact}`)) return;
+  const button = galleryEl("toggleGalleryPublishedButton");
+  await withGalleryMutation(button, nextPublished ? "TURNING ON…" : "TURNING OFF…", async () => {
+    try {
+      const result = await galleryManagement.setPublication(venue.id, nextPublished);
+      await refreshSelectedGallery();
+      await refreshExhibitionCreationTargets();
+      const affected = Number(result && result.affectedPublicExhibitionCount) || 0;
+      showToast(`Gallery Published ${nextPublished ? "ON" : "OFF"}. ${affected} Published Exhibition${affected === 1 ? "" : "s"} affected.`);
+    } catch (error) { showToast(error.message || String(error)); }
   });
 }
 
@@ -2181,7 +2212,7 @@ async function handleCreateExhibitionForGallery() {
   const venue = detail && detail.venue ? detail.venue : null;
   const published = galleryPublishedVersion(detail);
   if (!venue || !published || venue.status === "archived") {
-    showToast("Publish this Gallery before creating an Exhibition in it.");
+    showToast("This Gallery needs a retained current Published snapshot before creating an Exhibition in it.");
     return;
   }
   if (!setAdminWorkspaceSection("exhibitions")) return;
@@ -2191,7 +2222,7 @@ async function handleCreateExhibitionForGallery() {
     const matchingOption = newExhibitionGallery
       ? [...newExhibitionGallery.options].find((option) => option.value === value)
       : null;
-    if (!matchingOption) throw new Error("This Published Gallery is not available as an Exhibition creation target.");
+    if (!matchingOption) throw new Error("This Gallery is not available as an Exhibition creation target with its current Published snapshot.");
     newExhibitionGallery.value = value;
     renderExhibitionCreationTargets();
     newExhibitionName.focus();
@@ -2204,7 +2235,7 @@ async function handleCreateExhibitionForGallery() {
 async function handleRollbackGallery() {
   if(!selectedGalleryDetail || !(selectedGalleryDetail.rollback && selectedGalleryDetail.rollback.available) || galleryMutationInFlight) return;
   if (!confirmAndDiscardGalleryFormChanges("Unsaved Gallery changes will be discarded before rollback. Continue?")) return;
-  if(!window.confirm("Rollback the active Gallery Version to the validated previous Version? Existing Exhibitions remain pinned to their explicit versions.")) return;
+  if(!window.confirm("Rollback the current Gallery Version to the validated previous Version? Assigned Exhibitions will use that current Version on their next explicit entry. Active visits are not hot-swapped.")) return;
   const button = galleryEl("rollbackGalleryButton");
   await withGalleryMutation(button, "ROLLING BACK…", async () => {
     try {
