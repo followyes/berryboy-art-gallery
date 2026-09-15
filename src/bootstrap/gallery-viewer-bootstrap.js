@@ -8,7 +8,7 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { registerExhibitionAssetCache, getExhibitionAssetDeliveryStats } from "./asset-cache-bootstrap.js?v=c6c8c22_gallery_management_20260908";
 import { beginTransitionGuard, endTransitionGuard, isTransitionGuardActive } from "./transition-guard.js?v=v14_2_6_draft_publish_20260914";
-import { createExhibitionDataAdapter, resolveInitialPublicRuntime, listPublicExhibitionCards } from "../data/exhibition-api.js?v=v14_3_7_1_product_save";
+import { createExhibitionDataAdapter, resolveInitialPublicRuntime, listPublicExhibitionCards } from "../data/exhibition-api.js?v=v14_3_7_1_ui_layout";
 import { getRuntimeVenueVersionKey } from "../runtime/scene-lifecycle-controller.js?v=v14_2_6_draft_publish_20260914";
 import { createSceneLoadingRuntimeHost } from "../runtime/scene-loading-orchestrator.js?v=v14_2_6_draft_publish_20260914";
 import { shouldShowPublicSpaceIntro } from "../runtime/public-space-entry-policy.js?v=v14_2_6_draft_publish_20260914";
@@ -535,7 +535,7 @@ function ensureInlineAdminWorkspaceStyles() {
     #inlineAdminWorkspace .posterActions { display:grid; gap:7px; }
     #inlineAdminWorkspace #posterFileInput { display:none; }
     #inlineAdminWorkspace .publicationControls { display:grid; gap:8px; padding-top:11px; border-top:1px solid rgba(255,255,255,.10); }
-    #inlineAdminWorkspace .publicationActions { display:flex; flex-wrap:wrap; gap:7px; }
+    #inlineAdminWorkspace .publicationActions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:7px; }
     #inlineAdminWorkspace .publicationNotice.blocked { color:#f0b5b5; }
     #inlineAdminMain { min-width:0; min-height:0; padding:18px; background:radial-gradient(circle at 30% 10%,rgba(255,255,255,.035),transparent 36%),#0b0d0c; }
     #inlineAdminViewportCard { height:100%; min-height:0; display:grid; grid-template-rows:56px minmax(0,1fr); border:1px solid rgba(255,255,255,.10); border-radius:16px; overflow:hidden; background:#050606; box-shadow:0 28px 90px rgba(0,0,0,.22); }
@@ -825,7 +825,7 @@ async function openInlineAdminWorkspace(exhibitionId) {
     if (window.ExhibitionPlatformDataAdapter && typeof window.ExhibitionPlatformDataAdapter.setMode === "function") window.ExhibitionPlatformDataAdapter.setMode("admin");
     if (window.GalleryApp && typeof window.GalleryApp.setExhibitionDataMode === "function") window.GalleryApp.setExhibitionDataMode("admin");
     if (window.GalleryApp.enterAdminWorkspaceMode) window.GalleryApp.enterAdminWorkspaceMode();
-    if (!inlineAdminModulePromise) inlineAdminModulePromise = import(`./admin-workspace-bootstrap.js?v=v14_3_7_1_product_save`);
+    if (!inlineAdminModulePromise) inlineAdminModulePromise = import(`./admin-workspace-bootstrap.js?v=v14_3_7_1_ui_layout`);
     const adminModule = await inlineAdminModulePromise;
     if (adminModule && typeof adminModule.resumeAdminWorkspace === "function") await adminModule.resumeAdminWorkspace();
     window.requestAnimationFrame(() => { if (activeEngine) activeEngine.resize(); });

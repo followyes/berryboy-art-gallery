@@ -13,6 +13,8 @@ Gallery `SET START POSITION` captures `GalleryApp.getCameraPose()` from the alre
 
 V14.3.5 stale-Scene protection, V14.3.6 visibility semantics, immutable Gallery Version publication, active-visit no-hot-swap behavior and safe deletion remain unchanged.
 
+The production-review UI corrective revision keeps Entry Point numeric fields collapsed until `ADJUST`, keeps `SET START POSITION` on the mounted right-side preview without expanding those fields, and aligns lower Gallery/Exhibition action rows to the right while leaving Edit/Save and Start Position controls left-aligned. This revision changes no SQL/RPC or product-save semantics.
+
 ## V14.2.6 Canonical Draft / Publish Model
 
 Exhibition runtime saves are now **Draft-only**. `SAVE CHANGES` updates the Draft channel and never changes Public content. Explicit bundle publication is the only normal boundary that can move Draft runtime state and card/metadata into Published.

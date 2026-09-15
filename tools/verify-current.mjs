@@ -47,8 +47,8 @@ assert(index.includes('stage: "V14.1.10.1"'),'Index stage identity missing');
 assert(bootstrap.includes('const STAGE = "V14.1.10.1"'),'Viewer stage identity missing');
 assert(adminBootstrap.includes('const STAGE = "V14.1.10.1"'),'Admin stage identity missing');
 assert(bootstrap.includes('v14_2_6_draft_publish_20260914'),'Current engine cache key missing');
-assert(index.includes('gallery-viewer-bootstrap.js?v=v14_3_7_1_product_save'),'V14.3.7.1 viewer cache key missing');
-assert(admin.includes('admin-workspace-bootstrap.js?v=v14_3_7_1_product_save'),'V14.3.7.1 Admin cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=v14_3_7_1_ui_layout'),'V14.3.7.1 viewer cache key missing');
+assert(admin.includes('admin-workspace-bootstrap.js?v=v14_3_7_1_ui_layout'),'V14.3.7.1 Admin cache key missing');
 const currentPackage=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
 assert(currentPackage.version==='0.14.2-v14-2-6-canonical-draft-publish-model'&&currentPackage.description.includes('V14.2.6 Canonical Draft / Publish Model'),'V14.2.6 core runtime package identity missing');
 

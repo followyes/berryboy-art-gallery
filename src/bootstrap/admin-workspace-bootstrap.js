@@ -1201,7 +1201,7 @@ function ensureGalleryManagementStyles() {
     #galleryDetailBody{display:grid;gap:13px}.gallerySubsection{display:grid;gap:9px;padding-top:4px}.gallerySubsection+.gallerySubsection{border-top:1px solid var(--gallery-admin-line);padding-top:13px}
     .gallerySubsection h3{margin:0;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--gallery-admin-text)}
     .galleryVersionLine{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border:1px solid var(--gallery-admin-line);border-radius:10px;background:rgba(255,255,255,.025);font-size:10px}
-    .galleryActions{display:flex;flex-wrap:wrap;gap:7px}.galleryAssetGrid{display:grid;gap:7px}.galleryAssetRow{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px;border:1px solid var(--gallery-admin-line);border-radius:10px}
+    .galleryActions{display:flex;flex-wrap:wrap;gap:7px}.galleryActionsRight{justify-content:flex-end}#galleryEntryAdjustPanel.hidden{display:none!important}.galleryAssetGrid{display:grid;gap:7px}.galleryAssetRow{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px;border:1px solid var(--gallery-admin-line);border-radius:10px}
     .galleryAssetRole{font-size:10px;font-weight:800;text-transform:uppercase}.galleryAssetMeta{min-width:0;font-size:10px;color:var(--gallery-admin-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .galleryAssetInput{display:none}.galleryEntryGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.galleryEntryLabel{display:grid;gap:4px;font-size:9px;color:var(--gallery-admin-muted);text-transform:uppercase}
     .galleryValidation{padding:9px 10px;border:1px solid var(--gallery-admin-line);border-radius:10px;font-size:10px;line-height:1.5;color:var(--gallery-admin-muted)}.galleryValidation.valid{border-color:rgba(127,169,130,.45);background:rgba(127,169,130,.08)}.galleryValidation.invalid{border-color:rgba(209,139,139,.45);background:rgba(209,139,139,.06)}
@@ -1804,10 +1804,10 @@ function renderGalleryDetail(detail) {
           <div class="galleryMuted">Look target</div><div class="galleryEntryGrid">${["x","y","z"].map((axis)=>`<label class="galleryEntryLabel">${axis}<input id="galleryEntryTarget${axis.toUpperCase()}" class="adminInput" type="number" step="0.01" required ${entryEditable ? "" : "readonly"}></label>`).join("")}</div>
         </div>
       </div>
-      <div class="gallerySubsection"><h3>Visibility</h3><div class="galleryActions">
+      <div class="gallerySubsection"><h3>Visibility</h3><div class="galleryActions galleryActionsRight">
         <button id="toggleGalleryPublishedButton" class="adminButton" type="button" aria-pressed="${publicationOn ? "true" : "false"}" ${publicationToggleEnabled ? "" : "disabled"}>${publicationOn ? "PUBLISHED: ON" : "PUBLISHED: OFF"}</button>
       </div><div id="galleryActionNote" class="galleryDangerNote"></div></div>
-      <div class="gallerySubsection"><h3>Actions</h3><div class="galleryActions">
+      <div class="gallerySubsection"><h3>Actions</h3><div class="galleryActions galleryActionsRight">
         <button id="createExhibitionForGalleryButton" class="adminButton" type="button" ${canManage && published && venue.status !== "archived" ? "" : "disabled"}>CREATE EXHIBITION</button>
         <button id="deleteGalleryButton" class="adminButton danger iconButton" type="button" aria-label="Delete" title="Delete Gallery" ${canManage ? "" : "disabled"}>🗑</button>
       </div></div>`;

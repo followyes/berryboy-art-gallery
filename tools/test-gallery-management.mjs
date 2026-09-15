@@ -4,6 +4,7 @@ const root = new URL('../', import.meta.url);
 const source = fs.readFileSync(new URL('src/Gallery_V0_11.js', root), 'utf8');
 const admin = fs.readFileSync(new URL('src/bootstrap/admin-workspace-bootstrap.js', root), 'utf8');
 const adminHtml = fs.readFileSync(new URL('admin.html', root), 'utf8');
+const viewerBootstrap = fs.readFileSync(new URL('src/bootstrap/gallery-viewer-bootstrap.js', root), 'utf8');
 const api = fs.readFileSync(new URL('src/data/gallery-management-api.js', root), 'utf8');
 const testBootstrap = fs.readFileSync(new URL('src/bootstrap/gallery-test-bootstrap.js', root), 'utf8');
 const testHtml = fs.readFileSync(new URL('gallery-test.html', root), 'utf8');
@@ -48,6 +49,7 @@ const catalogRenderer = extractFunction(admin, 'renderGalleryCatalog');
 const entryReader = extractFunction(admin, 'readRequiredFiniteGalleryNumber');
 const mutationWrapper = extractFunction(admin, 'withGalleryMutation');
 const detailRenderer = extractFunction(admin, 'renderGalleryDetail');
+const startPositionHandler = extractFunction(admin, 'handleTestGallery');
 
 expect('current release package includes V14.2.5 safe deletion', pkg.version.includes('v14-2-6-canonical-draft-publish-model'));
 expect('Core Admin release identity remains V14.1.10 while V14.3.7.1 corrective stage is explicit', admin.includes('const STAGE = "V14.1.10.1"') && admin.includes('ADMIN_PRODUCT_MODEL_STAGE = "V14.3.7"') && admin.includes('ADMIN_PRODUCT_CORRECTION_STAGE = "V14.3.7.1"'));
@@ -57,6 +59,11 @@ expect('V14.3.7.1 normal Gallery UI exposes one Save plus visibility, without te
 expect('V14.3.7 hidden Draft opens through Edit without exposing Draft terminology', admin.includes('handleBeginGalleryDraft') && admin.includes('Gallery editing opened.') && detailRenderer.includes('const editing = canManage && !!draft') && detailRenderer.includes('Unpublished Gallery changes are being edited.'));
 expect('V14.3.7 automatic model validation remains on Upload/Replace while manual validation ceremony is hidden', admin.includes('validateGalleryModelFile(file') && admin.includes('galleryManagement.uploadAssetSlot') && !detailRenderer.includes('validateGalleryButton') && !detailRenderer.includes('renderGalleryValidation('));
 expect('V14.3.7.1 start position captures the mounted authoring camera and stages numeric adjustment for the main Save', detailRenderer.includes('SET START POSITION') && detailRenderer.includes('galleryEntryAdjustPanel') && detailRenderer.includes('class="hidden"') && !detailRenderer.includes('SAVE ADJUSTMENT') && admin.includes('GalleryApp.getCameraPose') && admin.includes('activeRuntime.context !== "gallery-authoring"') && !admin.includes('new URL("./gallery-test.html"'));
+expect('V14.3.7.1 numeric Entry Point fields are hidden by shared Gallery CSS until ADJUST is used', admin.includes('#galleryEntryAdjustPanel.hidden{display:none!important}') && detailRenderer.includes('id="galleryEntryAdjustPanel" class="hidden"') && detailRenderer.includes('id="adjustGalleryEntryButton"') && detailRenderer.includes('aria-expanded="false"'));
+expect('SET START POSITION stages camera values without expanding the ADJUST panel', startPositionHandler.includes('GalleryApp.getCameraPose') && startPositionHandler.includes('syncGalleryEntryDirty()') && !startPositionHandler.includes('galleryEntryAdjustPanel') && !startPositionHandler.includes('aria-expanded'));
+expect('Exhibition publication actions align to the right in standalone and inline Admin shells', adminHtml.includes('.publicationActions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:7px; }') && viewerBootstrap.includes('#inlineAdminWorkspace .publicationActions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:7px; }'));
+expect('Gallery Visibility and Actions rows alone use the right-aligned action modifier', detailRenderer.includes('<h3>Visibility</h3><div class="galleryActions galleryActionsRight">') && detailRenderer.includes('<h3>Actions</h3><div class="galleryActions galleryActionsRight">') && detailRenderer.includes('<h3>Start position</h3>\n        <div class="galleryActions">') && detailRenderer.includes('<form id="galleryDetailsForm" class="gallerySubsection">') && admin.includes('.galleryActionsRight{justify-content:flex-end}'));
+expect('Gallery destructive action is rendered exactly once', (detailRenderer.match(/id="deleteGalleryButton"/g) || []).length === 1);
 expect('V14.3.7 normal Gallery UI hides version numbers and technical history', !detailRenderer.includes('version_number') && !detailRenderer.includes('renderGalleryHistory(') && !catalogRenderer.includes('version_number'));
 expect('V14.3.7 normal Exhibition UI uses one Published toggle and no Unpublish button', adminHtml.includes('toggleExhibitionPublishedButton') && adminHtml.includes('PUBLISHED: OFF') && !adminHtml.includes('unpublishExhibitionButton') && admin.includes('handleToggleExhibitionPublished'));
 expect('V14.3.7 destructive Gallery/Exhibition controls use accessible trash icon actions', detailRenderer.includes('aria-label="Delete"') && detailRenderer.includes('title="Delete Gallery"') && adminHtml.includes('aria-label="Delete"') && adminHtml.includes('title="Delete Exhibition"'));
