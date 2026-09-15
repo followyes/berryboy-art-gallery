@@ -91,7 +91,7 @@ assert.ok(!api.includes('const current = initialRuntime || Array.from(runtimeByK
 for (const shell of [adminHtml, inline]) {
   assert.ok(shell.includes('id="newExhibitionGallery"'));
   assert.ok(shell.includes('Loading Galleries'));
-  assert.ok(shell.includes('current Published snapshot'));
+  assert.ok(shell.includes('Create or edit an Exhibition.'));
 }
 
 // V14.2.2.1 visual contract: native Chromium option popup must remain legible in dark Admin UI.

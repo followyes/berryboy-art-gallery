@@ -20,6 +20,7 @@ import { buildAuthoringSpaceDefinition } from "../runtime/space-definition-resol
 import { createAdminAssetWorkspace } from "./admin-asset-workspace.js?v=v13_6_production_closure";
 
 const STAGE = "V14.1.10.1";
+const ADMIN_PRODUCT_MODEL_STAGE = "V14.3.7";
 const ENGINE_CACHE_KEY = "v14_2_6_draft_publish_20260914";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
@@ -59,7 +60,7 @@ const exhibitionPublicationStatus = el("exhibitionPublicationStatus");
 const exhibitionSpaceId = el("exhibitionSpaceId");
 const exhibitionPublicationNotice = el("exhibitionPublicationNotice");
 const publishExhibitionBundleButton = el("publishExhibitionBundleButton");
-const unpublishExhibitionButton = el("unpublishExhibitionButton");
+const toggleExhibitionPublishedButton = el("toggleExhibitionPublishedButton");
 const deleteExhibitionButton = el("deleteExhibitionButton");
 const saveMetadataButton = el("saveMetadataButton");
 const choosePosterButton = el("choosePosterButton");
@@ -421,30 +422,31 @@ function renderExhibitionPublication(detail) {
 
   if (exhibitionPublicationStatus) {
     exhibitionPublicationStatus.textContent = isPublic
-      ? (publication.hasUnpublishedChanges ? "PUBLISHED / UNPUBLISHED CHANGES" : "PUBLISHED / UP TO DATE")
-      : "DRAFT / NOT PUBLIC";
+      ? (publication.hasUnpublishedChanges ? "Published ON · changes not yet public" : "Published ON")
+      : "Published OFF";
+  }
+  if (toggleExhibitionPublishedButton) {
+    toggleExhibitionPublishedButton.textContent = isPublic ? "PUBLISHED: ON" : "PUBLISHED: OFF";
+    toggleExhibitionPublishedButton.setAttribute("aria-pressed", isPublic ? "true" : "false");
+    toggleExhibitionPublishedButton.disabled = exhibitionPublicationInFlight || (!isPublic && (!validation || !validation.valid || migrationPending));
   }
   if (publishExhibitionBundleButton) {
-    publishExhibitionBundleButton.textContent = isPublic
-      ? (publication.hasUnpublishedChanges ? "PUBLISH CHANGES" : "UP TO DATE")
-      : "PUBLISH EXHIBITION";
-    publishExhibitionBundleButton.disabled = exhibitionPublicationInFlight || !validation || !validation.valid || migrationPending
-      || (isPublic && !publication.hasUnpublishedChanges);
-  }
-  if (unpublishExhibitionButton) {
-    unpublishExhibitionButton.disabled = exhibitionPublicationInFlight || !isPublic;
+    const showPublishChanges = isPublic && publication.hasUnpublishedChanges;
+    publishExhibitionBundleButton.classList.toggle("hidden", !showPublishChanges);
+    publishExhibitionBundleButton.textContent = "PUBLISH CHANGES";
+    publishExhibitionBundleButton.disabled = exhibitionPublicationInFlight || !showPublishChanges || !validation || !validation.valid || migrationPending;
   }
 
   if (!exhibitionPublicationNotice) return;
   exhibitionPublicationNotice.classList.remove("blocked");
   if (!matchingDetail || !validation) {
-    exhibitionPublicationNotice.textContent = "Publication validation is unavailable. Refresh Exhibitions and try again.";
+    exhibitionPublicationNotice.textContent = "Publication status is unavailable. Refresh and try again.";
     exhibitionPublicationNotice.classList.add("blocked");
     exhibitionPublicationNotice.classList.remove("hidden");
     return;
   }
   if (migrationPending || blockers.length) {
-    const messages = blockers.length ? blockers : ["This Exhibition requires Gallery migration maintenance before publication."];
+    const messages = blockers.length ? blockers : ["This Exhibition requires Gallery maintenance before it can be published."];
     exhibitionPublicationNotice.textContent = `Cannot publish: ${messages.map((item) => String(item)).join(" · ")}`;
     exhibitionPublicationNotice.classList.add("blocked");
     exhibitionPublicationNotice.classList.remove("hidden");
@@ -483,21 +485,23 @@ function reloadAdminForExhibition(exhibitionId) {
 }
 
 async function handlePublishExhibitionBundle() {
-  if (!selectedExhibition || exhibitionPublicationInFlight) return;
+  if (!selectedExhibition || exhibitionPublicationInFlight || !selectedExhibition.is_published) return;
   syncMetadataDirtyState();
-  if (metadataDirty || hasSceneUnsavedChanges()) { showToast("Save Exhibition details and 3D changes before publishing."); return; }
+  if (metadataDirty || hasSceneUnsavedChanges()) { showToast("Save Exhibition changes before publishing them."); return; }
   const detail = exhibitionAdminDetail || await refreshExhibitionAdminDetail(selectedExhibition.id);
+  const publication = getExhibitionPublicationState(detail);
+  if (!publication.hasUnpublishedChanges) return;
   if (!detail || !(detail.validation && detail.validation.valid) || (detail.migration && detail.migration.status === "needs-layout-confirmation")) {
     renderExhibitionPublication(detail);
-    showToast("This Exhibition is not ready to publish.");
+    showToast("These changes are not ready to publish.");
     return;
   }
-  if (!window.confirm("Publish this Exhibition to the public site?")) return;
+  if (!window.confirm("Publish the saved Exhibition changes to the public site?")) return;
   exhibitionPublicationInFlight = true;
   renderExhibitionPublication(detail);
   try {
     const publishResult = await exhibitionData.publishBundle(selectedExhibition.id);
-    showToast(publishResult && publishResult.changed === false ? "Exhibition is already up to date." : "Exhibition published.");
+    showToast(publishResult && publishResult.changed === false ? "Public Exhibition is already up to date." : "Exhibition changes published.");
     await fetchCatalog();
     syncSelectedFromCatalog(selectedExhibition.id);
     await refreshExhibitionAdminDetail(selectedExhibition.id);
@@ -508,15 +512,32 @@ async function handlePublishExhibitionBundle() {
   }
 }
 
-async function handleUnpublishExhibition() {
-  if (!selectedExhibition || exhibitionPublicationInFlight || !selectedExhibition.is_published) return;
-  if (!window.confirm("Hide this Exhibition from the public site?")) return;
+async function handleToggleExhibitionPublished() {
+  if (!selectedExhibition || exhibitionPublicationInFlight) return;
+  const isPublic = !!selectedExhibition.is_published;
+  syncMetadataDirtyState();
+  if (metadataDirty || hasSceneUnsavedChanges()) { showToast("Save or discard Exhibition changes before changing Published visibility."); return; }
+  const detail = exhibitionAdminDetail || await refreshExhibitionAdminDetail(selectedExhibition.id);
+  if (!isPublic) {
+    if (!detail || !(detail.validation && detail.validation.valid) || (detail.migration && detail.migration.status === "needs-layout-confirmation")) {
+      renderExhibitionPublication(detail);
+      showToast("This Exhibition is not ready to turn Published ON.");
+      return;
+    }
+    if (!window.confirm("Turn Published ON for this Exhibition?")) return;
+  } else if (!window.confirm("Turn Published OFF for this Exhibition?")) return;
+
   exhibitionPublicationInFlight = true;
-  renderExhibitionPublication(exhibitionAdminDetail);
+  renderExhibitionPublication(detail);
   try {
-    if (!exhibitionData || typeof exhibitionData.unpublish !== "function") throw new Error("Explicit unpublish action is unavailable.");
-    await exhibitionData.unpublish(selectedExhibition.id);
-    showToast("Exhibition unpublished.");
+    if (isPublic) {
+      if (!exhibitionData || typeof exhibitionData.unpublish !== "function") throw new Error("Published OFF action is unavailable.");
+      await exhibitionData.unpublish(selectedExhibition.id);
+      showToast("Exhibition Published OFF.");
+    } else {
+      await exhibitionData.publishBundle(selectedExhibition.id);
+      showToast("Exhibition Published ON.");
+    }
     await fetchCatalog();
     syncSelectedFromCatalog(selectedExhibition.id);
     await refreshExhibitionAdminDetail(selectedExhibition.id);
@@ -597,7 +618,7 @@ function renderExhibitionCreationTargets() {
     option.value = `${target.venueId}|${target.venueVersionId}`;
     option.dataset.venueId = target.venueId;
     option.dataset.versionId = target.venueVersionId;
-    option.textContent = `${target.venueName} · ${target.versionNumber}${target.publicationStatus === "hidden" ? " · Published OFF" : ""}`;
+    option.textContent = `${target.venueName}${target.publicationStatus === "hidden" ? " · Published OFF" : ""}`;
     newExhibitionGallery.appendChild(option);
   }
   if ([...newExhibitionGallery.options].some((option) => option.value === previousValue)) newExhibitionGallery.value = previousValue;
@@ -661,7 +682,7 @@ function renderCatalog() {
     const title = document.createElement("strong");
     title.textContent = item.name;
     const detail = document.createElement("span");
-    detail.innerHTML = `<i class="statusDot ${item.is_published ? "published" : ""}"></i>${item.is_published ? "Published" : "Draft"} · ${item.id}`;
+    detail.innerHTML = `<i class="statusDot ${item.is_published ? "published" : ""}"></i>${item.is_published ? "Published ON" : "Published OFF"}`;
     meta.append(title, detail);
     row.append(img, meta);
     row.addEventListener("click", () => selectAndSwitchExhibition(item.id));
@@ -676,7 +697,7 @@ function setSelectedExhibition(record) {
   exhibitionDescription.value = selectedExhibition.description;
   exhibitionSlug.value = selectedExhibition.slug;
   exhibitionSortOrder.value = String(selectedExhibition.sort_order);
-  if (exhibitionPublicationStatus) exhibitionPublicationStatus.textContent = selectedExhibition.is_published ? "PUBLISHED / PUBLIC" : "DRAFT / NOT PUBLIC";
+  if (exhibitionPublicationStatus) exhibitionPublicationStatus.textContent = selectedExhibition.is_published ? "Published ON" : "Published OFF";
   exhibitionSpaceId.textContent = selectedExhibition.space_id;
   const posterUrl = publicUrlFor(selectedExhibition.cover_path);
   posterPreview.src = posterUrl || "";
@@ -1149,7 +1170,7 @@ createExhibitionForm.addEventListener("submit", async (event) => {
 newExhibitionName.addEventListener("input", renderExhibitionCreationTargets);
 if (newExhibitionGallery) newExhibitionGallery.addEventListener("change", renderExhibitionCreationTargets);
 if (publishExhibitionBundleButton) publishExhibitionBundleButton.addEventListener("click", handlePublishExhibitionBundle);
-if (unpublishExhibitionButton) unpublishExhibitionButton.addEventListener("click", handleUnpublishExhibition);
+if (toggleExhibitionPublishedButton) toggleExhibitionPublishedButton.addEventListener("click", handleToggleExhibitionPublished);
 if (deleteExhibitionButton) deleteExhibitionButton.addEventListener("click", handleDeleteExhibition);
 
 detailsForm.addEventListener("submit", async (event) => {
@@ -1160,7 +1181,7 @@ detailsForm.addEventListener("submit", async (event) => {
     const updated = await saveMetadata(getMetadataDraftPayload());
     const localUpdated = upsertLocalCatalogRecord(updated || selectedExhibition);
     setSelectedExhibition(localUpdated);
-    showToast("Exhibition details saved.");
+    showToast("Exhibition changes saved.");
   } catch (error) { showToast(error.message || String(error)); }
   finally { setBusy(saveMetadataButton, false); }
 });
@@ -1168,7 +1189,7 @@ detailsForm.addEventListener("submit", async (event) => {
 choosePosterButton.addEventListener("click", () => {
   syncMetadataDirtyState();
   if (metadataDirty) {
-    showToast("Save Exhibition Details before changing the poster.");
+    showToast("Save Exhibition changes before changing the poster.");
     return;
   }
   posterFileInput.click();
@@ -1185,7 +1206,7 @@ posterFileInput.addEventListener("change", async () => {
 removePosterButton.addEventListener("click", async () => {
   syncMetadataDirtyState();
   if (metadataDirty) {
-    showToast("Save Exhibition Details before removing the poster.");
+    showToast("Save Exhibition changes before removing the poster.");
     return;
   }
   setBusy(removePosterButton, true);
@@ -1671,7 +1692,8 @@ function renderGalleryCatalog() {
     const title = document.createElement("strong");
     title.textContent = item.name || item.slug || "Untitled Gallery";
     const meta = document.createElement("span");
-    meta.textContent = `${item.status === "archived" ? "Archived" : published ? `Published ${published.version_number}` : "Not published"}${draft ? ` · Draft ${draft.version_number}` : ""} · Exhibitions ${Number(item.exhibition_count) || 0}`;
+    const visibility = item.status === "archived" ? "Recovery only" : (published ? (item.status === "published" ? "Published ON" : "Published OFF") : "Not published");
+    meta.textContent = `${visibility}${draft ? " · Unpublished changes" : ""} · Exhibitions ${Number(item.exhibition_count) || 0}`;
     row.append(title, meta);
     row.addEventListener("click", () => { void selectGallery(item.id).catch((error) => showToast(error.message || String(error))); });
     list.appendChild(row);
@@ -1786,55 +1808,46 @@ function renderGalleryDetail(detail) {
   try {
     const venue = detail.venue;
     const canManage = detail.canManage === true;
-    const metadataEditable = canManage && venue.status !== "archived";
     const draft = galleryDraftVersion(detail);
     const published = galleryPublishedVersion(detail);
     const working = galleryWorkingVersion(detail);
-    const entryEditable = canManage && !!draft && venue.status !== "archived";
+    const editing = canManage && !!draft && venue.status !== "archived";
+    const metadataEditable = editing;
+    const entryEditable = editing;
     const assets = working && Array.isArray(working.assets) ? working.assets : [];
     const entry = galleryEntryFromManifest(working && working.manifest);
-    const validation = working && working.validation_report && typeof working.validation_report === "object" ? working.validation_report : {};
-    const validationValid = validation.valid === true;
-    const rollback = detail.rollback || {};
-    const blockers = detail.archiveBlockers || {};
-    const activeExhibitionCount = Number(blockers.activeExhibitions) || 0;
     const hasPublishedSnapshot = !!published;
     const publicationOn = venue.status === "published" && hasPublishedSnapshot;
     const publicationOff = venue.status === "hidden" && hasPublishedSnapshot;
     const publicationToggleEnabled = canManage && hasPublishedSnapshot && venue.status !== "archived";
+    const canStartEditing = canManage && !draft && venue.status !== "archived";
 
     body.innerHTML = `
       <form id="galleryDetailsForm" class="gallerySubsection">
-        <h3>Gallery details</h3>
+        <h3>Gallery</h3>
         <label class="fieldLabel">Name<input id="galleryName" class="adminInput" maxlength="120" required ${metadataEditable ? "" : "readonly"}></label>
         <label class="fieldLabel">Description<textarea id="galleryDescription" class="adminTextarea" maxlength="4000" ${metadataEditable ? "" : "readonly"}></textarea></label>
-        <label class="fieldLabel">Technical slug<input id="gallerySlug" class="adminInput" readonly></label>
-        <button id="saveGalleryDetailsButton" class="adminButton primary" type="submit" ${metadataEditable ? "" : "disabled"}>SAVE GALLERY DETAILS</button>
-      </form>
-      <div class="gallerySubsection"><h3>Version</h3>
-        <div class="galleryVersionLine"><span>Published</span><strong>${published ? published.version_number : "—"}</strong></div>
-        <div class="galleryVersionLine"><span>Active Draft</span><strong>${draft ? draft.version_number : "none"}</strong></div>
+        <input id="gallerySlug" type="hidden">
         <div class="galleryActions">
-          <button id="beginGalleryDraftButton" class="adminButton" type="button" ${canManage && venue.status !== "archived" ? "" : "disabled"}>${draft ? "EDIT DRAFT" : "CREATE NEXT VERSION"}</button>
-          <button id="discardGalleryDraftButton" class="adminButton danger" type="button" ${canManage && draft && venue.status !== "archived" ? "" : "disabled"}>DISCARD DRAFT</button>
+          <button id="beginGalleryDraftButton" class="adminButton" type="button" ${canStartEditing ? "" : "disabled"}>${editing ? "EDITING" : "EDIT"}</button>
+          <button id="saveGalleryDetailsButton" class="adminButton primary" type="submit" ${metadataEditable ? "" : "disabled"}>SAVE CHANGES</button>
+        </div>
+      </form>
+      <div class="gallerySubsection"><h3>Building</h3><div class="galleryMuted">Floor, Walls and Ceiling are required. Upload and Replace validate automatically.</div><div id="galleryAssetGrid" class="galleryAssetGrid"></div></div>
+      <div class="gallerySubsection"><h3>Start position</h3>
+        <div class="galleryActions"><button id="testGalleryButton" class="adminButton primary" type="button" ${entryEditable ? "" : "disabled"}>SET START POSITION</button><button id="adjustGalleryEntryButton" class="adminButton" type="button" aria-expanded="false" ${entryEditable ? "" : "disabled"}>ADJUST</button></div>
+        <div id="galleryEntryAdjustPanel" class="hidden">
+          <div class="galleryMuted">Position</div><div class="galleryEntryGrid">${["x","y","z"].map((axis)=>`<label class="galleryEntryLabel">${axis}<input id="galleryEntryPos${axis.toUpperCase()}" class="adminInput" type="number" step="0.01" required ${entryEditable ? "" : "readonly"}></label>`).join("")}</div>
+          <div class="galleryMuted">Look target</div><div class="galleryEntryGrid">${["x","y","z"].map((axis)=>`<label class="galleryEntryLabel">${axis}<input id="galleryEntryTarget${axis.toUpperCase()}" class="adminInput" type="number" step="0.01" required ${entryEditable ? "" : "readonly"}></label>`).join("")}</div>
+          <div class="galleryActions"><button id="saveGalleryEntryButton" class="adminButton" type="button" ${entryEditable ? "" : "disabled"}>SAVE ADJUSTMENT</button></div>
         </div>
       </div>
-      <div class="gallerySubsection"><h3>Building assets</h3><div class="galleryMuted">Floor, Walls and Ceiling are required. Props are optional. Every assigned GLB must pass C23 deep validation before Publish.</div><div id="galleryAssetGrid" class="galleryAssetGrid"></div></div>
-      <div class="gallerySubsection"><h3>Entry point</h3>
-        <div class="galleryMuted">Fine-adjust values here or capture the current camera from TEST GALLERY.</div>
-        <div class="galleryMuted">Position</div><div class="galleryEntryGrid">${["x","y","z"].map((axis)=>`<label class="galleryEntryLabel">${axis}<input id="galleryEntryPos${axis.toUpperCase()}" class="adminInput" type="number" step="0.01" required ${entryEditable ? "" : "readonly"}></label>`).join("")}</div>
-        <div class="galleryMuted">Look target</div><div class="galleryEntryGrid">${["x","y","z"].map((axis)=>`<label class="galleryEntryLabel">${axis}<input id="galleryEntryTarget${axis.toUpperCase()}" class="adminInput" type="number" step="0.01" required ${entryEditable ? "" : "readonly"}></label>`).join("")}</div>
-        <div class="galleryActions"><button id="saveGalleryEntryButton" class="adminButton" type="button" ${entryEditable ? "" : "disabled"}>SAVE ENTRY POINT</button><button id="testGalleryButton" class="adminButton" type="button" ${working ? "" : "disabled"}>TEST GALLERY</button></div>
-      </div>
-      <div class="gallerySubsection"><h3>Validation</h3><div id="galleryValidation" class="galleryValidation ${validationValid ? "valid" : "invalid"}"></div><button id="validateGalleryButton" class="adminButton" type="button" ${canManage && draft && venue.status !== "archived" ? "" : "disabled"}>VALIDATE DRAFT</button></div>
-      <div class="gallerySubsection"><h3>Actions</h3><div class="galleryActions">
-        <button id="publishGalleryButton" class="adminButton primary" type="button" ${canManage && draft && venue.status !== "archived" ? "" : "disabled"}>PUBLISH VERSION</button>
+      <div class="gallerySubsection"><h3>Publish</h3><div class="galleryActions">
         <button id="toggleGalleryPublishedButton" class="adminButton" type="button" aria-pressed="${publicationOn ? "true" : "false"}" ${publicationToggleEnabled ? "" : "disabled"}>${publicationOn ? "PUBLISHED: ON" : "PUBLISHED: OFF"}</button>
-        <button id="createExhibitionForGalleryButton" class="adminButton" type="button" ${canManage && published && venue.status !== "archived" ? "" : "disabled"}>CREATE EXHIBITION IN THIS GALLERY</button>
-        <button id="rollbackGalleryButton" class="adminButton" type="button" ${canManage && rollback.available && venue.status !== "archived" ? "" : "disabled"}>ROLLBACK</button>
-        <button id="deleteGalleryButton" class="adminButton danger" type="button" ${canManage ? "" : "disabled"}>DELETE GALLERY</button>
-      </div><div id="galleryActionNote" class="galleryDangerNote"></div></div>
-      <div class="gallerySubsection"><h3>Version history</h3><div id="galleryHistory" class="galleryHistory"></div></div>`;
+        <button id="publishGalleryButton" class="adminButton primary" type="button" ${canManage && draft && venue.status !== "archived" ? "" : "disabled"}>${hasPublishedSnapshot ? "PUBLISH CHANGES" : "PUBLISH GALLERY"}</button>
+        <button id="createExhibitionForGalleryButton" class="adminButton" type="button" ${canManage && published && venue.status !== "archived" ? "" : "disabled"}>CREATE EXHIBITION</button>
+        <button id="deleteGalleryButton" class="adminButton danger iconButton" type="button" aria-label="Delete" title="Delete Gallery" ${canManage ? "" : "disabled"}>🗑</button>
+      </div><div id="galleryActionNote" class="galleryDangerNote"></div></div>`;
 
     galleryEl("galleryName").value = venue.name || "";
     galleryEl("galleryDescription").value = venue.description || "";
@@ -1846,14 +1859,10 @@ function renderGalleryDetail(detail) {
       galleryEl(`galleryEntryTarget${axis}`).value = String(target[axis.toLowerCase()] ?? 0);
     });
     renderGalleryAssetSlots(detail, working, assets, entryEditable);
-    renderGalleryValidation(validation, working, detail);
-    renderGalleryHistory(detail);
     const actionNote = galleryEl("galleryActionNote");
-    if (venue.status === "archived") actionNote.textContent = "Archived Gallery is read-only until restored.";
-    else if (publicationOff) actionNote.textContent = "Published is OFF. The current Gallery snapshot is retained, but assigned Published Exhibitions are unavailable on Public until Published is turned ON.";
-    else if (draft) actionNote.textContent = "Rollback and Archive are locked while an active Draft Version exists.";
-    else if (activeExhibitionCount > 0) actionNote.textContent = `Archive blocked: ${activeExhibitionCount} active Exhibition(s) still belong to this Gallery.`;
-    else if (venue.previous_version_id && !rollback.available) actionNote.textContent = "Previous Version is invalid or historical only; rollback is unavailable.";
+    if (venue.status === "archived") actionNote.textContent = "This Gallery is available only for recovery.";
+    else if (publicationOff) actionNote.textContent = "Published is OFF. Admin editing remains available, but assigned Exhibitions are not Public.";
+    else if (draft) actionNote.textContent = "Unpublished Gallery changes are being edited.";
 
     galleryEl("galleryDetailsForm").addEventListener("submit", handleSaveGalleryDetails);
     galleryEl("galleryName").addEventListener("input", syncGalleryMetadataDirty);
@@ -1863,14 +1872,18 @@ function renderGalleryDetail(detail) {
       galleryEl(`galleryEntryTarget${axis}`).addEventListener("input", syncGalleryEntryDirty);
     });
     galleryEl("beginGalleryDraftButton").addEventListener("click", handleBeginGalleryDraft);
-    galleryEl("discardGalleryDraftButton").addEventListener("click", handleDiscardGalleryDraft);
     galleryEl("saveGalleryEntryButton").addEventListener("click", handleSaveGalleryEntry);
     galleryEl("testGalleryButton").addEventListener("click", handleTestGallery);
-    galleryEl("validateGalleryButton").addEventListener("click", handleValidateGallery);
+    galleryEl("adjustGalleryEntryButton").addEventListener("click", () => {
+      const panel = galleryEl("galleryEntryAdjustPanel");
+      const button = galleryEl("adjustGalleryEntryButton");
+      const open = panel.classList.contains("hidden");
+      panel.classList.toggle("hidden", !open);
+      button.setAttribute("aria-expanded", open ? "true" : "false");
+    });
     galleryEl("publishGalleryButton").addEventListener("click", handlePublishGallery);
     galleryEl("toggleGalleryPublishedButton").addEventListener("click", handleToggleGalleryPublished);
     galleryEl("createExhibitionForGalleryButton").addEventListener("click", handleCreateExhibitionForGallery);
-    galleryEl("rollbackGalleryButton").addEventListener("click", handleRollbackGallery);
     galleryEl("deleteGalleryButton").addEventListener("click", handleDeleteGallery);
     galleryMetadataBaseline = galleryMetadataSnapshot();
     galleryEntryBaseline = galleryEntrySnapshot();
@@ -1929,7 +1942,7 @@ function renderGalleryAssetSlots(detail, working, assets, editable) {
       await withGalleryMutation(button, "VALIDATING…", async () => {
         try {
           const draft = galleryDraftVersion(selectedGalleryDetail);
-          if (!draft || !selectedGalleryDetail || !selectedGalleryDetail.venue) throw new Error("An active Gallery Draft is required before uploading a building asset.");
+          if (!draft || !selectedGalleryDetail || !selectedGalleryDetail.venue) throw new Error("Click EDIT before changing Gallery building assets.");
           let lastPercent = -1;
           const validation = await validateGalleryModelFile(file, { role, onProgress: ({ loaded, total }) => {
             if (!total) return;
@@ -1949,14 +1962,14 @@ function renderGalleryAssetSlots(detail, working, assets, editable) {
     });
     actions.append(button);
     if (asset) {
-      const deleteButton = document.createElement("button"); deleteButton.type="button"; deleteButton.className="adminButton danger"; deleteButton.textContent="DELETE"; deleteButton.disabled=!editable;
+      const deleteButton = document.createElement("button"); deleteButton.type="button"; deleteButton.className="adminButton danger iconButton"; deleteButton.textContent="🗑"; deleteButton.setAttribute("aria-label","Delete"); deleteButton.title=`Delete ${role}`; deleteButton.disabled=!editable;
       deleteButton.addEventListener("click", async () => {
-        if (!window.confirm(`Delete ${role.toUpperCase()} from this Gallery Draft?${role === "props" ? "" : " The Draft will not be publishable until this required model is uploaded again."}`)) return;
+        if (!window.confirm(`Delete ${role.toUpperCase()} from these unpublished Gallery changes?${role === "props" ? "" : " The Gallery cannot be published until this required model is uploaded again."}`)) return;
         await withGalleryMutation(deleteButton, "DELETING…", async () => {
           try {
-            const draft = galleryDraftVersion(selectedGalleryDetail); if (!draft) throw new Error("An active Gallery Draft is required.");
+            const draft = galleryDraftVersion(selectedGalleryDetail); if (!draft) throw new Error("Click EDIT before changing Gallery building assets.");
             await galleryManagement.deleteAssetSlot(draft.id, role);
-            showToast(`${role.toUpperCase()} deleted from Gallery Draft.`);
+            showToast(`${role.toUpperCase()} removed from unpublished Gallery changes.`);
             await refreshSelectedGallery();
           } catch (error) { showToast(error.message || String(error)); }
         });
@@ -2035,7 +2048,7 @@ async function handleCreateGallery(event) {
       galleryEl("newGalleryDescription").value="";
       galleryCatalog = await galleryManagement.list();
       await selectGallery(created.venue.id,{skipConfirm:true});
-      showToast("Gallery created with v1 Draft.");
+      showToast("Gallery created. Add its building models, set the start position, then publish it.");
     } catch(error) { showToast(error.message || String(error)); }
   });
 }
@@ -2062,13 +2075,13 @@ async function handleSaveGalleryDetails(event) {
 
 async function handleBeginGalleryDraft() {
   if (!selectedGalleryDetail || galleryMutationInFlight) return;
-  if (!confirmAndDiscardGalleryFormChanges("Unsaved Gallery changes will be discarded before opening a Draft Version. Continue?")) return;
+  if (!confirmAndDiscardGalleryFormChanges("Unsaved Gallery changes will be discarded before editing. Continue?")) return;
   const button = galleryEl("beginGalleryDraftButton");
   await withGalleryMutation(button, "OPENING…", async () => {
     try {
-      const result = await galleryManagement.beginDraft(selectedGalleryDetail.venue.id);
+      await galleryManagement.beginDraft(selectedGalleryDetail.venue.id);
       await refreshSelectedGallery();
-      showToast(result.created ? `Created ${result.draftVersion.version_number} Draft.` : `Opened ${result.draftVersion.version_number} Draft.`);
+      showToast("Gallery editing opened.");
     } catch(error) { showToast(error.message || String(error)); }
   });
 }
@@ -2128,7 +2141,7 @@ async function handleSaveGalleryEntry() {
 
 function handleTestGallery() {
   const version = galleryWorkingVersion(selectedGalleryDetail); if(!version) return;
-  if (hasAnyAdminUnsavedChanges() && !window.confirm("Unsaved Admin changes will be discarded before Test Gallery. Continue?")) return;
+  if (hasAnyAdminUnsavedChanges() && !window.confirm("Unsaved Admin changes will be discarded before setting the start position. Continue?")) return;
   if (hasAnyAdminUnsavedChanges()) discardAdminUnsavedChanges();
   const url = new URL("./gallery-test.html",location.href);
   url.searchParams.set("version",version.id);
@@ -2170,15 +2183,17 @@ async function handleValidateGallery() {
 
 async function handlePublishGallery() {
   const draft = galleryDraftVersion(selectedGalleryDetail); if(!draft || galleryMutationInFlight) return;
-  if (!confirmAndDiscardGalleryFormChanges("Unsaved Gallery changes will be discarded before publishing. Continue?")) return;
-  if(!window.confirm("Publish this Gallery Version? Assigned Exhibitions will use the new current Gallery Version on their next explicit entry. Active visits are not hot-swapped.")) return;
+  if (!confirmAndDiscardGalleryFormChanges("Unsaved Gallery fields will be discarded before publishing. Continue?")) return;
+  if(!window.confirm("Publish the saved Gallery changes? Assigned Exhibitions will use the updated Gallery on their next explicit entry. Active visits are not hot-swapped.")) return;
   const button = galleryEl("publishGalleryButton");
   await withGalleryMutation(button, "PUBLISHING…", async () => {
     try {
       await galleryManagement.publish(draft.id);
       await refreshSelectedGallery();
       await refreshExhibitionCreationTargets();
-      showToast(`${draft.version_number} published.${selectedGalleryDetail && selectedGalleryDetail.venue && selectedGalleryDetail.venue.status === "hidden" ? " Gallery remains Published OFF." : " Assigned Exhibitions will use it on their next entry."}`);
+      showToast(selectedGalleryDetail && selectedGalleryDetail.venue && selectedGalleryDetail.venue.status === "hidden"
+        ? "Gallery changes published. Published remains OFF."
+        : "Gallery changes published. Assigned Exhibitions will use them on their next entry.");
     } catch(error) { showToast(error.message || String(error)); }
   });
 }
@@ -2193,7 +2208,7 @@ async function handleToggleGalleryPublished() {
   const verb = nextPublished ? "turn Published ON" : "turn Published OFF";
   const impact = nextPublished
     ? "Assigned Published Exhibitions become Public-eligible again immediately."
-    : "Assigned Published Exhibitions are removed from Public discovery and direct resolution immediately. Gallery content and its current Published Version are retained.";
+    : "Assigned Published Exhibitions are removed from Public immediately. Gallery content and its current snapshot are retained.";
   if (!window.confirm(`Are you sure you want to ${verb}? ${impact}`)) return;
   const button = galleryEl("toggleGalleryPublishedButton");
   await withGalleryMutation(button, nextPublished ? "TURNING ON…" : "TURNING OFF…", async () => {
@@ -2212,7 +2227,7 @@ async function handleCreateExhibitionForGallery() {
   const venue = detail && detail.venue ? detail.venue : null;
   const published = galleryPublishedVersion(detail);
   if (!venue || !published || venue.status === "archived") {
-    showToast("This Gallery needs a retained current Published snapshot before creating an Exhibition in it.");
+    showToast("Publish this Gallery once before creating an Exhibition in it.");
     return;
   }
   if (!setAdminWorkspaceSection("exhibitions")) return;
@@ -2222,7 +2237,7 @@ async function handleCreateExhibitionForGallery() {
     const matchingOption = newExhibitionGallery
       ? [...newExhibitionGallery.options].find((option) => option.value === value)
       : null;
-    if (!matchingOption) throw new Error("This Gallery is not available as an Exhibition creation target with its current Published snapshot.");
+    if (!matchingOption) throw new Error("This Gallery is not available as an Exhibition creation target.");
     newExhibitionGallery.value = value;
     renderExhibitionCreationTargets();
     newExhibitionName.focus();
@@ -2250,7 +2265,7 @@ async function handleDeleteGallery() {
   if (!selectedGalleryDetail || galleryMutationInFlight) return;
   if (!confirmAndDiscardGalleryFormChanges("Unsaved Gallery changes will be discarded before deletion. Continue?")) return;
   const venue = selectedGalleryDetail.venue;
-  if (!window.confirm(`Delete “${venue.name || venue.slug}” permanently? This removes all of its Gallery Versions and owned model files. Exhibitions or venue-scoped Shared Assets must be removed first.`)) return;
+  if (!window.confirm(`Delete “${venue.name || venue.slug}” permanently? Exhibitions or Gallery-scoped assets that still depend on it must be removed first.`)) return;
   const button = galleryEl("deleteGalleryButton");
   await withGalleryMutation(button, "DELETING…", async () => {
     try {

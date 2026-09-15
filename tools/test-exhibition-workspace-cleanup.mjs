@@ -25,14 +25,16 @@ for (const token of removedUiTokens) {
   assert.ok(!admin.includes(token), `Admin bootstrap still constructs legacy UI token: ${token}`);
 }
 
-for (const token of ['publishExhibitionBundleButton', 'unpublishExhibitionButton', 'exhibitionPublicationNotice']) {
+for (const token of ['publishExhibitionBundleButton', 'toggleExhibitionPublishedButton', 'exhibitionPublicationNotice']) {
   assert.ok(adminHtml.includes(token), `standalone Admin missing ${token}`);
   assert.ok(viewer.includes(token), `inline Admin missing ${token}`);
   assert.ok(admin.includes(token), `Admin bootstrap missing ${token}`);
 }
 
-assert.ok(adminHtml.includes('Metadata and public visibility for this Exhibition.'));
-assert.ok(viewer.includes('Metadata and public visibility for this Exhibition.'));
+assert.ok(adminHtml.includes('Edit content, visibility and cover.'));
+assert.ok(viewer.includes('Edit content, visibility and cover.'));
+assert.ok(!adminHtml.includes('UNPUBLISH EXHIBITION'));
+assert.ok(!viewer.includes('UNPUBLISH EXHIBITION'));
 assert.ok(admin.includes('renderExhibitionPublication'));
 assert.ok(admin.includes('refreshExhibitionAdminDetail'));
 assert.ok(admin.includes('await exhibitionData.publishBundle(selectedExhibition.id)'));

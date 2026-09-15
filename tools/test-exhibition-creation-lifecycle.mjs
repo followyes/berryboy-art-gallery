@@ -61,7 +61,8 @@ assert.ok(orchestrator.includes('return Object.freeze({\n    start,\n    switchT
 // Gallery shortcut never creates against an active Draft. It resolves the Published version,
 // preselects the same canonical create form, and leaves record creation to that one flow.
 assert.ok(admin.includes('id="createExhibitionForGalleryButton"'));
-assert.ok(admin.includes('CREATE EXHIBITION IN THIS GALLERY'));
+assert.ok(admin.includes('CREATE EXHIBITION'));
+assert.ok(!admin.includes('CREATE EXHIBITION IN THIS GALLERY'));
 assert.ok(galleryShortcutBody.includes('const published = galleryPublishedVersion(detail)'));
 assert.ok(galleryShortcutBody.includes('const value = `${venue.id}|${published.id}`'));
 assert.ok(galleryShortcutBody.includes('await refreshExhibitionCreationTargets()'));

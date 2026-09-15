@@ -47,6 +47,7 @@
     .adminButton:hover { background:rgba(255,255,255,.09); }
     .adminButton.primary { background:var(--accent-bg); border-color:rgba(154,180,155,.45); }
     .adminButton.danger { color:#f0b5b5; }
+    .adminButton.iconButton { width:36px; min-width:36px; padding:0; font-size:16px; line-height:1; }
     .adminButton:disabled { opacity:.4; cursor:default; }
 
     #adminBody { min-height:0; display:grid; grid-template-columns:360px minmax(0,1fr); }
@@ -150,7 +151,7 @@
     <div id="adminBody">
       <aside id="adminSidebar">
         <section class="workspaceSection">
-          <div class="sectionHead"><div><h2>Exhibitions</h2><p>Create an Exhibition in a Gallery with a current Published snapshot, or switch the active Exhibition.</p></div><button id="refreshExhibitionsButton" class="adminButton" type="button">↻</button></div>
+          <div class="sectionHead"><div><h2>Exhibitions</h2><p>Create or edit an Exhibition.</p></div><button id="refreshExhibitionsButton" class="adminButton" type="button" title="Refresh">↻</button></div>
           <div class="sectionBody">
             <form id="createExhibitionForm">
               <input id="newExhibitionName" class="adminInput" maxlength="120" placeholder="New exhibition name" autocomplete="off" />
@@ -163,16 +164,13 @@
         </section>
 
         <section class="workspaceSection">
-          <div class="sectionHead"><div><h2>Exhibition details</h2><p>Metadata and public visibility for this Exhibition.</p></div></div>
+          <div class="sectionHead"><div><h2>Exhibition</h2><p>Edit content, visibility and cover.</p></div></div>
           <div class="sectionBody">
             <form id="detailsForm">
               <label class="fieldLabel">Name<input id="exhibitionName" class="adminInput" maxlength="120" required /></label>
               <label class="fieldLabel">Description<textarea id="exhibitionDescription" class="adminTextarea" maxlength="4000" placeholder="Short exhibition description"></textarea></label>
-              <div class="inlineFields">
-                <label class="fieldLabel">Slug<input id="exhibitionSlug" class="adminInput" readonly /></label>
-                <label class="fieldLabel">Order<input id="exhibitionSortOrder" class="adminInput" type="number" step="1" /></label>
-              </div>
-              <div class="fieldMeta">Public status: <strong id="exhibitionPublicationStatus">—</strong></div>
+              <input id="exhibitionSlug" type="hidden" />
+              <label class="fieldLabel">Order<input id="exhibitionSortOrder" class="adminInput" type="number" step="1" /></label>
               <div class="fieldLabel">Poster / cover</div>
               <div class="posterCard">
                 <img id="posterPreview" alt="Exhibition poster preview" />
@@ -184,14 +182,15 @@
                 </div>
               </div>
               <div class="fieldMeta">Gallery: <strong id="exhibitionSpaceId">—</strong></div>
-              <button id="saveMetadataButton" class="adminButton primary" type="submit">SAVE EXHIBITION DETAILS</button>
+              <button id="saveMetadataButton" class="adminButton primary" type="submit">SAVE CHANGES</button>
               <div class="publicationControls">
                 <div id="exhibitionPublicationNotice" class="fieldMeta publicationNotice hidden"></div>
                 <div class="publicationActions">
-                  <button id="publishExhibitionBundleButton" class="adminButton primary" type="button">PUBLISH EXHIBITION</button>
-                  <button id="unpublishExhibitionButton" class="adminButton danger" type="button">UNPUBLISH EXHIBITION</button>
-                  <button id="deleteExhibitionButton" class="adminButton danger" type="button">DELETE EXHIBITION</button>
+                  <button id="toggleExhibitionPublishedButton" class="adminButton" type="button" aria-pressed="false">PUBLISHED: OFF</button>
+                  <button id="publishExhibitionBundleButton" class="adminButton primary hidden" type="button">PUBLISH CHANGES</button>
+                  <button id="deleteExhibitionButton" class="adminButton danger iconButton" type="button" aria-label="Delete" title="Delete Exhibition">🗑</button>
                 </div>
+                <div id="exhibitionPublicationStatus" class="fieldMeta">—</div>
               </div>
             </form>
           </div>
@@ -232,6 +231,6 @@
     </form>
   </div>
 
-  <script type="module" src="./src/bootstrap/admin-workspace-bootstrap.js?v=v14_3_6_gallery_visibility"></script>
+  <script type="module" src="./src/bootstrap/admin-workspace-bootstrap.js?v=v14_3_7_unified_admin_product_model"></script>
 </body>
 </html>

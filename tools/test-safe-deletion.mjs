@@ -17,8 +17,8 @@ assert.ok(admin.includes('handleDeleteExhibition') && admin.includes('deletePerm
 assert.ok(exhibitionApi.includes('admin_prepare_exhibition_delete') && exhibitionApi.includes('admin_delete_exhibition') && exhibitionApi.includes('admin_cancel_exhibition_delete'));
 assert.ok(galleryApi.includes('admin_prepare_venue_delete') && galleryApi.includes('admin_delete_venue') && galleryApi.includes('admin_cancel_venue_delete'));
 assert.ok(galleryApi.includes('deleteAssetSlot') && !galleryApi.includes('clearOptionalAssetSlot'));
-assert.ok(admin.includes('DELETE GALLERY') && !admin.includes('id="archiveGalleryButton"') && !admin.includes('id="restoreGalleryButton"'));
-assert.ok(admin.includes('deleteAssetSlot(draft.id, role)') && admin.includes('The Draft will not be publishable until this required model is uploaded again.'));
+assert.ok(admin.includes('title="Delete Gallery"') && admin.includes('aria-label="Delete"') && !admin.includes('id="archiveGalleryButton"') && !admin.includes('id="restoreGalleryButton"'));
+assert.ok(admin.includes('deleteAssetSlot(draft.id, role)') && admin.includes('The Gallery cannot be published until this required model is uploaded again.'));
 assert.ok(sql.includes('deletion_pending_at') && sql.includes('admin_prepare_exhibition_delete') && sql.includes('admin_delete_exhibition'));
 assert.ok(sql.includes('admin_prepare_venue_delete') && sql.includes('admin_delete_venue'));
 assert.ok(sql.includes("role_name not in ('floor','walls','ceiling','props')"));

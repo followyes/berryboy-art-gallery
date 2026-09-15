@@ -4,7 +4,7 @@ import { createGalleryManagementApi } from "../data/gallery-management-api.js?v=
 import { buildSpaceDefinition } from "../runtime/space-definition-resolver.js?v=c6c8c25_cross_space_runtime";
 import { createSceneLoadingRuntimeHost } from "../runtime/scene-loading-orchestrator.js?v=v14_1_10_1_public_reentry_20260911";
 
-const STAGE = "V14.1.10.1";
+const STAGE = "V14.3.7";
 const ENGINE_CACHE_KEY = "v14_1_10_1_public_reentry_20260911";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
@@ -68,9 +68,9 @@ function createTestExhibitionRuntime(spaceDefinition, venueVersionId) {
   const id = `gallery-test-${venueVersionId}`;
   const record = Object.freeze({
     id,
-    name: "Test Gallery",
+    name: "Gallery Preview",
     slug: id,
-    description: "Isolated Gallery Version preview",
+    description: "Gallery preview",
     cover_path: null,
     is_published: true,
     sort_order: 0,
@@ -84,9 +84,9 @@ function createTestExhibitionRuntime(spaceDefinition, venueVersionId) {
     list() { return Promise.resolve([record]); },
     resolve() { return Promise.resolve(record); },
     loadState() { return Promise.resolve({ id, state: null, updated_at: null, revision: 0, lock_version: 0, rowExists: false }); },
-    saveState() { return Promise.reject(new Error("Test Gallery is read-only and cannot save Exhibition state.")); },
-    create() { return Promise.reject(new Error("Test Gallery cannot create Exhibitions.")); },
-    updateMetadata() { return Promise.reject(new Error("Test Gallery cannot edit Exhibition metadata.")); }
+    saveState() { return Promise.reject(new Error("Gallery Preview is read-only and cannot save Exhibition state.")); },
+    create() { return Promise.reject(new Error("Gallery Preview cannot create Exhibitions.")); },
+    updateMetadata() { return Promise.reject(new Error("Gallery Preview cannot edit Exhibition metadata.")); }
   });
   const runtime = Object.freeze({
     context: "test-gallery",
@@ -100,7 +100,7 @@ function createTestExhibitionRuntime(spaceDefinition, venueVersionId) {
 }
 
 function showError(error) {
-  console.error("V14.1.10 Test Gallery:", error);
+  console.error("V14.3.7 Gallery Preview:", error);
   loading.style.display = "none";
   errorMessage.textContent = error && error.message ? error.message : String(error);
   errorPanel.style.display = "grid";
@@ -109,13 +109,13 @@ function showError(error) {
 async function startTestGallery() {
   if (started) return;
   const requestedVersionId = versionId();
-  if (!requestedVersionId) throw new Error("Missing Gallery Version ID in the Test Gallery URL.");
+  if (!requestedVersionId) throw new Error("Missing Gallery preview target.");
   started = true;
   testPackage = await galleryManagement.resolveTest(requestedVersionId);
   const report = testPackage.validation || {};
   if (report.valid === false) {
-    const blockers = Array.isArray(report.errors) ? report.errors.join(" · ") : "Structural Gallery validation failed.";
-    throw new Error(blockers || "Structural Gallery validation failed.");
+    const blockers = Array.isArray(report.errors) ? report.errors.join(" · ") : "Gallery validation failed.";
+    throw new Error(blockers || "Gallery validation failed.");
   }
 
   const spaceDefinition = buildSpaceDefinition({
@@ -174,12 +174,12 @@ async function startTestGallery() {
   window.ExhibitionPlatformSceneLifecycle = sceneLifecycleController;
 
   if (window.GalleryApp && typeof window.GalleryApp.hideViewerIntroOverlay === "function") window.GalleryApp.hideViewerIntroOverlay();
-  title.textContent = `${testPackage.venue.name || "Gallery"} · ${testPackage.version.version_number || "Draft"}`;
+  title.textContent = testPackage.venue.name || "Gallery";
   const capabilities = testPackage.capabilities || {};
   captureEntryButton.disabled = capabilities.canCaptureEntry !== true;
   status.textContent = capabilities.canCaptureEntry === true
-    ? "Move to the desired visitor start view, then capture it as Entry Point. Exhibition state is not loaded."
-    : "Read-only Gallery Version preview. Entry capture is available only on the active Draft Version.";
+    ? "Move to the desired visitor start view, then click SET START POSITION."
+    : "Open Edit in Galleries first, then return here to set the start position.";
   loading.style.display = "none";
 }
 
@@ -187,13 +187,13 @@ async function captureCurrentEntry() {
   if (!testPackage || !(testPackage.capabilities && testPackage.capabilities.canCaptureEntry)) return;
   if (!window.GalleryApp || typeof window.GalleryApp.getCameraPose !== "function") throw new Error("Camera pose bridge is unavailable.");
   const pose = window.GalleryApp.getCameraPose();
-  if (!pose || !pose.position || !pose.target) throw new Error("Current camera pose could not be captured.");
+  if (!pose || !pose.position || !pose.target) throw new Error("Current camera position could not be captured.");
   captureEntryButton.disabled = true;
   const previous = status.textContent;
-  status.textContent = "Saving Entry Point…";
+  status.textContent = "Saving start position…";
   try {
     await galleryManagement.setEntryPoint(testPackage.version.id, pose.position, pose.target);
-    status.textContent = `Entry Point saved at ${pose.position.x.toFixed(2)}, ${pose.position.y.toFixed(2)}, ${pose.position.z.toFixed(2)}.`;
+    status.textContent = `Start position saved at ${pose.position.x.toFixed(2)}, ${pose.position.y.toFixed(2)}, ${pose.position.z.toFixed(2)}.`;
   } catch (error) {
     status.textContent = previous;
     throw error;

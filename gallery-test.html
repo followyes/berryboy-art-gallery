@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Exhibition Platform — Test Gallery</title>
+  <title>Exhibition Platform — Gallery Preview</title>
   <style>
     :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#070908;color:#f3f5f3}
     *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#070908}button,input{font:inherit}
@@ -19,12 +19,12 @@
 <body data-gallery-test="true">
   <canvas id="renderCanvas"></canvas>
   <div id="testBar">
-    <div id="testIdentity"><div class="eyebrow">Test Gallery · read-only space preview</div><div id="testTitle">Loading Gallery…</div><div id="testStatus">Resolving selected Gallery Version…</div></div>
-    <div id="testActions"><button id="captureEntryButton" class="testButton primary" type="button" disabled>SET CURRENT VIEW AS ENTRY</button><button id="backToAdminButton" class="testButton" type="button">← BACK TO GALLERIES</button></div>
+    <div id="testIdentity"><div class="eyebrow">Gallery preview</div><div id="testTitle">Loading Gallery…</div><div id="testStatus">Loading Gallery…</div></div>
+    <div id="testActions"><button id="captureEntryButton" class="testButton primary" type="button" disabled>SET START POSITION</button><button id="backToAdminButton" class="testButton" type="button">← BACK TO GALLERIES</button></div>
   </div>
-  <div id="testLoading"><div class="card"><h1>Preparing Test Gallery</h1><p>Only the selected Gallery Version is loaded. Exhibition content and Exhibition publishing are intentionally not part of this preview.</p></div></div>
+  <div id="testLoading"><div class="card"><h1>Preparing Gallery Preview</h1><p>Move the camera to the desired visitor start view, then set the start position.</p></div></div>
   <div id="testError"><div class="card"><h1>Test Gallery could not start</h1><p id="testErrorMessage"></p></div></div>
-  <div id="authGate"><form id="testLoginForm" class="card"><h1>Admin sign in</h1><p>Use your Exhibition Platform administrator account to open this Gallery Version.</p><label class="field">E-mail<input id="testEmail" type="email" autocomplete="username" required /></label><label class="field">Password<input id="testPassword" type="password" autocomplete="current-password" required /></label><div id="testLoginError" class="loginError"></div><div class="loginActions"><button class="testButton primary" type="submit">SIGN IN</button></div></form></div>
-  <script type="module" src="./src/bootstrap/gallery-test-bootstrap.js?v=v14_1_10_1_public_reentry_20260911"></script>
+  <div id="authGate"><form id="testLoginForm" class="card"><h1>Admin sign in</h1><p>Use your Exhibition Platform administrator account to open the Gallery preview.</p><label class="field">E-mail<input id="testEmail" type="email" autocomplete="username" required /></label><label class="field">Password<input id="testPassword" type="password" autocomplete="current-password" required /></label><div id="testLoginError" class="loginError"></div><div class="loginActions"><button class="testButton primary" type="submit">SIGN IN</button></div></form></div>
+  <script type="module" src="./src/bootstrap/gallery-test-bootstrap.js?v=v14_3_7_start_position"></script>
 </body>
 </html>

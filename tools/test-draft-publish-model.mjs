@@ -27,8 +27,8 @@ assert.ok(lastPublish.includes("stateChanged',state_changed"), "Publish must rep
 assert.ok(lastPublish.includes("cardChanged',card_changed"), "Publish must report cardChanged");
 
 assert.ok(api.includes('admin_publish_exhibition_bundle'), "Canonical adapter must keep atomic bundle Publish RPC");
-assert.ok(workspace.includes("PUBLISHED / UNPUBLISHED CHANGES"), "Admin must expose truthful unpublished-change state");
-assert.ok(workspace.includes("PUBLISHED / UP TO DATE"), "Admin must expose up-to-date Published state");
+assert.ok(workspace.includes("Published ON · changes not yet public"), "Admin must expose truthful unpublished-change state without backend channel terminology");
+assert.ok(workspace.includes("Published ON"), "Admin must expose the Published ON product state");
 assert.ok(workspace.includes("PUBLISH CHANGES"), "Admin must distinguish publishing saved Draft changes");
 assert.ok(workspace.includes('detail.reason === "save-finished"'), "Admin must refresh publication truth after Draft save");
 
