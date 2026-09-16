@@ -46,11 +46,16 @@ function extractFunction(text,name){const ms=[`async function ${name}(`,`functio
 assert(index.includes('stage: "V14.1.10.1"'),'Index stage identity missing');
 assert(bootstrap.includes('const STAGE = "V14.1.10.1"'),'Viewer stage identity missing');
 assert(adminBootstrap.includes('const STAGE = "V14.1.10.1"'),'Admin stage identity missing');
-assert(bootstrap.includes('v14_3_9_unified_asset_placement_20260915')&&adminBootstrap.includes('v14_3_9_unified_asset_placement_20260915'),'V14.3.9 engine cache key missing');
-assert(index.includes('gallery-viewer-bootstrap.js?v=v14_3_9_unified_asset_placement'),'V14.3.9 viewer cache key missing');
-assert(admin.includes('admin-workspace-bootstrap.js?v=v14_3_9_unified_asset_placement'),'V14.3.9 Admin cache key missing');
+assert(bootstrap.includes('v14_3_10_wall_tint_20260916')&&adminBootstrap.includes('v14_3_10_wall_tint_20260916'),'V14.3.10 engine cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=v14_3_10_wall_tint'),'V14.3.10 viewer cache key missing');
+assert(admin.includes('admin-workspace-bootstrap.js?v=v14_3_10_wall_tint'),'V14.3.10 Admin cache key missing');
 const currentPackage=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
 assert(currentPackage.version==='0.14.2-v14-2-6-canonical-draft-publish-model'&&currentPackage.description.includes('V14.2.6 Canonical Draft / Publish Model'),'V14.2.6 core runtime package identity missing');
+
+assert(source.includes('V14.3.10 — WALL TINT SYSTEM')&&source.includes('wallTintInput.type = "color"')&&source.includes('wallTintHexInput.maxLength = 7'),'V14.3.10 arbitrary wall tint authoring UI missing');
+assert(source.includes('legacyWallTintByName')&&source.includes('getWallTintHexFromState')&&source.includes('tintHex: getWallTintHexForMesh(wallMesh)'),'V14.3.10 tint persistence/legacy read compatibility missing');
+assert(source.includes('applyWallTintColorChannel(material, "albedoColor"')&&source.includes('applyWallTintColorChannel(material, "diffuseColor"')&&source.includes('wallTintAuthoredColors'),'V14.3.10 authored base-color multiply path missing');
+assert(!source.includes('basecolor_black.png')&&!source.includes('data-wall-texture-url')&&!source.includes('var wallColorMaterials = {}'),'V14.3.10 legacy texture-swap wall palette remains active');
 
 assert(galleryGlbValidator.includes('exhibition-platform-gallery-runtime-mesh-signatures.v1')&&galleryGlbValidator.includes('geometryFingerprint')&&galleryGlbValidator.includes('transformFingerprint'),'V14.3.3 worker structural signatures missing');
 assert(galleryModelValidation.includes('GALLERY_STRUCTURAL_SIGNATURE_SCHEMA')&&galleryModelValidation.includes('hasCurrentGalleryStructuralSignatures'),'V14.3.3 browser structural signature contract missing');

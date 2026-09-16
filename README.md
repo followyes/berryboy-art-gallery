@@ -1,8 +1,19 @@
 # Exhibition Platform
 
-Current repository release candidate: **V14.3.9 — Unified Asset Placement**.
+Current repository release candidate: **V14.3.10 — Wall Tint System**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
+
+
+## V14.3.10 Wall Tint System
+
+`SPACE -> WALL COLOR` now uses an arbitrary color picker plus an exact canonical `#RRGGBB` field instead of fixed named texture swatches. Tint is stored per wall in Exhibition runtime state as `tintHex`; white `#FFFFFF` is neutral.
+
+The runtime clones the authored wall material and multiplies the authored base-color multiplier through capability-detected `albedoColor`, `diffuseColor` or `baseColor`. It does not replace the authored albedo/base texture and does not touch normal, roughness, metallic, AO, emissive or other non-color channels.
+
+Legacy named wall colors (`black`, `blue`, `cyan`, `green`, `orange`, `purple`, `red`, `white`, `yellow`, plus `yellowish`/`steel` aliases) remain read-compatible and migrate to canonical tint state on the next save. Tint ownership remains per Exhibition and same-Gallery Exhibition switching restores each Exhibition independently.
+
+V14.3.10 changes no schema, RPC, RLS or Storage policy.
 
 
 ## V14.3.9 Unified Asset Placement

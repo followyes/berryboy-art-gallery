@@ -15371,8 +15371,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
     var lookAtObserver = null;
 
-    var selectedWallMaterial = null;
-    var wallColorMaterials = {};
+    // V14.3.10 — wall tint selection is a user-space sRGB #RRGGBB value.
+    // It is intentionally separate from Babylon Material identity: wall materials keep
+    // their authored textures/channels and the selected color only multiplies base color.
+    var selectedWallTintHex = null;
+    var wallTintInput = null;
+    var wallTintHexInput = null;
 
     var lastArtworkClickTime = 0;
     var lastArtworkClickMesh = null;
@@ -21242,31 +21246,38 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         #wallColorPalette {
             display: flex;
             align-items: center;
-            gap: 12px;
-            flex-wrap: nowrap;
+            gap: 10px;
             margin-top: 2px;
         }
 
-        .gallery-editor-swatch {
-            width: 34px;
-            height: 34px;
-            padding: 0;
-            border: 1px solid rgba(0, 0, 0, 0.16);
-            border-radius: var(--gallery-editor-radius-swatch);
-            background-size: cover;
-            background-position: center;
+        .gallery-editor-wall-tint-picker {
+            width: 46px;
+            height: 38px;
+            padding: 2px;
+            border: 1px solid rgba(0, 0, 0, 0.20);
+            border-radius: 8px;
+            background: transparent;
             cursor: pointer;
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.40);
-            transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
         }
 
-        .gallery-editor-swatch:hover {
-            transform: translateY(-1px);
+        .gallery-editor-wall-tint-hex {
+            width: 104px;
+            height: 38px;
+            padding: 0 10px;
+            border: 1px solid rgba(0, 0, 0, 0.16);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.76);
+            color: #232323;
+            font: inherit;
+            font-size: 14px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
         }
 
-        .gallery-editor-swatch.is-selected {
+        .gallery-editor-wall-tint-control.is-active .gallery-editor-wall-tint-picker,
+        .gallery-editor-wall-tint-control.is-active .gallery-editor-wall-tint-hex {
             border-color: rgba(63, 127, 61, 0.95);
-            box-shadow: 0 0 0 3px rgba(63, 127, 61, 0.24), inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+            box-shadow: 0 0 0 2px rgba(63, 127, 61, 0.18);
         }
 
         .gallery-editor-color-status {
@@ -22824,12 +22835,17 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             }
 
             #wallColorPalette {
-                gap: 9px;
+                gap: 8px;
             }
 
-            .gallery-editor-swatch {
-                width: 30px;
-                height: 30px;
+            .gallery-editor-wall-tint-picker {
+                width: 42px;
+                height: 36px;
+            }
+
+            .gallery-editor-wall-tint-hex {
+                height: 36px;
+                width: 96px;
             }
 
             .gallery-artwork-transform-row {
@@ -23158,14 +23174,17 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             border-color: rgba(214, 170, 50, 0.36) !important;
         }
 
-        #galleryEditorPanel .gallery-editor-swatch {
-            border-color: rgba(255, 255, 255, 0.24) !important;
-            box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.32), 0 2px 8px rgba(0, 0, 0, 0.26) !important;
+        #galleryEditorPanel .gallery-editor-wall-tint-picker,
+        #galleryEditorPanel .gallery-editor-wall-tint-hex {
+            color: var(--berryboy-ui-text) !important;
+            border-color: rgba(255, 255, 255, 0.18) !important;
+            background: rgba(255, 255, 255, 0.06) !important;
         }
 
-        #galleryEditorPanel .gallery-editor-swatch.is-selected {
-            border-color: rgba(214, 170, 50, 0.94) !important;
-            box-shadow: 0 0 0 3px rgba(214, 170, 50, 0.28), inset 0 0 0 1px rgba(0, 0, 0, 0.34) !important;
+        #galleryEditorPanel .gallery-editor-wall-tint-control.is-active .gallery-editor-wall-tint-picker,
+        #galleryEditorPanel .gallery-editor-wall-tint-control.is-active .gallery-editor-wall-tint-hex {
+            border-color: rgba(214, 170, 50, 0.92) !important;
+            box-shadow: 0 0 0 2px rgba(214, 170, 50, 0.22) !important;
         }
 
         #galleryEditorPanel .gallery-artwork-info-popup {
@@ -27048,11 +27067,62 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     var wallColorSectionData = createEditorSection("WALL COLOR");
     var wallPalette = document.createElement("div");
     wallPalette.id = "wallColorPalette";
+    wallPalette.className = "gallery-editor-wall-tint-control";
+
+    wallTintInput = document.createElement("input");
+    wallTintInput.type = "color";
+    wallTintInput.id = "editorWallTintPicker";
+    wallTintInput.className = "gallery-editor-wall-tint-picker";
+    wallTintInput.value = "#ffffff";
+    wallTintInput.title = "Choose wall tint";
+    wallTintInput.setAttribute("aria-label", "Choose wall tint");
+
+    wallTintHexInput = document.createElement("input");
+    wallTintHexInput.type = "text";
+    wallTintHexInput.id = "editorWallTintHex";
+    wallTintHexInput.className = "gallery-editor-wall-tint-hex";
+    wallTintHexInput.value = "#FFFFFF";
+    wallTintHexInput.maxLength = 7;
+    wallTintHexInput.spellcheck = false;
+    wallTintHexInput.setAttribute("aria-label", "Wall tint hexadecimal color");
+
+    wallTintInput.addEventListener("pointerdown", function () {
+        setSelectedWallTintHex(wallTintInput.value || "#FFFFFF");
+    });
+    wallTintInput.addEventListener("input", function () {
+        setSelectedWallTintHex(wallTintInput.value || "#FFFFFF");
+    });
+    wallTintInput.addEventListener("change", function () {
+        setSelectedWallTintHex(wallTintInput.value || "#FFFFFF");
+    });
+
+    function commitWallTintHexInput() {
+        var normalized = normalizeWallTintHex(wallTintHexInput.value);
+        if (!normalized) {
+            wallTintHexInput.value = selectedWallTintHex || (wallTintInput ? String(wallTintInput.value || "#FFFFFF").toUpperCase() : "#FFFFFF");
+            notifyGalleryStatus("Wall color must use #RRGGBB.");
+            return false;
+        }
+        setSelectedWallTintHex(normalized);
+        return true;
+    }
+
+    wallTintHexInput.addEventListener("change", commitWallTintHexInput);
+    wallTintHexInput.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            commitWallTintHexInput();
+            wallTintHexInput.blur();
+        }
+    });
+
+    wallPalette.appendChild(wallTintInput);
+    wallPalette.appendChild(wallTintHexInput);
 
     var selectedWallColorStatus = document.createElement("div");
     selectedWallColorStatus.id = "editorSelectedWallColorStatus";
     selectedWallColorStatus.className = "gallery-editor-color-status";
-    selectedWallColorStatus.innerHTML = "Selected Color: <span class=\"gallery-editor-accent-text\">None</span>";
+    selectedWallColorStatus.innerHTML = "Selected Tint: <span class=\"gallery-editor-accent-text\">None</span>";
 
     wallColorSectionData.section.appendChild(wallPalette);
     wallColorSectionData.section.appendChild(selectedWallColorStatus);
@@ -27104,7 +27174,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         <div class="gallery-editor-help-group">
             <p class="gallery-editor-help-title">Wall</p>
             <p class="gallery-editor-help-line"><strong>Click wall</strong> — Place or move the selected artwork</p>
-            <p class="gallery-editor-help-line"><strong>Click color swatch</strong> — Select wall color</p>
+            <p class="gallery-editor-help-line"><strong>Choose wall tint</strong> — Then click a wall segment to apply it</p>
         </div>
         <div class="gallery-editor-help-group">
             <p class="gallery-editor-help-title">Navigation</p>
@@ -32394,382 +32464,262 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
     }
 
-    // STAGE 11G - WALL COLOR PATHS
-    // Nowe tekstury ścian są w repo assetów:
-    // https://raw.githubusercontent.com/followyes/berryboy-art-gallery-assets/main/wall_color/basecolor_*.png
-    var wallColorTextureBaseUrl = "https://raw.githubusercontent.com/followyes/berryboy-art-gallery-assets/main/wall_color/";
-
-    function getWallColorTextureUrl(fileName) {
-        return wallColorTextureBaseUrl + fileName;
-    }
-
-    var wallColors = [
-        {
-            name: "black",
-            label: "Black",
-            url: getWallColorTextureUrl("basecolor_black.png")
-        },
-        {
-            name: "blue",
-            label: "Blue",
-            url: getWallColorTextureUrl("basecolor_blue.png")
-        },
-        {
-            name: "cyan",
-            label: "Cyan",
-            url: getWallColorTextureUrl("basecolor_cyan.png")
-        },
-        {
-            name: "green",
-            label: "Green",
-            url: getWallColorTextureUrl("basecolor_green.png")
-        },
-        {
-            name: "orange",
-            label: "Orange",
-            url: getWallColorTextureUrl("basecolor_orange.png")
-        },
-        {
-            name: "purple",
-            label: "Purple",
-            url: getWallColorTextureUrl("basecolor_purple.png")
-        },
-        {
-            name: "red",
-            label: "Red",
-            url: getWallColorTextureUrl("basecolor_red.png")
-        },
-        {
-            name: "white",
-            label: "White",
-            url: getWallColorTextureUrl("basecolor_white.png")
-        },
-        {
-            name: "yellow",
-            label: "Yellow",
-            url: getWallColorTextureUrl("basecolor_yellow.png")
-        }
-    ];
-
-    // STAGE 12C8 - WALL PAINT TEXTURE ORIENTATION FIX
-    // Modele GLTF mają inną orientację tekstur niż zwykły BABYLON.Texture z domyślnym invertY.
-    // Dlatego tekstury wall_color muszą być ładowane jak tekstury GLTF: invertY = false.
-    // Dodałem też awaryjne flip/rotate do testów bez dłubania w kodzie.
-    var wallPaintTextureOrientation = {
-        invertY: false,
-        flipU: false,
-        // STAGE 12C36:
-        // Wall color PNGs are used on GLTF wall UVs. Keep invertY=false, but flip V so painted
-        // segment textures are not visually upside down on the imported wall segments.
-        flipV: true,
-        rotate180: false
-    };
-
-    // STAGE 12C60B - WALL PAINT TEXTURE CACHE
-    // Same URL + same orientation reuses one BABYLON.Texture instead of creating a new one per click.
-    var wallPaintTextureCache = {};
-    var wallPaintTextureCacheStats = {
-        hits: 0,
-        misses: 0,
-        created: 0,
-        clears: 0,
-        lastKey: null,
-        lastColorName: null
-    };
-
-    function applyWallPaintTextureTransform(texture) {
-        if (!texture) {
-            return texture;
-        }
-
-        texture.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
-        texture.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
-
-        texture.uRotationCenter = 0.5;
-        texture.vRotationCenter = 0.5;
-        texture.wRotationCenter = 0.5;
-
-        texture.uScale = wallPaintTextureOrientation.flipU ? -1 : 1;
-        texture.vScale = wallPaintTextureOrientation.flipV ? -1 : 1;
-
-        texture.uOffset = wallPaintTextureOrientation.flipU ? 1 : 0;
-        texture.vOffset = wallPaintTextureOrientation.flipV ? 1 : 0;
-
-        texture.wAng = wallPaintTextureOrientation.rotate180 ? Math.PI : 0;
-
-        texture.metadata = Object.assign(
-            {},
-            texture.metadata || {},
-            {
-                wallPaintTextureOrientation: Object.assign({}, wallPaintTextureOrientation)
-            }
-        );
-
-        return texture;
-    }
-
-    function getWallPaintTextureCacheKey(url) {
-        return [
-            String(url || ""),
-            wallPaintTextureOrientation.invertY ? "iy1" : "iy0",
-            wallPaintTextureOrientation.flipU ? "fu1" : "fu0",
-            wallPaintTextureOrientation.flipV ? "fv1" : "fv0",
-            wallPaintTextureOrientation.rotate180 ? "r1" : "r0"
-        ].join("|");
-    }
-
-    function createWallPaintTexture(url, colorName) {
-        if (!url) {
-            return null;
-        }
-
-        var cacheKey = getWallPaintTextureCacheKey(url);
-        wallPaintTextureCacheStats.lastKey = cacheKey;
-        wallPaintTextureCacheStats.lastColorName = colorName || "";
-
-        if (wallPaintTextureCache[cacheKey] && !(wallPaintTextureCache[cacheKey].isDisposed && wallPaintTextureCache[cacheKey].isDisposed())) {
-            wallPaintTextureCacheStats.hits += 1;
-            return wallPaintTextureCache[cacheKey];
-        }
-
-        wallPaintTextureCacheStats.misses += 1;
-
-        var finishWallPaintTextureLoad = registerGalleryStartupVisibleTextureLoad(
-            "wall-paint",
-            colorName || "wall-color",
-            url
-        );
-
-        var texture = new BABYLON.Texture(
-            url,
-            scene,
-            false,
-            wallPaintTextureOrientation.invertY,
-            BABYLON.Texture.TRILINEAR_SAMPLINGMODE,
-            function () {
-                finishWallPaintTextureLoad(false, { reason: "wall-texture-loaded" });
-            },
-            function (message, exception) {
-                finishWallPaintTextureLoad(true, {
-                    reason: "wall-texture-error",
-                    message: message ? String(message) : "",
-                    exceptionMessage: exception && exception.message ? String(exception.message) : null
-                });
-            }
-        );
-
-        texture.name = "WallPaintTexture_" + (colorName || "color");
-        texture.metadata = texture.metadata || {};
-        texture.metadata.wallPaintColorName = colorName || "";
-        texture.metadata.wallPaintTextureUrl = url;
-        texture.metadata.wallPaintTextureCacheKey = cacheKey;
-
-        wallPaintTextureCache[cacheKey] = applyWallPaintTextureTransform(texture);
-        wallPaintTextureCacheStats.created += 1;
-
-        return wallPaintTextureCache[cacheKey];
-    }
-
-    function clearWallPaintTextureCache(reason) {
-        wallPaintTextureCache = {};
-        wallPaintTextureCacheStats.clears += 1;
-        wallPaintTextureCacheStats.lastClearReason = reason || "manual";
-        markGallerySurfaceDirty(reason || "wallTextureCacheCleared");
-    }
-
-    function getWallPaintTextureCacheDebug() {
-        return {
-            keys: Object.keys(wallPaintTextureCache),
-            count: Object.keys(wallPaintTextureCache).length,
-            hits: wallPaintTextureCacheStats.hits,
-            misses: wallPaintTextureCacheStats.misses,
-            created: wallPaintTextureCacheStats.created,
-            clears: wallPaintTextureCacheStats.clears,
-            lastKey: wallPaintTextureCacheStats.lastKey,
-            lastColorName: wallPaintTextureCacheStats.lastColorName,
-            lastClearReason: wallPaintTextureCacheStats.lastClearReason || null,
-            orientation: Object.assign({}, wallPaintTextureOrientation)
-        };
-    }
-
-    function getWallPaintTextureForColorData(colorData) {
-        if (!colorData) {
-            return null;
-        }
-
-        if (colorData.url) {
-            return createWallPaintTexture(colorData.url, colorData.name);
-        }
-
-        return applyWallPaintTextureTransform(colorData.texture || null);
-    }
-
-    function rebuildWallColorSelectorTextures() {
-        wallColors.forEach(function (colorData) {
-            if (!colorData || !colorData.name || !wallColorMaterials[colorData.name]) {
-                return;
-            }
-
-            var material = wallColorMaterials[colorData.name];
-            var texture = createWallPaintTexture(colorData.url, colorData.name);
-
-            material.albedoTexture = texture;
-            material.metadata = material.metadata || {};
-            material.metadata.wallColorTexture = texture;
-            material.metadata.wallColorTextureUrl = colorData.url;
-            material.metadata.wallPaintTextureOrientation = Object.assign({}, wallPaintTextureOrientation);
-        });
-    }
-
-    function reapplyWallPaintTextureOrientationToSegments() {
-        var updated = 0;
-
-        wallMeshes.forEach(function (wallMesh) {
-            if (
-                !wallMesh ||
-                !wallMesh.metadata ||
-                !isPaintableWallSegmentMesh(wallMesh)
-            ) {
-                return;
-            }
-
-            var colorName = normalizeWallColorName(
-                wallMesh.metadata.wallSegmentColorName ||
-                getWallColorNameFromMaterial(wallMesh.material)
-            );
-
-            if (!colorName) {
-                return;
-            }
-
-            var colorMaterial = wallColorMaterials[colorName];
-
-            if (!colorMaterial) {
-                return;
-            }
-
-            if (applyWallColorMaterialToSegment(wallMesh, colorMaterial)) {
-                updated += 1;
-            }
-        });
-
-        return updated;
-    }
-
-    function setWallPaintTextureOrientation(options) {
-        options = options || {};
-
-        if (typeof options.invertY === "boolean") {
-            wallPaintTextureOrientation.invertY = options.invertY;
-        }
-
-        if (typeof options.flipU === "boolean") {
-            wallPaintTextureOrientation.flipU = options.flipU;
-        }
-
-        if (typeof options.flipV === "boolean") {
-            wallPaintTextureOrientation.flipV = options.flipV;
-        }
-
-        if (typeof options.rotate180 === "boolean") {
-            wallPaintTextureOrientation.rotate180 = options.rotate180;
-        }
-
-        rebuildWallColorSelectorTextures();
-        markGallerySurfaceDirty("wallPaintTextureOrientation");
-
-        return {
-            orientation: Object.assign({}, wallPaintTextureOrientation),
-            updatedSegments: reapplyWallPaintTextureOrientationToSegments()
-        };
-    }
-
-    function getWallPaintTextureOrientationDebug() {
-        return {
-            orientation: Object.assign({}, wallPaintTextureOrientation),
-            wallColorTextureBaseUrl: wallColorTextureBaseUrl,
-            textureCache: getWallPaintTextureCacheDebug(),
-            paintedSegments: wallMeshes.filter(function (wallMesh) {
-                return !!(
-                    wallMesh &&
-                    wallMesh.metadata &&
-                    wallMesh.metadata.wallSegmentColorName
-                );
-            }).map(function (wallMesh) {
-                var texture = wallMesh.material && wallMesh.material.albedoTexture
-                    ? wallMesh.material.albedoTexture
-                    : null;
-
-                return {
-                    name: wallMesh.name,
-                    colorName: wallMesh.metadata.wallSegmentColorName || null,
-                    textureUrl: texture ? texture.url || null : null,
-                    textureName: texture ? texture.name || null : null,
-                    invertY: texture ? texture.invertY : null,
-                    uScale: texture ? texture.uScale : null,
-                    vScale: texture ? texture.vScale : null,
-                    uOffset: texture ? texture.uOffset : null,
-                    vOffset: texture ? texture.vOffset : null,
-                    wAng: texture ? texture.wAng : null
-                };
-            })
-        };
-    }
-
-    wallColors.forEach(function (colorData) {
-
-        var material = new BABYLON.PBRMaterial("WallColor_" + colorData.name, scene);
-        var wallColorTexture = editorAuthenticated
-            ? createWallPaintTexture(colorData.url, colorData.name)
-            : null;
-
-        material.albedoTexture = wallColorTexture;
-        material.roughness = 0.85;
-        material.metallic = 0;
-        configureMaterialForCommonLighting(material);
-        material.metadata = material.metadata || {};
-        material.metadata.uiName = colorData.label;
-        material.metadata.wallColorName = colorData.name;
-        material.metadata.wallColorTextureUrl = colorData.url;
-        material.metadata.wallColorTexture = wallColorTexture;
-        material.metadata.wallPaintSelector = true;
-
-        wallColorMaterials[colorData.name] = material;
-
-        var swatch = document.createElement("button");
-        swatch.type = "button";
-        swatch.className = "gallery-editor-swatch";
-        swatch.title = colorData.label;
-        swatch.setAttribute("data-color-name", colorData.name);
-
-        swatch.setAttribute("data-wall-texture-url", colorData.url || "");
-
-        if (editorAuthenticated) {
-            swatch.style.backgroundImage = "url('" + colorData.url + "')";
-        }
-
-        swatch.onpointerdown = function (event) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            deselectArtwork();
-
-            selectedWallMaterial = material;
-            if (editMode && typeof setGalleryEditorPrimaryTab === "function") {
-                setGalleryEditorPrimaryTab("space");
-            }
-
-            Array.from(wallPalette.querySelectorAll("button")).forEach(function (item) {
-                item.classList.remove("is-selected");
-            });
-
-            swatch.classList.add("is-selected");
-
-            updateEditHelpStatus();
-        };
-
-        wallPalette.appendChild(swatch);
+    // V14.3.10 — WALL TINT SYSTEM
+    // Product contract:
+    // authored base-color/albedo texture × user-space sRGB #RRGGBB tint.
+    // White is neutral. Normal/roughness/metallic/AO/emissive/texture assignments stay untouched.
+    // Legacy named swatches remain read-compatible and migrate to tintHex on the next save.
+    var legacyWallTintByName = Object.freeze({
+        black: "#000000",
+        blue: "#0000FF",
+        cyan: "#00FFFF",
+        green: "#008000",
+        orange: "#FFA500",
+        purple: "#800080",
+        red: "#FF0000",
+        white: "#FFFFFF",
+        yellow: "#FFFF00"
     });
+
+    function normalizeWallColorName(colorName) {
+        colorName = String(colorName || "").trim().toLowerCase();
+        if (colorName === "yellowish") return "yellow";
+        if (colorName === "steel") return "cyan";
+        return colorName;
+    }
+
+    function normalizeWallTintHex(value) {
+        var text = String(value || "").trim();
+        if (!text) return null;
+        if (text.charAt(0) !== "#") text = "#" + text;
+        if (!/^#[0-9a-fA-F]{6}$/.test(text)) return null;
+        return text.toUpperCase();
+    }
+
+    function getLegacyWallTintHex(colorName) {
+        var normalizedName = normalizeWallColorName(colorName);
+        return normalizedName && legacyWallTintByName[normalizedName]
+            ? legacyWallTintByName[normalizedName]
+            : null;
+    }
+
+    function getWallTintHexFromState(wallState) {
+        if (!wallState || typeof wallState !== "object") return null;
+        var direct = normalizeWallTintHex(
+            wallState.tintHex ||
+            wallState.wallTintHex ||
+            wallState.segmentTintHex
+        );
+        if (direct) return direct;
+
+        var legacyName = normalizeWallColorName(
+            wallState.segmentColorName ||
+            wallState.colorName ||
+            (wallState.materialName && wallState.materialName.indexOf("WallColor_") === 0
+                ? wallState.materialName.replace("WallColor_", "")
+                : null)
+        );
+        return getLegacyWallTintHex(legacyName);
+    }
+
+    function cloneWallTintColorState(color) {
+        if (!color || typeof color.r !== "number" || typeof color.g !== "number" || typeof color.b !== "number") {
+            return null;
+        }
+        return { r: color.r, g: color.g, b: color.b };
+    }
+
+    function multiplyWallTintColor(base, tint) {
+        return new BABYLON.Color3(
+            Math.max(0, Math.min(1, Number(base.r) * Number(tint.r))),
+            Math.max(0, Math.min(1, Number(base.g) * Number(tint.g))),
+            Math.max(0, Math.min(1, Number(base.b) * Number(tint.b)))
+        );
+    }
+
+    function captureWallTintAuthoredColors(material) {
+        if (!material) return {};
+        return {
+            albedoColor: cloneWallTintColorState(material.albedoColor),
+            diffuseColor: cloneWallTintColorState(material.diffuseColor),
+            baseColor: cloneWallTintColorState(material.baseColor)
+        };
+    }
+
+    function applyWallTintColorChannel(material, propertyName, authoredColor, tintColor) {
+        if (!material || !authoredColor || material[propertyName] === undefined || material[propertyName] === null) {
+            return false;
+        }
+        material[propertyName] = multiplyWallTintColor(authoredColor, tintColor);
+        return true;
+    }
+
+    function getOrCreateWallSegmentTintMaterial(wallMesh) {
+        wallMesh.metadata = wallMesh.metadata || {};
+        var existing = wallMesh.metadata.wallSegmentTintMaterial;
+        if (existing && !(existing.isDisposed && existing.isDisposed())) {
+            return existing;
+        }
+
+        var sourceMaterial = wallMesh.material || null;
+        var tintMaterial = null;
+        if (sourceMaterial && sourceMaterial.clone) {
+            tintMaterial = sourceMaterial.clone(wallMesh.name + "_WallTintMaterial");
+        }
+        if (!tintMaterial) {
+            tintMaterial = new BABYLON.PBRMaterial(wallMesh.name + "_WallTintMaterial", scene);
+            tintMaterial.roughness = 0.85;
+            tintMaterial.metallic = 0;
+        }
+
+        var authoredColors = captureWallTintAuthoredColors(tintMaterial);
+        tintMaterial.metadata = Object.assign(
+            {},
+            sourceMaterial && sourceMaterial.metadata ? sourceMaterial.metadata : {},
+            tintMaterial.metadata || {},
+            {
+                wallTintMaterial: true,
+                wallTintMode: "authoredBaseColorMultiply",
+                wallTintAuthoredColors: authoredColors,
+                wallTintSourceMaterialName: sourceMaterial && sourceMaterial.name ? sourceMaterial.name : ""
+            }
+        );
+
+        wallMesh.metadata.wallSegmentBaseMaterialName = sourceMaterial && sourceMaterial.name ? sourceMaterial.name : "";
+        wallMesh.metadata.wallSegmentTintMaterial = tintMaterial;
+
+        // Wall segments can be seen from inside the room. Preserve the existing two-sided
+        // behavior used by the legacy paint path without touching any texture channel.
+        if (tintMaterial.backFaceCulling !== undefined) tintMaterial.backFaceCulling = false;
+        if (tintMaterial.twoSidedLighting !== undefined) tintMaterial.twoSidedLighting = true;
+
+        return tintMaterial;
+    }
+
+    function applyWallTintToMaterial(material, tintHex) {
+        var normalizedTint = normalizeWallTintHex(tintHex);
+        if (!material || !normalizedTint) return false;
+
+        material.metadata = material.metadata || {};
+        var authoredColors = material.metadata.wallTintAuthoredColors || captureWallTintAuthoredColors(material);
+        material.metadata.wallTintAuthoredColors = authoredColors;
+        var tintColor = hexToColor3(normalizedTint);
+        var applied = false;
+
+        applied = applyWallTintColorChannel(material, "albedoColor", authoredColors.albedoColor, tintColor) || applied;
+        applied = applyWallTintColorChannel(material, "diffuseColor", authoredColors.diffuseColor, tintColor) || applied;
+        applied = applyWallTintColorChannel(material, "baseColor", authoredColors.baseColor, tintColor) || applied;
+
+        // Imported GLTF walls are PBR in the production baseline, but keep a capability-based
+        // fallback for materials whose base color multiplier was absent/null at clone time.
+        if (!applied && material.albedoColor !== undefined) {
+            material.albedoColor = tintColor.clone ? tintColor.clone() : new BABYLON.Color3(tintColor.r, tintColor.g, tintColor.b);
+            applied = true;
+        } else if (!applied && material.diffuseColor !== undefined) {
+            material.diffuseColor = tintColor.clone ? tintColor.clone() : new BABYLON.Color3(tintColor.r, tintColor.g, tintColor.b);
+            applied = true;
+        } else if (!applied && material.baseColor !== undefined) {
+            material.baseColor = tintColor.clone ? tintColor.clone() : new BABYLON.Color3(tintColor.r, tintColor.g, tintColor.b);
+            applied = true;
+        }
+
+        if (!applied) return false;
+
+        material.metadata.wallTintHex = normalizedTint;
+        material.metadata.wallTintMode = "authoredBaseColorMultiply";
+        material.metadata.wallColorName = null;
+        material.metadata.wallColorTextureUrl = null;
+        material.metadata.wallColorTexture = null;
+        return true;
+    }
+
+    function applyWallTintToSegment(wallMesh, tintHex, options) {
+        options = options || {};
+        var normalizedTint = normalizeWallTintHex(tintHex);
+        if (!wallMesh || !normalizedTint || !isPaintableWallSegmentMesh(wallMesh)) return false;
+
+        var tintMaterial = getOrCreateWallSegmentTintMaterial(wallMesh);
+        if (!applyWallTintToMaterial(tintMaterial, normalizedTint)) {
+            console.warn("Wall tint skipped: material has no supported base-color multiplier", {
+                wall: wallMesh ? wallMesh.name : null,
+                material: tintMaterial ? tintMaterial.name : null,
+                tintHex: normalizedTint
+            });
+            return false;
+        }
+
+        wallMesh.material = tintMaterial;
+        wallMesh.metadata = wallMesh.metadata || {};
+        wallMesh.metadata.wallSegmentTintHex = normalizedTint;
+        wallMesh.metadata.wallSegmentColorName = null;
+        wallMesh.metadata.wallSegmentPaintedAt = new Date().toISOString();
+        wallMesh.metadata.wallSegmentPaintMode = "baseColorTint";
+
+        configureMeshMaterialForMainShadows(wallMesh);
+        if (!options.runtimeRestore) {
+            scheduleCommonLightingMaterialSupport("wallTintSegment");
+            markGallerySurfaceDirty("wallSegmentTinted");
+            markGalleryDraftDirty("wall-segment-tinted");
+            updateEditHelpStatus();
+        }
+        return true;
+    }
+
+    function getWallTintHexForMesh(wallMesh) {
+        if (!wallMesh) return null;
+        var fromMesh = normalizeWallTintHex(wallMesh.metadata && wallMesh.metadata.wallSegmentTintHex);
+        if (fromMesh) return fromMesh;
+        return normalizeWallTintHex(wallMesh.material && wallMesh.material.metadata && wallMesh.material.metadata.wallTintHex);
+    }
+
+    function setSelectedWallTintHex(value, options) {
+        options = options || {};
+        var normalized = normalizeWallTintHex(value);
+        if (!normalized) return false;
+        selectedWallTintHex = normalized;
+        if (wallTintInput && String(wallTintInput.value || "").toUpperCase() !== normalized) {
+            wallTintInput.value = normalized.toLowerCase();
+        }
+        if (wallTintHexInput && wallTintHexInput.value !== normalized) {
+            wallTintHexInput.value = normalized;
+        }
+        if (wallPalette) wallPalette.classList.add("is-active");
+        if (!options.silent) updateEditHelpStatus();
+        return true;
+    }
+
+    function getWallSegmentPaintDebug() {
+        return wallMeshes.map(function (wallMesh) {
+            var material = wallMesh && wallMesh.material ? wallMesh.material : null;
+            return {
+                name: wallMesh ? wallMesh.name : null,
+                paintable: isPaintableWallSegmentMesh(wallMesh),
+                materialName: material ? material.name : null,
+                tintHex: getWallTintHexForMesh(wallMesh),
+                paintMode: wallMesh && wallMesh.metadata ? wallMesh.metadata.wallSegmentPaintMode || null : null,
+                baseMaterialName: wallMesh && wallMesh.metadata ? wallMesh.metadata.wallSegmentBaseMaterialName || null : null,
+                hasAlbedoTexture: !!(material && (material.albedoTexture || material.diffuseTexture || material.baseTexture)),
+                hasNormalTexture: !!(material && (material.bumpTexture || material.normalTexture)),
+                hasRoughnessTexture: !!(material && (material.metallicTexture || material.roughnessTexture)),
+                hasAmbientTexture: !!(material && material.ambientTexture),
+                wallTintMode: material && material.metadata ? material.metadata.wallTintMode || null : null
+            };
+        });
+    }
+
+    // Compatibility-only debug surface for support tooling from the historical texture-swap
+    // implementation. V14.3.10 intentionally has no wall-paint texture cache/orientation path.
+    function rebuildWallColorSelectorTextures() { return 0; }
+    function clearWallPaintTextureCache() { return 0; }
+    function getWallPaintTextureCacheDebug() {
+        return { enabled: false, count: 0, keys: [], mode: "wall-tint-v14.3.10" };
+    }
+    function getWallPaintTextureOrientationDebug() {
+        return { enabled: false, mode: "wall-tint-v14.3.10", orientation: null, textureCache: getWallPaintTextureCacheDebug() };
+    }
+    function setWallPaintTextureOrientation() {
+        return { enabled: false, mode: "wall-tint-v14.3.10", updatedSegments: 0 };
+    }
 
     // STAGE 10A - WALL SEGMENT PAINTING
     // Po przejściu na Wall_segment_001 - Wall_segment_071 kolor/tekstura ściany
@@ -32780,246 +32730,6 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             mesh.name &&
             mesh.name.indexOf("Wall_segment_") === 0
         );
-    }
-
-    function normalizeWallColorName(colorName) {
-        colorName = String(colorName || "").trim();
-
-        if (colorName === "yellowish") {
-            return "yellow";
-        }
-
-        if (colorName === "steel") {
-            return "cyan";
-        }
-
-        return colorName;
-    }
-
-    function getWallPaintColorDataFromMaterial(material) {
-        if (!material) {
-            return null;
-        }
-
-        material.metadata = material.metadata || {};
-
-        var colorName = normalizeWallColorName(
-            material.metadata.wallColorName ||
-            getWallColorNameFromMaterial(material)
-        );
-
-        if (!colorName) {
-            return null;
-        }
-
-        var colorTexture =
-            material.metadata.wallColorTexture ||
-            material.albedoTexture ||
-            material.diffuseTexture ||
-            null;
-
-        if (!colorTexture && material.metadata.wallColorTextureUrl) {
-            colorTexture = createWallPaintTexture(
-                material.metadata.wallColorTextureUrl,
-                colorName
-            );
-            material.metadata.wallColorTexture = colorTexture;
-        }
-
-        return {
-            name: colorName,
-            texture: colorTexture,
-            url: material.metadata.wallColorTextureUrl || null,
-            label: material.metadata.uiName || colorName
-        };
-    }
-
-    function getOrCreateWallSegmentPaintMaterial(wallMesh) {
-        wallMesh.metadata = wallMesh.metadata || {};
-
-        if (
-            wallMesh.metadata.wallSegmentPaintMaterial &&
-            !(wallMesh.metadata.wallSegmentPaintMaterial.isDisposed && wallMesh.metadata.wallSegmentPaintMaterial.isDisposed())
-        ) {
-            return wallMesh.metadata.wallSegmentPaintMaterial;
-        }
-
-        var sourceMaterial = wallMesh.material || null;
-        var paintMaterial = null;
-
-        if (sourceMaterial && sourceMaterial.clone) {
-            paintMaterial = sourceMaterial.clone(
-                wallMesh.name + "_BaseColorPaintMaterial"
-            );
-        }
-
-        if (!paintMaterial) {
-            paintMaterial = new BABYLON.PBRMaterial(
-                wallMesh.name + "_BaseColorPaintMaterial",
-                scene
-            );
-            paintMaterial.roughness = 0.85;
-            paintMaterial.metallic = 0;
-        }
-
-        paintMaterial.metadata = Object.assign(
-            {},
-            sourceMaterial && sourceMaterial.metadata ? sourceMaterial.metadata : {},
-            paintMaterial.metadata || {},
-            {
-                wallBaseColorOnlyPaintMaterial: true,
-                wallSegmentSourceMaterialName: sourceMaterial && sourceMaterial.name
-                    ? sourceMaterial.name
-                    : ""
-            }
-        );
-
-        wallMesh.metadata.wallSegmentBaseMaterialName = sourceMaterial && sourceMaterial.name
-            ? sourceMaterial.name
-            : "";
-        // STAGE 12C8:
-        // Segment ściany może być oglądany od strony wnętrza.
-        // Nie pozwalamy, żeby malowanie zachowało przypadkowo jednostronny materiał z modelu.
-        if (paintMaterial.backFaceCulling !== undefined) {
-            paintMaterial.backFaceCulling = false;
-        }
-
-        if (paintMaterial.twoSidedLighting !== undefined) {
-            paintMaterial.twoSidedLighting = true;
-        }
-
-        wallMesh.metadata.wallSegmentPaintMaterial = paintMaterial;
-        wallMesh.material = paintMaterial;
-
-        return paintMaterial;
-    }
-
-    function applyWallBaseColorOnlyToMaterial(targetMaterial, colorData) {
-        if (!targetMaterial || !colorData || !colorData.texture) {
-            return false;
-        }
-
-        // STAGE 11J - WALL PAINT BASE COLOR ONLY FIX
-        // Malowanie ściany nie może wymieniać całego materiału.
-        // Zmieniamy tylko base color / albedo texture, a normal/roughness/metallic/AO zostają z modelu.
-        //
-        // STAGE 12C8:
-        // Tekstura base color dostaje poprawną orientację GLTF/invertY=false.
-        // STAGE 12C60B:
-        // Tekstura jest cache'owana po URL + orientacji, żeby malowanie segmentów nie tworzyło
-        // wielu BABYLON.Texture dla tego samego koloru.
-        var wallPaintTexture = getWallPaintTextureForColorData(colorData);
-
-        if (!wallPaintTexture) {
-            return false;
-        }
-
-        if (targetMaterial.albedoTexture !== undefined) {
-            targetMaterial.albedoTexture = wallPaintTexture;
-        }
-
-        if (targetMaterial.diffuseTexture !== undefined) {
-            targetMaterial.diffuseTexture = wallPaintTexture;
-        }
-
-        if (targetMaterial.baseTexture !== undefined) {
-            targetMaterial.baseTexture = wallPaintTexture;
-        }
-
-        if (targetMaterial.albedoColor) {
-            targetMaterial.albedoColor = BABYLON.Color3.White();
-        }
-
-        if (targetMaterial.diffuseColor) {
-            targetMaterial.diffuseColor = BABYLON.Color3.White();
-        }
-
-        targetMaterial.metadata = targetMaterial.metadata || {};
-        targetMaterial.metadata.wallColorName = colorData.name;
-        targetMaterial.metadata.uiName = colorData.label;
-        targetMaterial.metadata.wallColorTextureUrl = colorData.url;
-        targetMaterial.metadata.wallColorTexture = wallPaintTexture;
-        targetMaterial.metadata.wallPaintTextureOrientation = Object.assign({}, wallPaintTextureOrientation);
-        targetMaterial.metadata.wallBaseColorOnlyPaintMaterial = true;
-
-        return true;
-    }
-
-    function applyWallColorMaterialToSegment(wallMesh, material, options) {
-        options = options || {};
-        if (!wallMesh || !material || !isPaintableWallSegmentMesh(wallMesh)) {
-            return false;
-        }
-
-        var colorData = getWallPaintColorDataFromMaterial(material);
-
-        if (!colorData || !colorData.texture) {
-            console.warn("Wall paint skipped: missing base color texture", {
-                wall: wallMesh ? wallMesh.name : null,
-                material: material ? material.name : null
-            });
-            return false;
-        }
-
-        var paintMaterial = getOrCreateWallSegmentPaintMaterial(wallMesh);
-
-        if (!applyWallBaseColorOnlyToMaterial(paintMaterial, colorData)) {
-            return false;
-        }
-
-        wallMesh.material = paintMaterial;
-        wallMesh.metadata = wallMesh.metadata || {};
-        wallMesh.metadata.wallSegmentColorName = colorData.name;
-        wallMesh.metadata.wallSegmentPaintedAt = new Date().toISOString();
-        wallMesh.metadata.wallSegmentPaintMode = "baseColorOnly";
-
-        configureMeshMaterialForMainShadows(wallMesh);
-        if (!options.runtimeRestore) {
-            scheduleCommonLightingMaterialSupport("wallPaintSegment");
-            markGallerySurfaceDirty("wallSegmentPainted");
-            markGalleryDraftDirty("wall-segment-painted");
-            updateEditHelpStatus();
-        }
-
-        return true;
-    }
-
-    function getWallSegmentPaintDebug() {
-        return wallMeshes.map(function (wallMesh) {
-            return {
-                name: wallMesh.name,
-                paintable: isPaintableWallSegmentMesh(wallMesh),
-                materialName: wallMesh.material ? wallMesh.material.name : null,
-                colorName: getWallColorNameFromMaterial(wallMesh.material),
-                segmentColorName: wallMesh.metadata
-                    ? wallMesh.metadata.wallSegmentColorName || null
-                    : null,
-                paintMode: wallMesh.metadata
-                    ? wallMesh.metadata.wallSegmentPaintMode || null
-                    : null,
-                baseMaterialName: wallMesh.metadata
-                    ? wallMesh.metadata.wallSegmentBaseMaterialName || null
-                    : null,
-                hasNormalTexture: !!(wallMesh.material && (wallMesh.material.bumpTexture || wallMesh.material.normalTexture)),
-                hasRoughnessTexture: !!(wallMesh.material && (wallMesh.material.metallicTexture || wallMesh.material.roughnessTexture)),
-                hasAmbientTexture: !!(wallMesh.material && wallMesh.material.ambientTexture),
-                albedoTextureUrl: wallMesh.material && wallMesh.material.albedoTexture
-                    ? wallMesh.material.albedoTexture.url || null
-                    : null,
-                albedoTextureInvertY: wallMesh.material && wallMesh.material.albedoTexture
-                    ? wallMesh.material.albedoTexture.invertY
-                    : null,
-                albedoTextureUScale: wallMesh.material && wallMesh.material.albedoTexture
-                    ? wallMesh.material.albedoTexture.uScale
-                    : null,
-                albedoTextureVScale: wallMesh.material && wallMesh.material.albedoTexture
-                    ? wallMesh.material.albedoTexture.vScale
-                    : null,
-                albedoTextureWAng: wallMesh.material && wallMesh.material.albedoTexture
-                    ? wallMesh.material.albedoTexture.wAng
-                    : null
-            };
-        });
     }
 
     // STAGE 11K - VIEWER MODE HIDE EDITOR PLACEHOLDERS
@@ -33563,7 +33273,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             if (item) item.selected = false;
         });
         selectedLocalLights = [];
-        selectedWallMaterial = null;
+        selectedWallTintHex = null;
+        if (wallPalette) wallPalette.classList.remove("is-active");
 
         clearEditMoveKeys();
         dragMoved = false;
@@ -34080,19 +33791,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             editButton.style.display = (!galleryEditorLoginEnabled || editorAuthenticated) ? "" : "none";
         }
 
-        if (galleryAdminWorkspaceMode && editorAuthenticated && typeof wallPalette !== "undefined" && wallPalette) {
-            Array.from(wallPalette.querySelectorAll("[data-wall-texture-url]")).forEach(function (swatch) {
-                var textureUrl = swatch.getAttribute("data-wall-texture-url");
-
-                if (textureUrl && !swatch.style.backgroundImage) {
-                    swatch.style.backgroundImage = "url('" + textureUrl + "')";
-                }
-            });
-
-            if (typeof rebuildWallColorSelectorTextures === "function") {
-                runGalleryFastStartIdleTask(rebuildWallColorSelectorTextures, 900);
-            }
-        }
+        // V14.3.10 wall tint uses the authored wall material directly; there are no
+        // authenticated-only external color textures to hydrate.
 
         if (galleryAdminWorkspaceMode && editorAuthenticated) startGalleryEditorTabHeartbeat();
         else stopGalleryEditorTabHeartbeat(true);
@@ -36580,15 +36280,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
 
         if (colorStatus) {
-            var colorName = "None";
-
-            if (selectedWallMaterial) {
-                colorName = selectedWallMaterial.metadata && selectedWallMaterial.metadata.uiName
-                    ? selectedWallMaterial.metadata.uiName
-                    : selectedWallMaterial.name.replace("WallColor_", "");
-            }
-
-            colorStatus.innerHTML = "Selected Color: <span class=\"gallery-editor-accent-text\">" + colorName + "</span>";
+            colorStatus.innerHTML = "Selected Tint: <span class=\"gallery-editor-accent-text\">" + (selectedWallTintHex || "None") + "</span>";
         }
 
         updateArtworkManagementUi();
@@ -36956,13 +36648,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     }
 
     function clearWallColorSelection() {
-
-        selectedWallMaterial = null;
-
-        Array.from(wallPalette.querySelectorAll("button")).forEach(function (item) {
-            item.classList.remove("is-selected");
-        });
-
+        selectedWallTintHex = null;
+        if (wallPalette) wallPalette.classList.remove("is-active");
         updateEditHelpStatus();
     }
 
@@ -45121,16 +44808,16 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             // TRYB EDYCJI = wybrany kolor nakłada się tylko na kliknięty segment ściany.
             if (
                 editMode &&
-                selectedWallMaterial &&
+                selectedWallTintHex &&
                 !activeArtwork &&
                 pickResult.hit &&
                 wallMeshes.includes(pickResult.pickedMesh) &&
                 isPaintableWallSegmentMesh(pickResult.pickedMesh)
             ) {
                 closeGalleryInspect("editor-wall-paint");
-                applyWallColorMaterialToSegment(
+                applyWallTintToSegment(
                     pickResult.pickedMesh,
-                    selectedWallMaterial
+                    selectedWallTintHex
                 );
 
                 return;
@@ -45611,17 +45298,17 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     function serializeEditorState() {
         return {
             version: "Gallery_V0_11_editor",
-            selectedWallMaterialName: getWallColorNameFromMaterial(selectedWallMaterial),
+            selectedWallTintHex: selectedWallTintHex,
+            selectedWallMaterialName: null, // legacy field: V14.3.10 writes canonical tint only
             walls: wallMeshes.map(function (wallMesh) {
                 return {
                     name: wallMesh.name,
                     materialName: wallMesh.material ? wallMesh.material.name : null,
-                    colorName: getWallColorNameFromMaterial(wallMesh.material),
+                    tintHex: getWallTintHexForMesh(wallMesh),
+                    colorName: null,
                     isSegment: isPaintableWallSegmentMesh(wallMesh),
                     paintable: isPaintableWallSegmentMesh(wallMesh),
-                    segmentColorName: wallMesh.metadata
-                        ? wallMesh.metadata.wallSegmentColorName || null
-                        : null
+                    segmentColorName: null
                 };
             }),
             deletedArtworkNames: deletedArtworkNames.slice(),
@@ -45694,38 +45381,17 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             return;
         }
 
-        if (editorState.selectedWallMaterialName && wallColorMaterials[editorState.selectedWallMaterialName]) {
-            selectedWallMaterial = wallColorMaterials[editorState.selectedWallMaterialName];
-        }
+        var restoredSelectedTint = normalizeWallTintHex(editorState.selectedWallTintHex) ||
+            getLegacyWallTintHex(editorState.selectedWallMaterialName);
+        if (restoredSelectedTint) setSelectedWallTintHex(restoredSelectedTint, { silent: true });
 
         if (!options.skipWalls && Array.isArray(editorState.walls)) {
             editorState.walls.forEach(function (wallState) {
-                if (!wallState) {
-                    return;
-                }
-
+                if (!wallState) return;
                 var wallMesh = getWallMeshByName(wallState.name);
-                var colorName = normalizeWallColorName(
-                    wallState.segmentColorName ||
-                    wallState.colorName ||
-                    (
-                        wallState.materialName && wallState.materialName.indexOf("WallColor_") === 0
-                            ? wallState.materialName.replace("WallColor_", "")
-                            : null
-                    )
-                );
-
-                if (
-                    wallMesh &&
-                    colorName &&
-                    wallColorMaterials[colorName] &&
-                    isPaintableWallSegmentMesh(wallMesh)
-                ) {
-                    applyWallColorMaterialToSegment(
-                        wallMesh,
-                        wallColorMaterials[colorName],
-                        { runtimeRestore: true }
-                    );
+                var tintHex = getWallTintHexFromState(wallState);
+                if (wallMesh && tintHex && isPaintableWallSegmentMesh(wallMesh)) {
+                    applyWallTintToSegment(wallMesh, tintHex, { runtimeRestore: true });
                 }
             });
         }
@@ -46189,7 +45855,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         var wallStates = (wallMeshes || []).map(function (wallMesh) {
             if (!wallMesh) return null;
             wallMaterialRefs[wallMesh.name] = wallMesh.material || null;
-            return { name: wallMesh.name, materialName: wallMesh.material ? wallMesh.material.name : null, colorName: getWallColorNameFromMaterial(wallMesh.material), isSegment: isPaintableWallSegmentMesh(wallMesh), paintable: isPaintableWallSegmentMesh(wallMesh), segmentColorName: wallMesh.metadata ? wallMesh.metadata.wallSegmentColorName || null : null };
+            return { name: wallMesh.name, materialName: wallMesh.material ? wallMesh.material.name : null, tintHex: null, colorName: null, isSegment: isPaintableWallSegmentMesh(wallMesh), paintable: isPaintableWallSegmentMesh(wallMesh), segmentColorName: null };
         }).filter(Boolean);
         galleryExhibitionRuntime.spaceBaseline = { spaceId: galleryActiveSpaceId, wallMaterialRefs: wallMaterialRefs, wallStates: wallStates, lighting: cloneGalleryJson(lightingDefaultSettings || readLightingSettingsFromScene()), visualSettings: cloneGalleryJson(visualDefaultSettings || readVisualSettingsFromScene()) };
         galleryExhibitionRuntime.spaceBaselineCaptured = true;
@@ -46201,7 +45867,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         exhibition = normalizeGalleryExhibitionRecord(exhibition) || galleryExhibitionRuntime.active || getGalleryFallbackMainExhibition();
         return {
             version: "Gallery_V0_11_WEB", savedAt: new Date().toISOString(), context: { exhibitionId: exhibition.id, spaceId: galleryActiveSpaceId, venueId: gallerySpaceDefinition && gallerySpaceDefinition.venueId || null, venueVersionId: galleryActiveVenueVersionId },
-            editor: { version: "Gallery_V0_11_editor", selectedWallMaterialName: null, walls: cloneGalleryJson(baseline.wallStates || []), deletedArtworkNames: [], deletedModel3dSlotNames: [], authors: [], artworks: [], spheres: [], assetInstances: [] },
+            editor: { version: "Gallery_V0_11_editor", selectedWallTintHex: null, selectedWallMaterialName: null, walls: cloneGalleryJson(baseline.wallStates || []), deletedArtworkNames: [], deletedModel3dSlotNames: [], authors: [], artworks: [], spheres: [], assetInstances: [] },
             lighting: cloneGalleryJson(baseline.lighting || readLightingSettingsFromScene()), visualSettings: cloneGalleryJson(baseline.visualSettings || visualDefaultSettings), lightingPresets: [],
             localLights: { version: "Gallery_V0_11_local_lights", createCounter: 0, activeGroupIndex: 0, groups: [[], [], [], [], [], [], [], []], lights: [] }
         };
@@ -46221,8 +45887,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             deletedModel3dSlotNames = []; galleryModel3dCreateCounter = 0; setSculptureSelectionState([], null, null);
             (localLightItems || []).slice().forEach(function (item) { disposeLocalLightItem(item); });
             localLightItems = []; selectedLocalLights = []; localLightGroups = [[], [], [], [], [], [], [], []]; activeLocalGroupIndex = 0; localLightCreateCounter = 0; cleanDisabledLocalLightPool();
-            (wallMeshes || []).forEach(function (wallMesh) { if (!wallMesh) return; var baselineMaterial = baseline.wallMaterialRefs ? baseline.wallMaterialRefs[wallMesh.name] : null; if (baselineMaterial) wallMesh.material = baselineMaterial; wallMesh.metadata = wallMesh.metadata || {}; wallMesh.metadata.wallSegmentColorName = null; });
-            selectedWallMaterial = null;
+            (wallMeshes || []).forEach(function (wallMesh) { if (!wallMesh) return; var baselineMaterial = baseline.wallMaterialRefs ? baseline.wallMaterialRefs[wallMesh.name] : null; if (baselineMaterial) wallMesh.material = baselineMaterial; wallMesh.metadata = wallMesh.metadata || {}; wallMesh.metadata.wallSegmentTintHex = null; wallMesh.metadata.wallSegmentColorName = null; wallMesh.metadata.wallSegmentPaintMode = null; wallMesh.metadata.wallSegmentPaintedAt = null; });
+            selectedWallTintHex = null;
+            if (wallPalette) wallPalette.classList.remove("is-active");
             if (baseline.lighting) applyLightingSettings(cloneGalleryJson(baseline.lighting), true, true);
             if (baseline.visualSettings) applyVisualSettings(normalizeVisualSettings(cloneGalleryJson(baseline.visualSettings)), true, true);
             writeLightingPresets([]);
@@ -46255,15 +45922,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return state.editor && typeof state.editor === "object" ? state.editor : state;
     }
 
-    function getGalleryTargetWallColorName(wallState) {
-        if (!wallState || typeof wallState !== "object") return null;
-        return normalizeWallColorName(
-            wallState.segmentColorName ||
-            wallState.colorName ||
-            (wallState.materialName && wallState.materialName.indexOf("WallColor_") === 0
-                ? wallState.materialName.replace("WallColor_", "")
-                : null)
-        );
+    function getGalleryTargetWallTintHex(wallState) {
+        return getWallTintHexFromState(wallState);
     }
 
     function applyGalleryWallPresentationDelta(state) {
@@ -46279,15 +45939,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         (wallMeshes || []).forEach(function (wallMesh) {
             if (!wallMesh) return;
             var wallState = targetByName[wallMesh.name] || null;
-            var targetColorName = getGalleryTargetWallColorName(wallState);
-            var currentColorName = normalizeWallColorName(
-                (wallMesh.metadata && wallMesh.metadata.wallSegmentColorName) ||
-                getWallColorNameFromMaterial(wallMesh.material)
-            );
+            var targetTintHex = getGalleryTargetWallTintHex(wallState);
+            var currentTintHex = getWallTintHexForMesh(wallMesh);
 
-            if (targetColorName && wallColorMaterials[targetColorName] && isPaintableWallSegmentMesh(wallMesh)) {
-                if (currentColorName !== targetColorName) {
-                    applyWallColorMaterialToSegment(wallMesh, wallColorMaterials[targetColorName], { runtimeRestore: true });
+            if (targetTintHex && isPaintableWallSegmentMesh(wallMesh)) {
+                if (currentTintHex !== targetTintHex) {
+                    applyWallTintToSegment(wallMesh, targetTintHex, { runtimeRestore: true });
                 }
                 return;
             }
@@ -46298,6 +45955,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 configureMeshMaterialForMainShadows(wallMesh);
             }
             wallMesh.metadata = wallMesh.metadata || {};
+            wallMesh.metadata.wallSegmentTintHex = null;
             wallMesh.metadata.wallSegmentColorName = null;
             wallMesh.metadata.wallSegmentPaintMode = null;
             wallMesh.metadata.wallSegmentPaintedAt = null;
@@ -46775,7 +46433,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         localLightCreateCounter = 0;
         localLightSoftDeletedItems = [];
         setSculptureSelectionState([], null, null);
-        selectedWallMaterial = null;
+        selectedWallTintHex = null;
+        if (wallPalette) wallPalette.classList.remove("is-active");
         galleryArtworkResidencyRuntime.desiredFullIds = Object.create(null);
         galleryArtworkResidencyRuntime.desiredFullOrder = [];
     }
@@ -47100,7 +46759,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         activeLocalGroupIndex = 0;
         localLightCreateCounter = 0;
         cleanDisabledLocalLightPool();
-        selectedWallMaterial = null;
+        selectedWallTintHex = null;
+        if (wallPalette) wallPalette.classList.remove("is-active");
     }
 
     function prepareGallerySameSpaceExhibitionDelta(state) {

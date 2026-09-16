@@ -297,3 +297,48 @@ assert.ok(source.includes('artworkFrameChangeButton.innerText = "CHANGE"') && so
 
 console.log('V13 Asset Manager/Frame Browser hardening plus V14.3.9 unified pointer placement regression passed.');
 })();
+
+
+// --- V14.3.10 Wall Tint System ---
+await (async () => {
+const root = new URL('../', import.meta.url);
+const source = fs.readFileSync(new URL('src/Gallery_V0_11.js', root), 'utf8');
+
+function extractWallTintFunction(text, name) {
+  const markers = [`async function ${name}(`, `function ${name}(`];
+  let start = -1;
+  for (const marker of markers) { start = text.indexOf(marker); if (start >= 0) break; }
+  assert.ok(start >= 0, `Missing function ${name}`);
+  const bodyStart = text.indexOf('{', start);
+  let depth = 0, quote = null, line = false, blockComment = false;
+  for (let i = bodyStart; i < text.length; i += 1) {
+    const c = text[i], n = text[i + 1] || '';
+    if (line) { if (c === '\n') line = false; continue; }
+    if (blockComment) { if (c === '*' && n === '/') { blockComment = false; i += 1; } continue; }
+    if (quote) { if (c === '\\') { i += 1; continue; } if (c === quote) quote = null; continue; }
+    if (c === '/' && n === '/') { line = true; i += 1; continue; }
+    if (c === '/' && n === '*') { blockComment = true; i += 1; continue; }
+    if (c === '"' || c === "'" || c === '`') { quote = c; continue; }
+    if (c === '{') depth += 1;
+    else if (c === '}' && --depth === 0) return text.slice(start, i + 1);
+  }
+  throw new Error(`Unterminated function ${name}`);
+}
+
+assert.ok(source.includes('V14.3.10 — WALL TINT SYSTEM'), 'V14.3.10 wall tint marker missing');
+assert.ok(source.includes('wallTintInput.type = "color"') && source.includes('wallTintHexInput.maxLength = 7'), 'V14.3.10 arbitrary color picker / exact #RRGGBB input missing');
+assert.ok(source.includes('legacyWallTintByName') && source.includes('yellowish') && source.includes('steel'), 'V14.3.10 legacy named wall color compatibility missing');
+assert.ok(!source.includes('basecolor_black.png') && !source.includes('basecolor_white.png') && !source.includes('data-wall-texture-url') && !source.includes('var wallColorMaterials = {}'), 'Legacy texture-backed wall swatches remain active');
+const applyTintMaterial = extractWallTintFunction(source, 'applyWallTintToMaterial');
+assert.ok(applyTintMaterial.includes('wallTintAuthoredColors') && applyTintMaterial.includes('applyWallTintColorChannel(material, "albedoColor"') && applyTintMaterial.includes('applyWallTintColorChannel(material, "diffuseColor"') && applyTintMaterial.includes('applyWallTintColorChannel(material, "baseColor"'), 'V14.3.10 material tint multiply path incomplete');
+assert.ok(!applyTintMaterial.includes('albedoTexture =') && !applyTintMaterial.includes('diffuseTexture =') && !applyTintMaterial.includes('baseTexture =') && !applyTintMaterial.includes('bumpTexture =') && !applyTintMaterial.includes('metallicTexture =') && !applyTintMaterial.includes('roughnessTexture =') && !applyTintMaterial.includes('ambientTexture ='), 'V14.3.10 tint path mutates authored texture/non-color channels');
+const serializeWallTint = extractWallTintFunction(source, 'serializeEditorState');
+assert.ok(serializeWallTint.includes('selectedWallTintHex') && serializeWallTint.includes('tintHex: getWallTintHexForMesh(wallMesh)') && serializeWallTint.includes('selectedWallMaterialName: null'), 'V14.3.10 canonical tint state serialization missing');
+const restoreWallTint = extractWallTintFunction(source, 'applyEditorState');
+assert.ok(restoreWallTint.includes('getWallTintHexFromState(wallState)') && restoreWallTint.includes('applyWallTintToSegment'), 'V14.3.10 tint/legacy restore path missing');
+const deltaWallTint = extractWallTintFunction(source, 'applyGalleryWallPresentationDelta');
+assert.ok(deltaWallTint.includes('getGalleryTargetWallTintHex') && deltaWallTint.includes('wallSegmentTintHex = null'), 'V14.3.10 same-Gallery wall tint delta/reset missing');
+assert.ok(source.includes('white: "#FFFFFF"') && source.includes('Selected Tint:') && source.includes('Choose wall tint'), 'V14.3.10 neutral white / authoring UI contract missing');
+
+console.log('V14.3.10 Wall Tint System regression passed.');
+})();
