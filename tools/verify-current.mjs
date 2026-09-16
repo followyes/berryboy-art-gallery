@@ -50,7 +50,7 @@ assert(bootstrap.includes('v14_3_10_wall_tint_20260916')&&adminBootstrap.include
 assert(index.includes('gallery-viewer-bootstrap.js?v=v14_3_10_wall_tint'),'V14.3.10 viewer cache key missing');
 assert(admin.includes('admin-workspace-bootstrap.js?v=v14_3_10_wall_tint'),'V14.3.10 Admin cache key missing');
 const currentPackage=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
-assert(currentPackage.version==='0.14.2-v14-2-6-canonical-draft-publish-model'&&currentPackage.description.includes('V14.2.6 Canonical Draft / Publish Model'),'V14.2.6 core runtime package identity missing');
+assert(currentPackage.version==='0.14.3-v14-3-11-full-regression-docs-closure'&&currentPackage.description.includes('V14.3.11 Full Regression / Docs / Closure'),'V14.3.11 closure package identity missing');
 
 assert(source.includes('V14.3.10 — WALL TINT SYSTEM')&&source.includes('wallTintInput.type = "color"')&&source.includes('wallTintHexInput.maxLength = 7'),'V14.3.10 arbitrary wall tint authoring UI missing');
 assert(source.includes('legacyWallTintByName')&&source.includes('getWallTintHexFromState')&&source.includes('tintHex: getWallTintHexForMesh(wallMesh)'),'V14.3.10 tint persistence/legacy read compatibility missing');

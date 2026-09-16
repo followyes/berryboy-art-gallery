@@ -40,8 +40,8 @@ function functionBody(name) {
   throw new Error(`Could not extract ${name}`);
 }
 
-assert.equal(pkg.version, '0.14.2-v14-2-6-canonical-draft-publish-model');
-assert.ok(pkg.description.includes('V14.2.6 Canonical Draft / Publish Model'));
+assert.equal(pkg.version, '0.14.3-v14-3-11-full-regression-docs-closure');
+assert.ok(pkg.description.includes('V14.3.11 Full Regression / Docs / Closure'));
 
 for (const context of ['public-exhibition', 'admin-exhibition']) {
   const policy = createSceneLoadingPolicy(context);

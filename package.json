@@ -1,8 +1,8 @@
 {
   "name": "exhibition-platform",
-  "version": "0.14.2-v14-2-6-canonical-draft-publish-model",
+  "version": "0.14.3-v14-3-11-full-regression-docs-closure",
   "private": true,
-  "description": "Exhibition Platform — V14.2.6 Canonical Draft / Publish Model",
+  "description": "Exhibition Platform — V14.3.11 Full Regression / Docs / Closure",
   "type": "module",
   "scripts": {
     "build": "node tools/build-current.mjs",

@@ -1,9 +1,13 @@
 # Exhibition Platform
 
-Current repository release candidate: **V14.3.10 — Wall Tint System**.
+Current repository release: **V14.3.11 — Full Regression / Docs / Closure**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
+
+## V14.3.11 Full Regression / Docs / Closure
+
+V14.3.11 is the V14.3 closure release. It changes no browser/runtime behavior, database contract or Storage policy relative to accepted V14.3.10. It promotes the canonical repository/package identity to V14.3.11, reruns the full regression gate, aligns current operational documentation and verifies exact incremental `UPDATED_FILES` parity.
 
 ## V14.3.10 Wall Tint System
 
@@ -13,7 +17,7 @@ The runtime clones the authored wall material and multiplies the authored base-c
 
 Legacy named wall colors (`black`, `blue`, `cyan`, `green`, `orange`, `purple`, `red`, `white`, `yellow`, plus `yellowish`/`steel` aliases) remain read-compatible and migrate to canonical tint state on the next save. Tint ownership remains per Exhibition and same-Gallery Exhibition switching restores each Exhibition independently.
 
-V14.3.10 changes no schema, RPC, RLS or Storage policy.
+V14.3.10 is PASS/CLOSED. It changes no schema, RPC, RLS or Storage policy.
 
 
 ## V14.3.9 Unified Asset Placement
@@ -122,7 +126,7 @@ Specific Gallery names are data. They are not platform/runtime branding.
 - `src/data/exhibition-gallery-assignment.js` — pure C24 binding/migration helpers and executable reference rebind for QA.
 - `src/data/gallery-management-api.js` — controlled Gallery lifecycle/Storage adapter.
 - `src/data/shared-asset-api.js` — guarded Shared Asset catalog/version adapter, V13.2 thumbnail bridge and V13.3 Published runtime descriptor read.
-- `src/bootstrap/admin-asset-workspace.js` — canonical left Asset Manager, V13.3 Prop drag/PLACE launcher and V13.4 artwork-only Frame binding/drag Browser shared by standalone and inline Admin.
+- `src/bootstrap/admin-asset-workspace.js` — canonical left Asset Manager with V14.3.8 Add/Replace/Delete lifecycle and V14.3.9 unified pointer placement for Props/Frames, shared by standalone and inline Admin.
 - `src/runtime/shared-asset-state.js` — V13.1 immutable Shared Asset reference/state-manifest contract for later Exhibition dressing.
 - `src/validation/shared-asset-validation.js` — V13.1 Prop/Frame GLB validation coordinator.
 - `src/validation/sculpture-model-validation.js` — V14.1.5.1 direct Sculpture deep GLB validation coordinator.

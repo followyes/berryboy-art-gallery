@@ -12,7 +12,7 @@ const sharedAssetApi = fs.readFileSync(new URL('src/data/shared-asset-api.js', r
 const assetWorkspace = fs.readFileSync(new URL('src/bootstrap/admin-asset-workspace.js', root), 'utf8');
 const sql = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/ALL_IN_ONE.sql', import.meta.url), 'utf8');
 
-assert.equal(pkg.version, '0.14.2-v14-2-6-canonical-draft-publish-model');
+assert.equal(pkg.version, '0.14.3-v14-3-11-full-regression-docs-closure');
 assert.ok(adminHtml.includes('id="deleteExhibitionButton"'));
 assert.ok(viewer.includes('id="deleteExhibitionButton"'));
 assert.ok(admin.includes('handleDeleteExhibition') && admin.includes('deletePermanent(deleting.id)'));
