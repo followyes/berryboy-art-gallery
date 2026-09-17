@@ -33,8 +33,8 @@ function functionBody(name) {
   throw new Error(`Could not extract ${name}`);
 }
 
-assert.equal(pkg.version, '0.14.4-v14-4-2-logical-shared-asset-authority');
-assert.ok(pkg.description.includes('V14.4.2 Logical Shared Asset Authority Foundation'));
+assert.equal(pkg.version, '0.14.4-v14-4-3-canonical-shared-asset-replace-propagation');
+assert.ok(pkg.description.includes('V14.4.3 Canonical Shared Asset Replace Propagation'));
 assert.ok(pkg.scripts['test:residency']?.includes('test-active-visit-residency.mjs'));
 assert.ok(pkg.scripts.test.includes('test:residency'));
 

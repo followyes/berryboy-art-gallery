@@ -6,7 +6,7 @@
 
 import { buildSpaceDefinition } from "../runtime/space-definition-resolver.js?v=c6c8c25_cross_space_runtime";
 import { isExhibitionGalleryMigrationPending } from "./exhibition-gallery-assignment.js?v=c6c8c25_cross_space_runtime";
-import { collectSharedAssetIds, hydrateSharedAssetReferencesWithCurrentVersions } from "../runtime/shared-asset-state.js?v=v14_4_2_logical_shared_asset_authority";
+import { collectSharedAssetIds, hydrateSharedAssetReferencesWithCurrentVersions } from "../runtime/shared-asset-state.js?v=v14_4_3_canonical_shared_asset_replace";
 
 export const EXHIBITION_STATE_SCHEMA = "exhibition-platform-exhibition-state.v1";
 export const CANONICAL_GALLERY_RESOLUTION_STAGE = "V14.3.5";

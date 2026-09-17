@@ -71,8 +71,8 @@ assert.ok(galleryShortcutBody.includes('newExhibitionName.focus()'));
 assert.ok(!galleryShortcutBody.includes('exhibitionData.create('), 'Gallery shortcut must not fork the canonical create flow');
 
 // Cache/version gate makes the new bootstrap transition path deploy-safe.
-assert.equal(pkg.version, '0.14.4-v14-4-2-logical-shared-asset-authority');
+assert.equal(pkg.version, '0.14.4-v14-4-3-canonical-shared-asset-replace-propagation');
 assert.ok(pkg.scripts.test.includes('test:creation-lifecycle'));
-assert.ok(admin.includes('v14_4_2_logical_shared_asset_authority_20260917'));
+assert.ok(admin.includes('v14_4_3_canonical_shared_asset_replace_20260917'));
 
 console.log('V14.2.3 creation -> canonical Scene lifecycle + Published Gallery shortcut invariants passed.');

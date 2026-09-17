@@ -34,7 +34,7 @@ function expect(label, ok) {
   console.log(`✓ ${label}`);
 }
 
-expect('V14.4.2 package establishes logical Shared Asset authority', pkg.version === '0.14.4-v14-4-2-logical-shared-asset-authority' && SHARED_ASSET_AUTHORITY_STAGE === 'V14.4.2');
+expect('V14.4.3 package preserves V14.4.2 logical Shared Asset authority', pkg.version === '0.14.4-v14-4-3-canonical-shared-asset-replace-propagation' && SHARED_ASSET_AUTHORITY_STAGE === 'V14.4.2');
 expect('Shared Asset product adapter is V14.3.8 over the existing shared-assets domain', SHARED_ASSET_STAGE === 'V14.3.8' && SHARED_ASSET_BUCKET === 'shared-assets');
 expect('independent Shared Asset validator schema is frozen', SHARED_ASSET_VALIDATION_SCHEMA === 'exhibition-platform-shared-asset-validation.v1' && SHARED_ASSET_VALIDATOR_VERSION === 'V13.1');
 expect('renderable GLB worker preserves Shared Asset prop/frame and adds Sculpture validation without Gallery Space roles', workerSource.includes('["prop","frame","sculpture"]') && workerSource.includes('assetType') && !workerSource.includes('["floor","walls","ceiling","props"]'));
@@ -44,7 +44,7 @@ expect('Shared Asset state contract remains separate from Venue props', stateSou
 expect('V14.4.2 Exhibition resolver hydrates logical assetId references through current Published Versions', exhibitionApiSource.includes('resolve_shared_asset_current_versions') && exhibitionApiSource.includes('hydrateSharedAssetReferencesWithCurrentVersions') && exhibitionApiSource.includes('collectSharedAssetIds'));
 expect('V14.4.2 normal state keeps exact version only as authored provenance', gallerySource.includes('authoredAgainstAssetVersionId') && stateSource.includes('authoredAgainstAssetVersionId'));
 expect('V14.4.2 modern Frames are extracted from nested editor.artworks', stateSource.includes('state.editor.artworks')); 
-expect('V14.3.9 Asset Manager preserves product Add/Replace without technical versions', assetWorkspaceSource.includes('ADMIN_ASSET_WORKSPACE_STAGE = "V14.3.9"') && assetWorkspaceSource.includes('Asset Library') && assetWorkspaceSource.includes('REPLACE MODEL') && assetWorkspaceSource.includes('ADD MODEL') && !assetWorkspaceSource.includes('PUBLISH VERSION') && !assetWorkspaceSource.includes('Version history'));
+expect('V14.4.3 Asset Manager preserves product Add/Replace without technical versions', assetWorkspaceSource.includes('ADMIN_ASSET_WORKSPACE_STAGE = "V14.4.3"') && assetWorkspaceSource.includes('Asset Library') && assetWorkspaceSource.includes('REPLACE MODEL') && assetWorkspaceSource.includes('ADD MODEL') && !assetWorkspaceSource.includes('PUBLISH VERSION') && !assetWorkspaceSource.includes('Version history'));
 expect('V13.2 admin exposes three left top-level sections', adminSource.includes('data-section=\"exhibitions\"') && adminSource.includes('data-section=\"galleries\"') && adminSource.includes('data-section=\"assets\"'));
 expect('V13.2 thumbnail API uses guarded Shared Asset RPCs', apiSource.includes('admin_register_shared_asset_thumbnail') && apiSource.includes('admin_clear_shared_asset_thumbnail') && apiSource.includes('/thumbnails/'));
 expect('V14.3.9 catalog uses one pointer-driven drag model and removes PLACE/CANCEL ceremony', assetWorkspaceSource.includes('installUnifiedPointerPlacement') && assetWorkspaceSource.includes('pointerdown') && assetWorkspaceSource.includes('pointermove') && assetWorkspaceSource.includes('pointerup') && assetWorkspaceSource.includes('pointercancel') && assetWorkspaceSource.includes('touch-action:pan-y') && !assetWorkspaceSource.includes('PLACE PROP') && !assetWorkspaceSource.includes('CANCEL PLACE') && !assetWorkspaceSource.includes('tile.draggable'));
@@ -59,6 +59,11 @@ expect('V13.4 FRAME CHANGE opens left Frames Browser without changing Scene cont
 expect('V13.4 right artwork inspector is compact CHANGE/REMOVE only', gallerySource.includes('artworkFrameChangeButton.innerText = "CHANGE"') && gallerySource.includes('artworkFrameRemoveButton.innerText = "REMOVE"') && !gallerySource.includes('var artworkFrameGrid = document.createElement("div")'));
 expect('V13.4 Frame state writes stable Asset IDs while retaining legacy storage fallback', gallerySource.includes('assetId: frameState.assetId || null') && gallerySource.includes('assetVersionId: frameState.assetVersionId || null') && gallerySource.includes('storagePath: frameState.storagePath'));
 expect('V14.3.9 Frame pointer drop accepts artwork targets only and rechecks exact context', gallerySource.includes('commitSharedAssetFramePointerDrag') && gallerySource.includes('pickGalleryArtworkFromClientPoint') && gallerySource.includes('Drop the Frame directly on an artwork.') && gallerySource.includes('isSharedAssetPlacementContextCurrent'));
+expect('V14.4.3 explicit Replace propagates only through the Admin live-runtime bridge', assetWorkspaceSource.includes('onAssetModelReplaced') && adminSource.includes('refreshSharedAssetCurrentRuntime') && adminSource.includes('admin-explicit-replace'));
+expect('V14.4.3 live propagation is keyed by logical assetId for Props and Frames', gallerySource.includes('exhibition-platform-shared-asset-replace-propagation.v1') && gallerySource.includes('String(state.assetId || "") === rawAssetId') && gallerySource.includes('String(frame.assetId || "") === rawAssetId'));
+expect('V14.4.3 Prop Replace preserves instance identity and authored transform', gallerySource.includes('instanceId: authoredPropState.instanceId') && gallerySource.includes('position: authoredPropState.position') && gallerySource.includes('scale: authoredPropState.scale') && gallerySource.includes('rotationDegrees: authoredPropState.rotationDegrees'));
+expect('V14.4.3 Frame Replace preserves artwork binding and does not mark Exhibition dirty', gallerySource.includes('getArtworkFrameStateForSave(artwork)') && gallerySource.includes('applyArtworkFrameState(artwork, nextFrameState, { silent: true, markDirty: false })'));
+expect('V14.4.3 active Public visits cannot be hot-swapped by Replace propagation', gallerySource.includes('if (!editMode || galleryAuthoringSpacePreview)') && !assetWorkspaceSource.includes('dispatchEvent(new CustomEvent("shared-asset-replaced"'));
 
 assert.deepEqual(getDefaultSharedAssetRuntimeMetadata('prop'), { placementMode: 'floor', collisionMode: 'none', defaultScale: 1 });
 assert.equal(getDefaultSharedAssetRuntimeMetadata('frame').placementMode, 'artwork-only');
@@ -177,4 +182,4 @@ assert.equal(rpcCalls[0][1].p_asset_type, 'prop');
 assert.equal((await api.get(assetId)).asset.id, assetId);
 expect('data adapter keeps catalog/get reads compatible while V14.3.8 adds product lifecycle orchestration', true);
 
-console.log('Shared Asset foundation/runtime invariants plus V14.4.2 logical authority passed.');
+console.log('Shared Asset foundation/runtime invariants plus V14.4.3 Replace propagation passed.');

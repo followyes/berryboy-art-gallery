@@ -46,16 +46,19 @@ function extractFunction(text,name){const ms=[`async function ${name}(`,`functio
 assert(index.includes('stage: "V14.1.10.1"'),'Index stage identity missing');
 assert(bootstrap.includes('const STAGE = "V14.1.10.1"'),'Viewer stage identity missing');
 assert(adminBootstrap.includes('const STAGE = "V14.1.10.1"'),'Admin stage identity missing');
-assert(bootstrap.includes('v14_4_2_logical_shared_asset_authority_20260917')&&adminBootstrap.includes('v14_4_2_logical_shared_asset_authority_20260917'),'V14.4.2 engine cache key missing');
-assert(index.includes('gallery-viewer-bootstrap.js?v=v14_4_2_logical_shared_asset_authority'),'V14.4.2 viewer cache key missing');
-assert(admin.includes('admin-workspace-bootstrap.js?v=v14_4_2_logical_shared_asset_authority'),'V14.4.2 Admin cache key missing');
+assert(bootstrap.includes('v14_4_3_canonical_shared_asset_replace_20260917')&&adminBootstrap.includes('v14_4_3_canonical_shared_asset_replace_20260917'),'V14.4.3 engine cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=v14_4_3_canonical_shared_asset_replace'),'V14.4.3 viewer cache key missing');
+assert(admin.includes('admin-workspace-bootstrap.js?v=v14_4_3_canonical_shared_asset_replace'),'V14.4.3 Admin cache key missing');
 const currentPackage=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
-assert(currentPackage.version==='0.14.4-v14-4-2-logical-shared-asset-authority'&&currentPackage.description.includes('V14.4.2 Logical Shared Asset Authority Foundation'),'V14.4.2 package identity missing');
+assert(currentPackage.version==='0.14.4-v14-4-3-canonical-shared-asset-replace-propagation'&&currentPackage.description.includes('V14.4.3 Canonical Shared Asset Replace Propagation'),'V14.4.3 package identity missing');
 
 
 assert(sharedAssetState.includes('SHARED_ASSET_AUTHORITY_STAGE = "V14.4.2"')&&sharedAssetState.includes('collectSharedAssetIds')&&sharedAssetState.includes('hydrateSharedAssetReferencesWithCurrentVersions'),'V14.4.2 logical Shared Asset state authority missing');
 assert(exhibitionApi.includes('resolve_shared_asset_current_versions')&&exhibitionApi.includes('resolveLogicalSharedAssetState'),'V14.4.2 current Shared Asset resolver bridge missing');
 assert(source.includes('authoredAgainstAssetVersionId'),'V14.4.2 Shared Asset provenance serialization missing');
+assert(assetWorkspace.includes('ADMIN_ASSET_WORKSPACE_STAGE = "V14.4.3"')&&assetWorkspace.includes('onAssetModelReplaced'),'V14.4.3 Asset Workspace Replace propagation hook missing');
+assert(adminBootstrap.includes('refreshSharedAssetCurrentRuntime')&&adminBootstrap.includes('admin-explicit-replace'),'V14.4.3 Admin live-runtime Replace bridge missing');
+assert(source.includes('exhibition-platform-shared-asset-replace-propagation.v1')&&source.includes('refreshSharedAssetCurrentRuntime: refreshSharedAssetCurrentRuntime'),'V14.4.3 core Replace propagation authority missing');
 assert(source.includes('V14.3.10 — WALL TINT SYSTEM')&&source.includes('wallTintInput.type = "color"')&&source.includes('wallTintHexInput.maxLength = 7'),'V14.3.10 arbitrary wall tint authoring UI missing');
 assert(source.includes('legacyWallTintByName')&&source.includes('getWallTintHexFromState')&&source.includes('tintHex: getWallTintHexForMesh(wallMesh)'),'V14.3.10 tint persistence/legacy read compatibility missing');
 assert(source.includes('applyWallTintColorChannel(material, "albedoColor"')&&source.includes('applyWallTintColorChannel(material, "diffuseColor"')&&source.includes('wallTintAuthoredColors'),'V14.3.10 authored base-color multiply path missing');
@@ -148,7 +151,7 @@ assert(sculptureValidation.includes('exhibition-platform-sculpture-model-validat
 assert(source.includes('if (loadedMeshes.length < 1)')&&source.includes('Sculpture/model GLB contains no renderable mesh geometry.'),'V14.1.5.1 model runtime can still report loaded without renderable geometry');
 assert(source.includes('createGalleryModel3dApplyResult(queued ? "queued" : "failed"')&&source.includes('isGalleryModel3dApplyLoaded'),'V14.1.5.1 queued/loaded model semantics missing');
 assert(source.includes('validateSculptureModelFile(file)')&&source.includes('MODEL UNAVAILABLE — reference preserved')&&source.includes('RETRY MODEL'),'V14.1.5.1 Sculpture upload/error/retry contract missing');
-assert(assetWorkspace.includes('ADMIN_ASSET_WORKSPACE_STAGE = "V14.3.9"')&&assetWorkspace.includes('Asset Library')&&assetWorkspace.includes('REPLACE MODEL')&&assetWorkspace.includes('ADD MODEL')&&!assetWorkspace.includes('PUBLISH VERSION')&&!assetWorkspace.includes('ARCHIVE ASSET'),'V14.3.9 Asset Workspace over simplified lifecycle missing');
+assert(assetWorkspace.includes('ADMIN_ASSET_WORKSPACE_STAGE = "V14.4.3"')&&assetWorkspace.includes('Asset Library')&&assetWorkspace.includes('REPLACE MODEL')&&assetWorkspace.includes('ADD MODEL')&&!assetWorkspace.includes('PUBLISH VERSION')&&!assetWorkspace.includes('ARCHIVE ASSET'),'V14.4.3 Asset Workspace over simplified lifecycle missing');
 assert(adminBootstrap.includes('data-section=\"assets\"')&&adminBootstrap.includes('assetWorkspaceHost')&&adminBootstrap.includes('currentPreviewContextSection'),'V13.2 three-tab/host-context orchestration missing');
 assert(assetWorkspace.includes('api.uploadThumbnail')&&sharedAssetApi.includes('admin_register_shared_asset_thumbnail'),'V13.2 thumbnail management bridge missing');
 assert(assetWorkspace.includes('installUnifiedPointerPlacement')&&assetWorkspace.includes('pointerdown')&&assetWorkspace.includes('pointermove')&&assetWorkspace.includes('pointerup')&&assetWorkspace.includes('pointercancel')&&!assetWorkspace.includes('PLACE PROP')&&!assetWorkspace.includes('CANCEL PLACE')&&!assetWorkspace.includes('tile.draggable'),'V14.3.9 unified pointer placement launcher missing');

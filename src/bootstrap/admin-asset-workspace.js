@@ -4,7 +4,7 @@
 import { createSharedAssetApi } from "../data/shared-asset-api.js?v=v14_3_9_unified_asset_placement";
 import { getDefaultSharedAssetRuntimeMetadata } from "../validation/shared-asset-validation.js?v=v14_3_9_unified_asset_placement";
 
-export const ADMIN_ASSET_WORKSPACE_STAGE = "V14.3.9";
+export const ADMIN_ASSET_WORKSPACE_STAGE = "V14.4.3";
 
 const MAX_THUMBNAIL_SOURCE_BYTES = 12 * 1024 * 1024;
 const THUMBNAIL_MAX_SIDE = 640;
@@ -148,7 +148,8 @@ export function createAdminAssetWorkspace({
   onUpdateFramePointerDrag = () => false,
   onCommitFramePointerDrag = async () => false,
   onBindFrame = async () => false,
-  onFrameBindingComplete = () => {}
+  onFrameBindingComplete = () => {},
+  onAssetModelReplaced = async () => ({ refreshed: false, reason: "no-refresh-bridge" })
 } = {}) {
   if (!supabase) throw new Error("Supabase client is required for the Asset Workspace.");
   if (!sidebar) throw new Error("Canonical Admin sidebar is required for the Asset Workspace.");
@@ -619,7 +620,7 @@ export function createAdminAssetWorkspace({
         if (progress) progress.classList.add("active");
         if (bar) bar.style.width = "4%";
         try {
-          await api.replaceModel(asset.id, file, {
+          const replaced = await api.replaceModel(asset.id, file, {
             runtimeMetadata: readRuntimeMetadata(asset.asset_type),
             onProgress: ({ loaded, total }) => {
               if (!bar) return;
@@ -628,7 +629,30 @@ export function createAdminAssetWorkspace({
             }
           });
           if (bar) bar.style.width = "100%";
-          showToast(asset.published_version_id ? "Asset model replaced." : "Asset model added.");
+          const currentDescriptor = text(asset.asset_type).toLowerCase() === "frame"
+            ? buildFrameBindingDescriptor({ asset: replaced.asset, versions: [replaced.version] })
+            : buildPropPlacementDescriptor({ asset: replaced.asset, versions: [replaced.version] });
+          let propagation = null;
+          if (asset.published_version_id && currentDescriptor) {
+            try {
+              propagation = await onAssetModelReplaced(currentDescriptor, {
+                assetId: asset.id,
+                assetType: text(asset.asset_type).toLowerCase(),
+                previousVersionId: replaced.previousVersionId || asset.published_version_id || null,
+                currentVersionId: replaced.version && replaced.version.id ? replaced.version.id : null
+              });
+            } catch (refreshError) {
+              propagation = { refreshedCount: 0, failedCount: 1, reason: "live-runtime-refresh-error" };
+              console.warn("Shared Asset Replace succeeded but live Admin refresh failed:", refreshError);
+            }
+          }
+          showToast(asset.published_version_id
+            ? (propagation && Number(propagation.failedCount) > 0
+                ? "Asset model replaced. Some visible uses could not refresh; reload or switch the Exhibition to resolve the current model."
+                : propagation && Number(propagation.refreshedCount) > 0
+                  ? `Asset model replaced · refreshed ${Number(propagation.refreshedCount)} visible use${Number(propagation.refreshedCount) === 1 ? "" : "s"}.`
+                  : "Asset model replaced.")
+            : "Asset model added.");
           await refreshCatalog({ preserveSelection: true, forceDetail: true });
         } finally {
           if (progress) setTimeout(() => progress.classList.remove("active"), 250);

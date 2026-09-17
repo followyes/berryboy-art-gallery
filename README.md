@@ -1,10 +1,19 @@
 # Exhibition Platform
 
-Current repository release: **V14.4.2 — Logical Shared Asset Authority Foundation**.
+Current repository release: **V14.4.3 — Canonical Shared Asset Replace Propagation**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
 
+
+
+## V14.4.3 Canonical Shared Asset Replace Propagation
+
+Shared Asset Replace now propagates from one logical `assetId` to every matching visible use in the **currently open Admin Exhibition** immediately after the existing guarded publish cutover succeeds. Props are refreshed in the same runtime slots, preserving `instanceId`, position, rotation and scale. Frames are refreshed on the same Artwork bindings. The refresh does not create new placements/bindings and does not mark unrelated Exhibition content dirty.
+
+The canonical database cutover remains the existing atomic `admin_publish_shared_asset_version()` transaction. No new schema/RPC migration is required in V14.4.3. If upload/validation/publish fails, the previous Published Version remains current. Successful Replace changes only the logical Asset current pointer; future Public/Admin loads continue resolving `assetId -> published_version_id` through the V14.4.2 authority.
+
+Active Public visits are never hot-swapped by this stage. They may continue rendering the binary already loaded for that visit; the next explicit entry/transition resolves the new current model. Historical Shared Asset/Gallery GLB cleanup remains deferred to V14.4.4/V14.4.5.
 
 ## V14.4.2 Logical Shared Asset Authority Foundation
 
