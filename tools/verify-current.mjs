@@ -46,9 +46,9 @@ function extractFunction(text,name){const ms=[`async function ${name}(`,`functio
 assert(index.includes('stage: "V14.1.10.1"'),'Index stage identity missing');
 assert(bootstrap.includes('const STAGE = "V14.1.10.1"'),'Viewer stage identity missing');
 assert(adminBootstrap.includes('const STAGE = "V14.1.10.1"'),'Admin stage identity missing');
-assert(bootstrap.includes('v14_4_3_canonical_shared_asset_replace_20260917')&&adminBootstrap.includes('v14_4_3_canonical_shared_asset_replace_20260917'),'V14.4.3 engine cache key missing');
-assert(index.includes('gallery-viewer-bootstrap.js?v=v14_4_3_canonical_shared_asset_replace'),'V14.4.3 viewer cache key missing');
-assert(admin.includes('admin-workspace-bootstrap.js?v=v14_4_3_canonical_shared_asset_replace'),'V14.4.3 Admin cache key missing');
+assert(bootstrap.includes('v14_4_4_1_local_light_editor_resume_hotfix_20260917')&&adminBootstrap.includes('v14_4_4_1_local_light_editor_resume_hotfix_20260917'),'V14.4.4.1 engine cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=v14_4_4_1_local_light_editor_resume_hotfix'),'V14.4.4.1 viewer cache key missing');
+assert(admin.includes('admin-workspace-bootstrap.js?v=v14_4_4_1_local_light_editor_resume_hotfix'),'V14.4.4.1 Admin cache key missing');
 const currentPackage=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
 assert(currentPackage.version==='0.14.4-v14-4-4-shared-asset-gallery-version-gc-authority'&&currentPackage.description.includes('V14.4.4 Shared Asset + Gallery Version GC Authority'),'V14.4.4 package identity missing');
 
@@ -185,6 +185,11 @@ assert(source.includes('Stage 12C66C6C8C13: Instant Workspace Mode Switch'),'C6C
 assert(source.includes('Stage 12C66C6C8C14: Zero-Work Public Return'),'C6C8C14 source history missing');
 assert(source.includes('Stage 12C66C6C8C15: Persistent Draft / Instant Public Preview'),'C6C8C15 source history missing');
 assert(source.includes('Stage 12C66C6C8C16: Mobile UI Polish / Inspect Layout / Cursor Refresh'),'C6C8C16 source history missing');
+assert(source.includes('V14.4.4.1: Local Light Editor Resume Hotfix'),'V14.4.4.1 source history missing');
+const localLightResumeMode=extractFunction(source,'setGallerySameRuntimeModeState');
+const localLightVisual=extractFunction(source,'updateLocalLightVisualState');
+assert(localLightResumeMode.includes('updateViewerModeLocalLightPlaceholderVisibility()')&&!localLightResumeMode.includes('updateViewerModePlaceholderVisibility()'),'V14.4.4.1 narrow Local Light Admin-resume restore missing');
+assert(localLightVisual.includes('setLocalLightEditorMeshVisibility(item.markerMesh, shouldShowMarker)')&&localLightVisual.includes('setLocalLightEditorMeshVisibility(helperMesh, shouldShowSelection)'),'V14.4.4.1 Local Light visibility scalar restore missing');
 assert(source.includes('C6C8C21: Multi-Space Foundation'),'C6C8C21 source history missing');
 assert(source.includes('C6C8C22: Gallery Management'),'C6C8C22 source history missing');
 assert(source.includes('C6C8C23: Space Model Validation'),'C6C8C23 source history missing');

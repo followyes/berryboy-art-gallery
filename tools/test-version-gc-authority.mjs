@@ -6,7 +6,7 @@ import { createGalleryManagementApi } from '../src/data/gallery-management-api.j
 const root = new URL('../', import.meta.url);
 const pkg = JSON.parse(fs.readFileSync(new URL('package.json', root), 'utf8'));
 const sql = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/ALL_IN_ONE.sql', import.meta.url), 'utf8');
-const migration = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/V14_4_4_SHARED_ASSET_GALLERY_VERSION_GC_AUTHORITY.sql', import.meta.url), 'utf8');
+const migration = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/ARCHIVE/V14_4_4_SHARED_ASSET_GALLERY_VERSION_GC_AUTHORITY_DEPLOYED.sql', import.meta.url), 'utf8');
 const sharedApiText = fs.readFileSync(new URL('../src/data/shared-asset-api.js', import.meta.url), 'utf8');
 const galleryApiText = fs.readFileSync(new URL('../src/data/gallery-management-api.js', import.meta.url), 'utf8');
 

@@ -14,7 +14,7 @@ import { createSceneLoadingRuntimeHost } from "../runtime/scene-loading-orchestr
 import { shouldShowPublicSpaceIntro } from "../runtime/public-space-entry-policy.js?v=v14_2_6_draft_publish_20260914";
 
 const STAGE = "V14.1.10.1";
-const ENGINE_CACHE_KEY = "v14_4_3_canonical_shared_asset_replace_20260917";
+const ENGINE_CACHE_KEY = "v14_4_4_1_local_light_editor_resume_hotfix_20260917";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
 
@@ -825,7 +825,7 @@ async function openInlineAdminWorkspace(exhibitionId) {
     if (window.ExhibitionPlatformDataAdapter && typeof window.ExhibitionPlatformDataAdapter.setMode === "function") window.ExhibitionPlatformDataAdapter.setMode("admin");
     if (window.GalleryApp && typeof window.GalleryApp.setExhibitionDataMode === "function") window.GalleryApp.setExhibitionDataMode("admin");
     if (window.GalleryApp.enterAdminWorkspaceMode) window.GalleryApp.enterAdminWorkspaceMode();
-    if (!inlineAdminModulePromise) inlineAdminModulePromise = import(`./admin-workspace-bootstrap.js?v=v14_4_3_canonical_shared_asset_replace`);
+    if (!inlineAdminModulePromise) inlineAdminModulePromise = import(`./admin-workspace-bootstrap.js?v=v14_4_4_1_local_light_editor_resume_hotfix`);
     const adminModule = await inlineAdminModulePromise;
     if (adminModule && typeof adminModule.resumeAdminWorkspace === "function") await adminModule.resumeAdminWorkspace();
     window.requestAnimationFrame(() => { if (activeEngine) activeEngine.resize(); });

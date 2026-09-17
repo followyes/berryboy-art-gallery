@@ -104,6 +104,7 @@ function extractFunction(text, name) {
 }
 
 const modeFn = extractFunction(source, 'setGallerySameRuntimeModeState');
+const localLightVisualFn = extractFunction(source, 'updateLocalLightVisualState');
 const selectionFn = extractFunction(source, 'clearGalleryEditSelectionFastForWorkspaceReturn');
 const presentationFn = extractFunction(source, 'applyGalleryViewerPresentationFastPath');
 const repairFn = extractFunction(source, 'scheduleGalleryWorkspacePublicReturnDeferredRepair');
@@ -117,6 +118,13 @@ expect('public branch uses fast logical selection clear', modeFn.includes('clear
 expect('public branch uses fast presentation helper', modeFn.includes('applyGalleryViewerPresentationFastPath()'));
 expect('public branch records zero collision rebuilds', modeFn.includes('collisionProxyRebuildsOnClickPath: 0'));
 expect('mode switch does not invoke full placeholder refresh', !modeFn.includes('updateViewerModePlaceholderVisibility()'));
+expect('Public to Admin fast path restores Local Light editor meshes only',
+  modeFn.includes('updateViewerModeLocalLightPlaceholderVisibility()'));
+expect('Local Light visual refresh restores marker visibility tuple after Public Preview',
+  localLightVisualFn.includes('setLocalLightEditorMeshVisibility(item.markerMesh, shouldShowMarker)'));
+expect('Local Light helper refresh restores visibility scalar after Public Preview',
+  localLightVisualFn.includes('setLocalLightEditorMeshVisibility(helperMesh, shouldShowSelection)') &&
+  localLightVisualFn.includes('setLocalLightEditorMeshVisibility(item.helperMesh, shouldShowSelection)'));
 
 expect('fast selection clear skips hidden editor UI rebuilds',
   !selectionFn.includes('updateArtworkImageUi(') &&

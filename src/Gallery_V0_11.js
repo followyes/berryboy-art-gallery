@@ -146,6 +146,7 @@ import {
   - V14.1.4: Gallery Authoring Assigned-Space Settle — assigned Floor/Walls/Ceiling/Props start immediately in authoring preview and must reach loaded/failed terminal state before compatibility READY.
   - V14.1.5: Admin Visible Hydration Batch — Admin assigned artwork Previews, Frames, sculpture/models and Shared Props settle as one policy-driven visible batch before Admin preview is considered visually settled.
   - V14.1.5.1: GLB Runtime Truth — sculpture/model completion requires real renderable meshes, queued is distinct from loaded, direct Sculpture GLB uploads are deep-validated, and Admin exposes explicit unavailable/retry state instead of an ambiguous placeholder.
+  - V14.4.4.1: Local Light Editor Resume Hotfix — same-runtime Public Preview → Admin restores Local Light editor markers/pickability without a full placeholder rebuild, and helper cone/range visibility restores the Babylon visibility scalar after Viewer hiding.
   - V14.1.8: One Readiness Authority — policy-defined `gallery-scene-readiness / scene-visually-settled` is the canonical lifecycle completion truth; legacy interaction-ready is compatibility-only and Viewer intro unlock reads the canonical authority.
   - V14.1.9: Pre-Interaction Complete Walkthrough Hydration — assigned Venue Props plus Public/Admin Frames, sculpture/models and Shared Props settle behind the canonical gate through one bounded heavy-import scheduler, followed by final collision/light/shadow commit and walkthrough GPU warmup.
   - V14.1.10: No-Reload Residency & Frame-Time Closure — active Public/Admin walkthrough renderables are visit-resident after final settle, split Space surfaces stay in Babylon active selection, normal walk no longer triggers model eviction/re-import or autonomous Preview/Full swaps, and post-unlock frame diagnostics cover rapid camera turns.
@@ -30322,8 +30323,13 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
         var isLocalModeActive = isLocalLightsPanelActive();
         var shouldShowSelection = isLocalModeActive && item.selected;
+        var shouldShowMarker = editMode || !viewerHideLocalLightEditorMeshes;
 
-        item.markerMesh.isPickable = editMode;
+        // V14.4.4.1 HOTFIX — Public Preview hides Local Light editor meshes by
+        // setting both isVisible=false and visibility=0. Restoring only isVisible
+        // later leaves the helper effectively invisible. Always restore the full
+        // editor visibility tuple when Local Light visuals are refreshed.
+        setLocalLightEditorMeshVisibility(item.markerMesh, shouldShowMarker);
 
         item.markerMesh.renderOutline = false;
         item.markerMesh.renderOverlay = false;
@@ -30348,11 +30354,11 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         if (item.helperMeshes && item.helperMeshes.length) {
             item.helperMeshes.forEach(function (helperMesh) {
                 if (helperMesh) {
-                    helperMesh.isVisible = shouldShowSelection;
+                    setLocalLightEditorMeshVisibility(helperMesh, shouldShowSelection);
                 }
             });
         } else if (item.helperMesh) {
-            item.helperMesh.isVisible = shouldShowSelection;
+            setLocalLightEditorMeshVisibility(item.helperMesh, shouldShowSelection);
         }
 
         if (localLightSegmentDiagnosticsOutlineAutoRefresh) {
@@ -33600,6 +33606,11 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             // Public→Admin is already fast enough and can keep the complete editor refresh.
             clearEditSelection();
             setEditorUiVisible(true);
+            // V14.4.4.1 HOTFIX: Admin→Public deliberately hides Local Light markers
+            // without rebuilding the scene. The same-runtime return must restore only
+            // those lightweight editor meshes, otherwise saved lights remain present
+            // but invisible/unpickable and can no longer be edited or deleted.
+            updateViewerModeLocalLightPlaceholderVisibility();
             setMobileViewerUiVisible(false);
             if (mobileViewerEnabled) attachGalleryCameraControl();
             updateEditHelpStatus();
