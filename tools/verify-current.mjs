@@ -50,7 +50,7 @@ assert(bootstrap.includes('v14_4_3_canonical_shared_asset_replace_20260917')&&ad
 assert(index.includes('gallery-viewer-bootstrap.js?v=v14_4_3_canonical_shared_asset_replace'),'V14.4.3 viewer cache key missing');
 assert(admin.includes('admin-workspace-bootstrap.js?v=v14_4_3_canonical_shared_asset_replace'),'V14.4.3 Admin cache key missing');
 const currentPackage=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
-assert(currentPackage.version==='0.14.4-v14-4-3-canonical-shared-asset-replace-propagation'&&currentPackage.description.includes('V14.4.3 Canonical Shared Asset Replace Propagation'),'V14.4.3 package identity missing');
+assert(currentPackage.version==='0.14.4-v14-4-4-shared-asset-gallery-version-gc-authority'&&currentPackage.description.includes('V14.4.4 Shared Asset + Gallery Version GC Authority'),'V14.4.4 package identity missing');
 
 
 assert(sharedAssetState.includes('SHARED_ASSET_AUTHORITY_STAGE = "V14.4.2"')&&sharedAssetState.includes('collectSharedAssetIds')&&sharedAssetState.includes('hydrateSharedAssetReferencesWithCurrentVersions'),'V14.4.2 logical Shared Asset state authority missing');
@@ -322,6 +322,7 @@ const expectedRegressionSuites=[
   'test-shared-assets.mjs',
   'test-space-model-validation.mjs',
   'test-transition-session-ownership.mjs',
+  'test-version-gc-authority.mjs',
   'test-walkthrough-hydration.mjs',
   'test-workspace-ui.mjs'
 ];

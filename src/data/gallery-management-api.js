@@ -312,6 +312,17 @@ export function createGalleryManagementApi({ supabase }) {
       return venue;
     },
 
+    async gcVersion(venueVersionId) {
+      const plan = one(await supabase.rpc("admin_prepare_venue_version_gc", { p_venue_version_id: venueVersionId }));
+      if (!plan) throw new Error("Gallery Version GC preparation returned no result.");
+      // Do not cancel a prepared Version GC after Storage deletion starts. A partial
+      // bucket delete must stay retryable and must never reactivate an incomplete Version.
+      await removeStorageItemsOrThrow(supabase, plan.storageItems || plan.storage_items || []);
+      const result = one(await supabase.rpc("admin_finalize_venue_version_gc", { p_venue_version_id: venueVersionId }));
+      if (!result || result.deleted !== true) throw new Error("Gallery Version GC returned no confirmation.");
+      return result;
+    },
+
     async deletePermanent(venueId) {
       let prepared = false;
       try {

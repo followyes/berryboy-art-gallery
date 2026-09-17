@@ -34,7 +34,7 @@ function expect(label, ok) {
   console.log(`✓ ${label}`);
 }
 
-expect('V14.4.3 package preserves V14.4.2 logical Shared Asset authority', pkg.version === '0.14.4-v14-4-3-canonical-shared-asset-replace-propagation' && SHARED_ASSET_AUTHORITY_STAGE === 'V14.4.2');
+expect('V14.4.3 package preserves V14.4.2 logical Shared Asset authority', pkg.version === '0.14.4-v14-4-4-shared-asset-gallery-version-gc-authority' && SHARED_ASSET_AUTHORITY_STAGE === 'V14.4.2');
 expect('Shared Asset product adapter is V14.3.8 over the existing shared-assets domain', SHARED_ASSET_STAGE === 'V14.3.8' && SHARED_ASSET_BUCKET === 'shared-assets');
 expect('independent Shared Asset validator schema is frozen', SHARED_ASSET_VALIDATION_SCHEMA === 'exhibition-platform-shared-asset-validation.v1' && SHARED_ASSET_VALIDATOR_VERSION === 'V13.1');
 expect('renderable GLB worker preserves Shared Asset prop/frame and adds Sculpture validation without Gallery Space roles', workerSource.includes('["prop","frame","sculpture"]') && workerSource.includes('assetType') && !workerSource.includes('["floor","walls","ceiling","props"]'));

@@ -1,11 +1,19 @@
 # Exhibition Platform
 
-Current repository release: **V14.4.3 — Canonical Shared Asset Replace Propagation**.
+Current repository release: **V14.4.4 — Shared Asset + Gallery Version GC Authority**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
 
 
+
+## V14.4.4 Shared Asset + Gallery Version GC Authority
+
+V14.4.4 adds guarded **per-version** garbage-collection authority without running a historical cleanup. Shared Asset Versions and Gallery Versions receive explicit eligibility/pending state, with a fixed 7-day hold measured from supersession. Prepare RPCs recheck current pointers and retained references, mark one exact version GC-pending and return the narrowly authorized Storage objects. The browser adapter deletes those objects through the Supabase Storage API; finalize RPCs recheck database and Storage truth before removing the technical version row.
+
+Shared Assets distinguish normal logical `assetId` usages from unresolved legacy exact-only holds through `exact_version_required`; modern nullable exact provenance may be released when an old version is prepared for GC. Gallery Version GC protects current Published/Draft/Previous pointers, every exact Venue Version retained by Exhibition Draft/Published/Previous provenance, and any physical Gallery path still shared by another surviving `venue_assets` row.
+
+No historical sweep occurs in V14.4.4. The uncertain/orphan-looking `venue-runtime` GLBs inventoried by V14.4.1 remain untouched for V14.4.5. Database upgrade SQL remains outside REPO in the release package.
 
 ## V14.4.3 Canonical Shared Asset Replace Propagation
 

@@ -1,4 +1,4 @@
-/* Exhibition Platform — V14.3.8 Simplified Shared Asset lifecycle adapter. */
+/* Exhibition Platform — V14.4.4 Shared Asset lifecycle + per-Version GC authority adapter. */
 
 import {
   SHARED_ASSET_BUCKET,
@@ -9,6 +9,7 @@ import {
 } from "../validation/shared-asset-validation.js";
 
 export const SHARED_ASSET_STAGE = "V14.3.8";
+export const SHARED_ASSET_GC_STAGE = "V14.4.4";
 export { SHARED_ASSET_BUCKET };
 
 function text(value) { return String(value == null ? "" : value).trim(); }
@@ -101,6 +102,17 @@ export function createSharedAssetApi({ supabase }) {
     return version;
   }
 
+  async function gcVersion(assetVersionId) {
+    const plan = one(await supabase.rpc("admin_prepare_shared_asset_version_gc", { p_asset_version_id: assetVersionId }));
+    if (!plan) throw new Error("Shared Asset Version GC preparation returned no result.");
+    // Version GC has the same retry boundary as whole-Asset deletion: after prepare,
+    // never reactivate the technical version if Storage removal is partial.
+    await removeStorageItemsOrThrow(supabase, plan.storageItems || plan.storage_items || []);
+    const result = one(await supabase.rpc("admin_finalize_shared_asset_version_gc", { p_asset_version_id: assetVersionId }));
+    if (!result || result.deleted !== true) throw new Error("Shared Asset Version GC returned no confirmation.");
+    return result;
+  }
+
   async function deletePermanent(assetId) {
     const plan = one(await supabase.rpc("admin_prepare_shared_asset_delete", { p_asset_id: assetId }));
     if (!plan) throw new Error("Shared Asset delete preparation returned no result.");
@@ -170,6 +182,7 @@ export function createSharedAssetApi({ supabase }) {
 
   return Object.freeze({
     stage: SHARED_ASSET_STAGE,
+    gcStage: SHARED_ASSET_GC_STAGE,
     bucket: SHARED_ASSET_BUCKET,
 
     async list({ assetType = null, scopeVenueId = null, includeArchived = false, search = null } = {}) {
@@ -261,6 +274,10 @@ export function createSharedAssetApi({ supabase }) {
 
     async restore(assetId) {
       return one(await supabase.rpc("admin_restore_shared_asset", { p_asset_id: assetId }));
+    },
+
+    async gcVersion(assetVersionId) {
+      return gcVersion(assetVersionId);
     },
 
     async deletePermanent(assetId) {
