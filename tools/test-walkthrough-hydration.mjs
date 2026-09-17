@@ -40,8 +40,8 @@ function functionBody(name) {
   throw new Error(`Could not extract ${name}`);
 }
 
-assert.equal(pkg.version, '0.14.3-v14-3-11-full-regression-docs-closure');
-assert.ok(pkg.description.includes('V14.3.11 Full Regression / Docs / Closure'));
+assert.equal(pkg.version, '0.14.4-v14-4-2-logical-shared-asset-authority');
+assert.ok(pkg.description.includes('V14.4.2 Logical Shared Asset Authority Foundation'));
 
 for (const context of ['public-exhibition', 'admin-exhibition']) {
   const policy = createSceneLoadingPolicy(context);

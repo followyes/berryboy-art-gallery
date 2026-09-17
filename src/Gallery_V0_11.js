@@ -9868,6 +9868,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             : (frameState.runtime_metadata && typeof frameState.runtime_metadata === "object" ? cloneGalleryJson(frameState.runtime_metadata) : {});
         return {
             assetId: String(frameState.assetId || frameState.asset_id || "").trim() || null,
+            authoredAgainstAssetVersionId: String(frameState.authoredAgainstAssetVersionId || frameState.authored_against_asset_version_id || frameState.assetVersionId || frameState.asset_version_id || "").trim() || null,
             assetVersionId: String(frameState.assetVersionId || frameState.asset_version_id || "").trim() || null,
             assetVersionNumber: Number(frameState.assetVersionNumber || frameState.asset_version_number) || null,
             assetType: "frame",
@@ -9896,6 +9897,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         if (!frameState) return null;
         return {
             assetId: frameState.assetId || null,
+            authoredAgainstAssetVersionId: frameState.authoredAgainstAssetVersionId || frameState.assetVersionId || null,
             assetVersionId: frameState.assetVersionId || null,
             assetVersionNumber: frameState.assetVersionNumber || null,
             assetType: "frame",
@@ -39621,6 +39623,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         runtimeMetadata.placementMode = "artwork-only";
         return normalizeArtworkFrameState({
             assetId: assetId,
+            authoredAgainstAssetVersionId: value.authoredAgainstAssetVersionId || value.authored_against_asset_version_id || assetVersionId,
             assetVersionId: assetVersionId,
             assetVersionNumber: Number(value.assetVersionNumber || value.asset_version_number) || null,
             assetType: "frame",
@@ -39745,6 +39748,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             schema: "exhibition-platform-prop-placement.v1",
             instanceId: String(value.instanceId || value.id || "").trim() || null,
             assetId: assetId,
+            authoredAgainstAssetVersionId: String(value.authoredAgainstAssetVersionId || value.authored_against_asset_version_id || assetVersionId || "").trim() || null,
             assetVersionId: assetVersionId,
             assetVersionNumber: Number(value.assetVersionNumber || value.asset_version_number) || null,
             assetType: "prop",
@@ -39788,6 +39792,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return {
             instanceId: descriptor.instanceId,
             assetId: descriptor.assetId,
+            authoredAgainstAssetVersionId: descriptor.authoredAgainstAssetVersionId || descriptor.assetVersionId || null,
             assetVersionId: descriptor.assetVersionId,
             assetVersionNumber: descriptor.assetVersionNumber || null,
             assetType: "prop",

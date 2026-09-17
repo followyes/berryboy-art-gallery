@@ -1,9 +1,20 @@
 # Exhibition Platform
 
-Current repository release: **V14.3.11 — Full Regression / Docs / Closure**.
+Current repository release: **V14.4.2 — Logical Shared Asset Authority Foundation**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
+
+
+## V14.4.2 Logical Shared Asset Authority Foundation
+
+Shared Prop/Frame placement truth is now the logical `assetId`. On every Public/Admin Exhibition load, the canonical data adapter resolves all referenced logical Assets in one batch through `shared_assets.published_version_id` and hydrates runtime descriptors with the current published model before Babylon state application. Existing placement/binding transforms remain Exhibition-owned.
+
+Exact `assetVersionId` is retained only as provenance/legacy compatibility (`authoredAgainstAssetVersionId`); it is no longer the normal runtime authority for choosing the model. Legacy states without `assetId` remain readable through their exact stored descriptor.
+
+The derived `shared_asset_usages` index now stores `asset_id` as its primary logical reference and keeps `asset_version_id` nullable as provenance. The synchronizer reads both modern `editor.assetInstances` and `editor.artworks`, with root-level legacy fallbacks. Permanent whole-Asset Delete guards now check logical usages directly.
+
+V14.4.2 performs **no Shared Asset or Gallery GLB garbage collection**. Historical Storage cleanup remains deferred to V14.4.4/V14.4.5 after dedicated GC authority.
 
 ## V14.3.11 Full Regression / Docs / Closure
 
@@ -24,15 +35,15 @@ V14.3.10 is PASS/CLOSED. It changes no schema, RPC, RLS or Storage policy.
 
 Shared Props and artwork-only Frames now use one pointer-driven placement model across mouse, pen and touch. Asset tiles use Pointer Events with movement threshold + pointer capture instead of normal HTML5 `dragstart`/DataTransfer placement. Prop drops are accepted only on the current Gallery floor; Frame drops are accepted only on artworks.
 
-The old normal `PLACE PROP / CANCEL PLACE` ceremony is removed. Prop drag keeps the existing floor ghost and creates exactly one Exhibition-owned instance on a valid drop. Frame drag binds the exact current immutable Asset Version to the dropped artwork. Existing Frame `CHANGE` click-binding remains only as a compatibility shortcut.
+The old normal `PLACE PROP / CANCEL PLACE` ceremony is removed. Prop drag keeps the existing floor ghost and creates exactly one Exhibition-owned instance on a valid drop. Frame drag records the logical Shared Asset identity plus exact authored-version provenance on the dropped artwork. Existing Frame `CHANGE` click-binding remains only as a compatibility shortcut.
 
-Drop revalidates the active Exhibition, logical Gallery and exact `venueVersionId` before mutating state. Exact immutable `assetVersionId` serialization remains unchanged. Touch tiles keep `touch-action: pan-y`, so vertical Asset Library scrolling remains possible while intentional cross-panel placement uses the same pointer path.
+Drop revalidates the active Exhibition, logical Gallery and exact `venueVersionId` before mutating state. `assetId` is the runtime authority; exact `assetVersionId` is retained as provenance/legacy compatibility. Touch tiles keep `touch-action: pan-y`, so vertical Asset Library scrolling remains possible while intentional cross-panel placement uses the same pointer path.
 
 V14.3.9 changes no schema, RPC, RLS or Storage policy. V14.3.8 Add/Replace/Delete lifecycle and Public/Scene lifecycle contracts remain unchanged.
 
 ## V14.3.8 Simplified Shared Asset Lifecycle
 
-Shared Asset normal lifecycle is `Add / Replace -> Use -> Delete`. Add creates a validated immediately usable Asset; Replace publishes a new immutable technical version only after validation and affects future placements only. Existing Props/Frames stay pinned to their exact historical `assetVersionId`. Permanent Delete uses retained-reference guards, deletion-pending state, exact Storage cleanup and final DB recheck.
+Shared Asset normal lifecycle is `Add / Replace -> Use -> Delete`. Add creates a validated immediately usable Asset; Replace publishes a new immutable technical version only after validation and affects future placements only. Existing historical states keep exact version provenance, but V14.4.2 resolves logical `assetId` to the current Published model at load time. Permanent Delete uses retained-reference guards, deletion-pending state, exact Storage cleanup and final DB recheck.
 
 V14.3.8 is PASS/CLOSED. Its applied migration is archive-only in the release package.
 
@@ -127,7 +138,7 @@ Specific Gallery names are data. They are not platform/runtime branding.
 - `src/data/gallery-management-api.js` — controlled Gallery lifecycle/Storage adapter.
 - `src/data/shared-asset-api.js` — guarded Shared Asset catalog/version adapter, V13.2 thumbnail bridge and V13.3 Published runtime descriptor read.
 - `src/bootstrap/admin-asset-workspace.js` — canonical left Asset Manager with V14.3.8 Add/Replace/Delete lifecycle and V14.3.9 unified pointer placement for Props/Frames, shared by standalone and inline Admin.
-- `src/runtime/shared-asset-state.js` — V13.1 immutable Shared Asset reference/state-manifest contract for later Exhibition dressing.
+- `src/runtime/shared-asset-state.js` — V14.4.2 logical Shared Asset reference/current-version hydration contract with exact-version provenance compatibility.
 - `src/validation/shared-asset-validation.js` — V13.1 Prop/Frame GLB validation coordinator.
 - `src/validation/sculpture-model-validation.js` — V14.1.5.1 direct Sculpture deep GLB validation coordinator.
 - `src/workers/shared-asset-glb-validator-worker.js` — hardened streaming renderable-GLB validator used by reusable Props/Frames and V14.1.5.1 Sculpture validation.

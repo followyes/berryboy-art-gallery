@@ -1,8 +1,8 @@
 {
   "name": "exhibition-platform",
-  "version": "0.14.3-v14-3-11-full-regression-docs-closure",
+  "version": "0.14.4-v14-4-2-logical-shared-asset-authority",
   "private": true,
-  "description": "Exhibition Platform — V14.3.11 Full Regression / Docs / Closure",
+  "description": "Exhibition Platform — V14.4.2 Logical Shared Asset Authority Foundation",
   "type": "module",
   "scripts": {
     "build": "node tools/build-current.mjs",

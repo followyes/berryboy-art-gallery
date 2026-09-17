@@ -5,7 +5,7 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { registerExhibitionAssetCache, getExhibitionAssetCacheStatus, getExhibitionAssetDeliveryStats, evictExhibitionAssetCacheUrl } from "./asset-cache-bootstrap.js?v=c6c8c22_gallery_management_20260908";
 import { beginTransitionGuard, endTransitionGuard, isTransitionGuardActive } from "./transition-guard.js?v=v14_2_6_draft_publish_20260914";
-import { createExhibitionDataAdapter, resolveInitialAdminRuntime } from "../data/exhibition-api.js?v=v14_3_7_1_product_save";
+import { createExhibitionDataAdapter, resolveInitialAdminRuntime } from "../data/exhibition-api.js?v=v14_4_2_logical_shared_asset_authority";
 import { createGalleryManagementApi, CONTROLLED_GALLERY_ASSET_ROLES } from "../data/gallery-management-api.js?v=v14_3_7_1_product_save";
 import {
   REQUIRED_GALLERY_MODEL_ROLES,
@@ -22,7 +22,7 @@ import { createAdminAssetWorkspace } from "./admin-asset-workspace.js?v=v14_3_9_
 const STAGE = "V14.1.10.1";
 const ADMIN_PRODUCT_MODEL_STAGE = "V14.3.7";
 const ADMIN_PRODUCT_CORRECTION_STAGE = "V14.3.7.1";
-const ENGINE_CACHE_KEY = "v14_3_10_wall_tint_20260916";
+const ENGINE_CACHE_KEY = "v14_4_2_logical_shared_asset_authority_20260917";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
 const inlineRuntimeContext = window.__EXHIBITION_INLINE_ADMIN_CONTEXT__ || null;

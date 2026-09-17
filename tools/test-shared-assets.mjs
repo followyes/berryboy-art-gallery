@@ -9,8 +9,11 @@ import {
 } from '../src/validation/shared-asset-validation.js';
 import {
   SHARED_ASSET_STATE_SCHEMA,
+  SHARED_ASSET_AUTHORITY_STAGE,
   buildSharedAssetManifest,
   collectSharedAssetReferences,
+  collectSharedAssetIds,
+  hydrateSharedAssetReferencesWithCurrentVersions,
   findLegacyFrameCatalogMatch
 } from '../src/runtime/shared-asset-state.js';
 import { createSharedAssetApi, SHARED_ASSET_BUCKET, SHARED_ASSET_STAGE } from '../src/data/shared-asset-api.js';
@@ -24,19 +27,23 @@ const stateSource = fs.readFileSync(new URL('src/runtime/shared-asset-state.js',
 const assetWorkspaceSource = fs.readFileSync(new URL('src/bootstrap/admin-asset-workspace.js', root), 'utf8');
 const adminSource = fs.readFileSync(new URL('src/bootstrap/admin-workspace-bootstrap.js', root), 'utf8');
 const gallerySource = fs.readFileSync(new URL('src/Gallery_V0_11.js', root), 'utf8');
+const exhibitionApiSource = fs.readFileSync(new URL('src/data/exhibition-api.js', root), 'utf8');
 
 function expect(label, ok) {
   if (!ok) throw new Error(`V13.1 Shared Asset invariant failed: ${label}`);
   console.log(`✓ ${label}`);
 }
 
-expect('V14.3.11 closure package preserves the Shared Asset runtime foundation', pkg.version === '0.14.3-v14-3-11-full-regression-docs-closure');
+expect('V14.4.2 package establishes logical Shared Asset authority', pkg.version === '0.14.4-v14-4-2-logical-shared-asset-authority' && SHARED_ASSET_AUTHORITY_STAGE === 'V14.4.2');
 expect('Shared Asset product adapter is V14.3.8 over the existing shared-assets domain', SHARED_ASSET_STAGE === 'V14.3.8' && SHARED_ASSET_BUCKET === 'shared-assets');
 expect('independent Shared Asset validator schema is frozen', SHARED_ASSET_VALIDATION_SCHEMA === 'exhibition-platform-shared-asset-validation.v1' && SHARED_ASSET_VALIDATOR_VERSION === 'V13.1');
 expect('renderable GLB worker preserves Shared Asset prop/frame and adds Sculpture validation without Gallery Space roles', workerSource.includes('["prop","frame","sculpture"]') && workerSource.includes('assetType') && !workerSource.includes('["floor","walls","ceiling","props"]'));
 expect('Shared Asset API uses guarded canonical RPCs', apiSource.includes('admin_create_shared_asset') && apiSource.includes('admin_create_shared_asset_version') && apiSource.includes('admin_register_shared_asset_version_binary') && apiSource.includes('admin_publish_shared_asset_version'));
 expect('immutable upload uses UUID version path returned by server and no upsert', apiSource.includes('version.storage_path') && apiSource.includes('upsert: false'));
-expect('Shared Asset state contract remains separate from Venue props', stateSource.includes('exhibition-platform-state-assets.v1') && !stateSource.includes('venue_assets'));
+expect('Shared Asset state contract remains separate from Venue props', stateSource.includes('exhibition-platform-state-assets.v2') && !stateSource.includes('venue_assets'));
+expect('V14.4.2 Exhibition resolver hydrates logical assetId references through current Published Versions', exhibitionApiSource.includes('resolve_shared_asset_current_versions') && exhibitionApiSource.includes('hydrateSharedAssetReferencesWithCurrentVersions') && exhibitionApiSource.includes('collectSharedAssetIds'));
+expect('V14.4.2 normal state keeps exact version only as authored provenance', gallerySource.includes('authoredAgainstAssetVersionId') && stateSource.includes('authoredAgainstAssetVersionId'));
+expect('V14.4.2 modern Frames are extracted from nested editor.artworks', stateSource.includes('state.editor.artworks')); 
 expect('V14.3.9 Asset Manager preserves product Add/Replace without technical versions', assetWorkspaceSource.includes('ADMIN_ASSET_WORKSPACE_STAGE = "V14.3.9"') && assetWorkspaceSource.includes('Asset Library') && assetWorkspaceSource.includes('REPLACE MODEL') && assetWorkspaceSource.includes('ADD MODEL') && !assetWorkspaceSource.includes('PUBLISH VERSION') && !assetWorkspaceSource.includes('Version history'));
 expect('V13.2 admin exposes three left top-level sections', adminSource.includes('data-section=\"exhibitions\"') && adminSource.includes('data-section=\"galleries\"') && adminSource.includes('data-section=\"assets\"'));
 expect('V13.2 thumbnail API uses guarded Shared Asset RPCs', apiSource.includes('admin_register_shared_asset_thumbnail') && apiSource.includes('admin_clear_shared_asset_thumbnail') && apiSource.includes('/thumbnails/'));
@@ -63,7 +70,7 @@ expect('V13.5 unavailable Prop runtime preserves references and exposes retry', 
 expect('V13.5 unavailable Frame binding preserves state and exposes retry', gallerySource.includes('MODEL UNAVAILABLE — binding preserved') && gallerySource.includes('artworkFrameRetryButton') && gallerySource.includes('artworkFrameUnavailable'));
 expect('V13.5 shared asset integrity diagnostics expose unavailable Props and Frames', gallerySource.includes('exhibition-platform-shared-asset-integrity.v1') && gallerySource.includes('getSharedAssetIntegrityDebug'));
 expect('V14.3.8 normal Asset lifecycle removes Archive/Restore and uses guarded permanent Delete', !assetWorkspaceSource.includes('ARCHIVE ASSET') && !assetWorkspaceSource.includes('RESTORE ASSET') && assetWorkspaceSource.includes('sharedAssetDeleteButton') && assetWorkspaceSource.includes('api.deletePermanent'));
-expect('V14.3.8 Replace auto-publishes hidden technical versions and preserves exact placement references', apiSource.includes('async function replaceModel') && apiSource.includes('admin_publish_shared_asset_version') && apiSource.includes('discardDraftVersion(uploaded.version') && stateSource.includes('assetVersionId'));
+expect('V14.3.8 Replace still auto-publishes hidden technical versions while V14.4.2 runtime resolves logical current', apiSource.includes('async function replaceModel') && apiSource.includes('admin_publish_shared_asset_version') && apiSource.includes('discardDraftVersion(uploaded.version') && stateSource.includes('assetId')); 
 expect('V14.3.8 Add creates one usable Asset and cleans a failed new identity best-effort', apiSource.includes('async addWithModel') && apiSource.includes('await replaceModel(created.id') && apiSource.includes('await deletePermanent(created.id)'));
 expect('V14.3.8 permanent Delete is two-phase and removes returned Storage inventory before final DB delete', apiSource.includes('admin_prepare_shared_asset_delete') && apiSource.includes('removeStorageItemsOrThrow') && apiSource.includes('admin_delete_shared_asset'));
 
@@ -80,7 +87,7 @@ const propInstanceId = '55555555-5555-4555-8555-555555555555';
 expect('V13.6 aggregate production-closure runtime snapshot is exposed', gallerySource.includes('getV13ProductionClosureDebug') && gallerySource.includes('exhibition-platform-v13-production-closure.v1') && gallerySource.includes('currentSnapshotHealthy'));
 expect('V13.6 closure snapshot carries exact Space identity and lifecycle ownership counters', gallerySource.includes('venueVersionId: galleryActiveVenueVersionId') && gallerySource.includes('sameSpaceSwitchCount') && gallerySource.includes('fullRuntimeResetCount') && gallerySource.includes('ownershipViolations') && gallerySource.includes('workspaceModeAuditFailures'));
 
-const closureTenInstances = Array.from({ length: 10 }, (_, index) => ({ instanceId: `bench-copy-${String(index + 1).padStart(2, '0')}`, assetVersionId: propVersionId }));
+const closureTenInstances = Array.from({ length: 10 }, (_, index) => ({ instanceId: `bench-copy-${String(index + 1).padStart(2, '0')}`, assetId, assetVersionId: propVersionId }));
 const closureTenRefs = collectSharedAssetReferences({ editor: { assetInstances: closureTenInstances }, artworks: [] });
 assert.equal(closureTenRefs.length, 10);
 assert.equal(new Set(closureTenRefs.map((entry) => entry.usageKey)).size, 10);
@@ -91,8 +98,8 @@ expect('V13.6 duplicate Prop instance identity is rejected instead of silently c
 const closureMixedRefs = collectSharedAssetReferences({
   editor: { assetInstances: closureTenInstances },
   artworks: [
-    { artworkId: 'closure-artwork-a', frame: { assetVersionId: frameVersionId } },
-    { artworkId: 'closure-artwork-b', frame: { assetVersionId: frameVersionId } }
+    { artworkId: 'closure-artwork-a', frame: { assetId, assetVersionId: frameVersionId } },
+    { artworkId: 'closure-artwork-b', frame: { assetId, assetVersionId: frameVersionId } }
   ]
 });
 assert.equal(closureMixedRefs.filter((entry) => entry.usageType === 'prop-instance').length, 10);
@@ -111,16 +118,26 @@ assert.equal(manifest.versions[propVersionId].assetType, 'prop');
 expect('state manifest is keyed by immutable assetVersionId', true);
 
 const refs = collectSharedAssetReferences({
-  assetInstances: [{ instanceId: propInstanceId, assetVersionId: propVersionId }],
-  artworks: [{ artworkId, frame: { assetVersionId: frameVersionId } }]
+  editor: {
+    assetInstances: [{ instanceId: propInstanceId, assetId, assetVersionId: propVersionId }],
+    artworks: [{ artworkId, frame: { assetId, assetVersionId: frameVersionId } }]
+  }
 });
 assert.deepEqual(refs, [
-  { assetVersionId: propVersionId, usageType: 'prop-instance', usageKey: propInstanceId },
-  { assetVersionId: frameVersionId, usageType: 'artwork-frame', usageKey: artworkId }
+  { assetId, assetVersionId: propVersionId, usageType: 'prop-instance', usageKey: propInstanceId },
+  { assetId, assetVersionId: frameVersionId, usageType: 'artwork-frame', usageKey: artworkId }
 ]);
+assert.deepEqual(collectSharedAssetIds({ editor: { assetInstances: [{ assetId }], artworks: [{ frame: { assetId } }] } }), [assetId]);
+const currentPropVersionId = '66666666-6666-4666-8666-666666666666';
+const hydrated = hydrateSharedAssetReferencesWithCurrentVersions({ editor: { assetInstances: [{ instanceId: propInstanceId, assetId, assetVersionId: propVersionId }], artworks: [] } }, [{
+  asset_id: assetId, asset_type: 'prop', asset_name: 'Bench', published_version_id: currentPropVersionId, published_version_number: 2, storage_bucket: 'shared-assets', storage_path: `assets/${assetId}/versions/${currentPropVersionId}/model.glb`, runtime_metadata: { placementMode: 'floor', defaultScale: 1 }
+}]);
+assert.equal(hydrated.editor.assetInstances[0].assetVersionId, currentPropVersionId);
+assert.equal(hydrated.editor.assetInstances[0].authoredAgainstAssetVersionId, propVersionId);
 expect('V14.3.8 permanent Delete never auto-cancels deletion-pending after Storage cleanup begins', apiSource.includes('Once prepare-delete succeeds, never automatically reactivate the Asset') && !apiSource.includes('if (prepared) await supabase.rpc("admin_cancel_shared_asset_delete"'));
 
-expect('state reference extractor finds Prop instances and artwork-only Frames', true);
+expect('V14.4.2 state reference extractor finds logical Props and nested artwork Frames', true);
+expect('V14.4.2 hydration resolves current binary without rewriting placement identity', true);
 
 const legacy = findLegacyFrameCatalogMatch(
   { storageBucket: 'gallery-artworks', storagePath: 'main/frames/classic-oak.glb' },
@@ -160,4 +177,4 @@ assert.equal(rpcCalls[0][1].p_asset_type, 'prop');
 assert.equal((await api.get(assetId)).asset.id, assetId);
 expect('data adapter keeps catalog/get reads compatible while V14.3.8 adds product lifecycle orchestration', true);
 
-console.log('Shared Asset foundation/runtime invariants plus V14.3.8 lifecycle + V14.3.9 unified pointer placement passed.');
+console.log('Shared Asset foundation/runtime invariants plus V14.4.2 logical authority passed.');

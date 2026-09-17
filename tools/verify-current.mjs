@@ -46,12 +46,16 @@ function extractFunction(text,name){const ms=[`async function ${name}(`,`functio
 assert(index.includes('stage: "V14.1.10.1"'),'Index stage identity missing');
 assert(bootstrap.includes('const STAGE = "V14.1.10.1"'),'Viewer stage identity missing');
 assert(adminBootstrap.includes('const STAGE = "V14.1.10.1"'),'Admin stage identity missing');
-assert(bootstrap.includes('v14_3_10_wall_tint_20260916')&&adminBootstrap.includes('v14_3_10_wall_tint_20260916'),'V14.3.10 engine cache key missing');
-assert(index.includes('gallery-viewer-bootstrap.js?v=v14_3_10_wall_tint'),'V14.3.10 viewer cache key missing');
-assert(admin.includes('admin-workspace-bootstrap.js?v=v14_3_10_wall_tint'),'V14.3.10 Admin cache key missing');
+assert(bootstrap.includes('v14_4_2_logical_shared_asset_authority_20260917')&&adminBootstrap.includes('v14_4_2_logical_shared_asset_authority_20260917'),'V14.4.2 engine cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=v14_4_2_logical_shared_asset_authority'),'V14.4.2 viewer cache key missing');
+assert(admin.includes('admin-workspace-bootstrap.js?v=v14_4_2_logical_shared_asset_authority'),'V14.4.2 Admin cache key missing');
 const currentPackage=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
-assert(currentPackage.version==='0.14.3-v14-3-11-full-regression-docs-closure'&&currentPackage.description.includes('V14.3.11 Full Regression / Docs / Closure'),'V14.3.11 closure package identity missing');
+assert(currentPackage.version==='0.14.4-v14-4-2-logical-shared-asset-authority'&&currentPackage.description.includes('V14.4.2 Logical Shared Asset Authority Foundation'),'V14.4.2 package identity missing');
 
+
+assert(sharedAssetState.includes('SHARED_ASSET_AUTHORITY_STAGE = "V14.4.2"')&&sharedAssetState.includes('collectSharedAssetIds')&&sharedAssetState.includes('hydrateSharedAssetReferencesWithCurrentVersions'),'V14.4.2 logical Shared Asset state authority missing');
+assert(exhibitionApi.includes('resolve_shared_asset_current_versions')&&exhibitionApi.includes('resolveLogicalSharedAssetState'),'V14.4.2 current Shared Asset resolver bridge missing');
+assert(source.includes('authoredAgainstAssetVersionId'),'V14.4.2 Shared Asset provenance serialization missing');
 assert(source.includes('V14.3.10 — WALL TINT SYSTEM')&&source.includes('wallTintInput.type = "color"')&&source.includes('wallTintHexInput.maxLength = 7'),'V14.3.10 arbitrary wall tint authoring UI missing');
 assert(source.includes('legacyWallTintByName')&&source.includes('getWallTintHexFromState')&&source.includes('tintHex: getWallTintHexForMesh(wallMesh)'),'V14.3.10 tint persistence/legacy read compatibility missing');
 assert(source.includes('applyWallTintColorChannel(material, "albedoColor"')&&source.includes('applyWallTintColorChannel(material, "diffuseColor"')&&source.includes('wallTintAuthoredColors'),'V14.3.10 authored base-color multiply path missing');
@@ -138,7 +142,7 @@ assert(source.includes('residentRevision === canonicalRevision')&&source.include
 assert(!extractFunction(source,'finishGalleryStartup').includes('Math.PI / 50')&&extractFunction(source,'finishGalleryStartup').includes('gallerySpaceEntryTarget'),'V14.1.10.1 exact Entry Point direction reset missing');
 assert(reentryTest.includes('Public fresh-visit + resident re-entry regression passed.'),'V14.1.10.1 executable re-entry regression missing');
 assert(sharedAssetApi.includes('SHARED_ASSET_STAGE = "V14.3.8"')&&sharedAssetApi.includes('admin_publish_shared_asset_version')&&sharedAssetApi.includes('admin_prepare_shared_asset_delete'),'V14.3.8 Shared Asset product adapter missing');
-assert(sharedAssetState.includes('exhibition-platform-state-assets.v1')&&sharedAssetState.includes('collectSharedAssetReferences'),'V13.1 Shared Asset state contract missing');
+assert(sharedAssetState.includes('exhibition-platform-state-assets.v2')&&sharedAssetState.includes('collectSharedAssetReferences')&&sharedAssetState.includes('collectSharedAssetIds')&&sharedAssetState.includes('hydrateSharedAssetReferencesWithCurrentVersions'),'V14.4.2 Shared Asset logical state contract missing');
 assert(sharedAssetValidation.includes('exhibition-platform-shared-asset-validation.v1')&&sharedAssetWorker.includes('["prop","frame","sculpture"]'),'V13.1 Shared Asset GLB validation contract missing');
 assert(sculptureValidation.includes('exhibition-platform-sculpture-model-validation.v1')&&sculptureValidation.includes('SCULPTURE_MODEL_VALIDATOR_VERSION = "V14.1.5.1"'),'V14.1.5.1 Sculpture validation contract missing');
 assert(source.includes('if (loadedMeshes.length < 1)')&&source.includes('Sculpture/model GLB contains no renderable mesh geometry.'),'V14.1.5.1 model runtime can still report loaded without renderable geometry');

@@ -6,6 +6,7 @@
 
 import { buildSpaceDefinition } from "../runtime/space-definition-resolver.js?v=c6c8c25_cross_space_runtime";
 import { isExhibitionGalleryMigrationPending } from "./exhibition-gallery-assignment.js?v=c6c8c25_cross_space_runtime";
+import { collectSharedAssetIds, hydrateSharedAssetReferencesWithCurrentVersions } from "../runtime/shared-asset-state.js?v=v14_4_2_logical_shared_asset_authority";
 
 export const EXHIBITION_STATE_SCHEMA = "exhibition-platform-exhibition-state.v1";
 export const CANONICAL_GALLERY_RESOLUTION_STAGE = "V14.3.5";
@@ -110,6 +111,18 @@ function canonicalToRuntimeExhibition(record, options = {}) {
   };
 }
 
+async function resolveLogicalSharedAssetState(supabase, state, venueId) {
+  const content = unwrapState(state);
+  if (!content) return content;
+  const assetIds = collectSharedAssetIds(content);
+  if (!assetIds.length) return content;
+  const rows = asRows(await supabase.rpc("resolve_shared_asset_current_versions", {
+    p_asset_ids: assetIds,
+    p_venue_id: venueId || null
+  }));
+  return hydrateSharedAssetReferencesWithCurrentVersions(content, rows);
+}
+
 async function fetchCoverPath(supabase, coverMediaId) {
   if (!coverMediaId) return null;
   const response = await supabase.from("media_library")
@@ -167,7 +180,7 @@ async function loadAdminRuntime(supabase, reference) {
   return {
     mode: "admin",
     exhibition,
-    state: unwrapState(s.draft_state || s.published_state),
+    state: await resolveLogicalSharedAssetState(supabase, s.draft_state || s.published_state, venueDetail.venue.id),
     stateProvenance: Object.freeze({
       kind: "relational-channel",
       channel: "draft",
@@ -233,7 +246,7 @@ async function resolvePublicRuntime(supabase, reference) {
   return {
     mode: "public",
     exhibition,
-    state: unwrapState(row.published_state),
+    state: await resolveLogicalSharedAssetState(supabase, row.published_state, row.database_venue_id),
     stateProvenance: Object.freeze({
       kind: "relational-channel",
       channel: "published",
