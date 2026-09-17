@@ -13,7 +13,7 @@
     "test:platform": "node tools/test-platform-runtime.mjs",
     "test:performance": "node tools/test-performance-runtime.mjs",
     "test:workspace": "node tools/test-workspace-ui.mjs",
-    "test": "npm run test:core && npm run test:media && npm run test:platform && npm run test:performance && npm run test:workspace && npm run test:gallery && npm run test:space-models && npm run test:sculpture-models && npm run test:creation-targeting && npm run test:creation-lifecycle && npm run test:gallery-assignment && npm run test:workspace-cleanup && npm run test:safe-deletion && npm run test:draft-publish && npm run test:compatibility && npm run test:cross-space && npm run test:runtime-host && npm run test:transitions && npm run test:readiness && npm run test:walkthrough && npm run test:residency && npm run test:reentry && npm run test:assets && npm run test:version-gc",
+    "test": "npm run test:core && npm run test:media && npm run test:platform && npm run test:performance && npm run test:workspace && npm run test:gallery && npm run test:space-models && npm run test:sculpture-models && npm run test:creation-targeting && npm run test:creation-lifecycle && npm run test:gallery-assignment && npm run test:workspace-cleanup && npm run test:safe-deletion && npm run test:draft-publish && npm run test:compatibility && npm run test:cross-space && npm run test:runtime-host && npm run test:transitions && npm run test:readiness && npm run test:walkthrough && npm run test:residency && npm run test:reentry && npm run test:assets && npm run test:version-gc && npm run test:mobile-carousel",
     "check": "npm run build && npm run syntax && npm run verify && npm test",
     "test:gallery": "node tools/test-gallery-management.mjs",
     "test:space-models": "node tools/test-space-model-validation.mjs",
@@ -33,6 +33,7 @@
     "test:safe-deletion": "node tools/test-safe-deletion.mjs",
     "test:draft-publish": "node tools/test-draft-publish-model.mjs",
     "test:compatibility": "node tools/test-same-gallery-compatibility.mjs",
-    "test:version-gc": "node tools/test-version-gc-authority.mjs"
+    "test:version-gc": "node tools/test-version-gc-authority.mjs",
+    "test:mobile-carousel": "node tools/test-mobile-home-carousel.mjs"
   }
 }

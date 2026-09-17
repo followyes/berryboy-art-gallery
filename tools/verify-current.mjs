@@ -47,7 +47,7 @@ assert(index.includes('stage: "V14.1.10.1"'),'Index stage identity missing');
 assert(bootstrap.includes('const STAGE = "V14.1.10.1"'),'Viewer stage identity missing');
 assert(adminBootstrap.includes('const STAGE = "V14.1.10.1"'),'Admin stage identity missing');
 assert(bootstrap.includes('v14_4_4_1_local_light_editor_resume_hotfix_20260917')&&adminBootstrap.includes('v14_4_4_1_local_light_editor_resume_hotfix_20260917'),'V14.4.4.1 engine cache key missing');
-assert(index.includes('gallery-viewer-bootstrap.js?v=v14_4_4_1_local_light_editor_resume_hotfix'),'V14.4.4.1 viewer cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=v14_4_4_2_mobile_home_carousel_hotfix'),'V14.4.4.2 viewer cache key missing');
 assert(admin.includes('admin-workspace-bootstrap.js?v=v14_4_4_1_local_light_editor_resume_hotfix'),'V14.4.4.1 Admin cache key missing');
 const currentPackage=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
 assert(currentPackage.version==='0.14.4-v14-4-4-shared-asset-gallery-version-gc-authority'&&currentPackage.description.includes('V14.4.4 Shared Asset + Gallery Version GC Authority'),'V14.4.4 package identity missing');
@@ -316,6 +316,7 @@ const expectedRegressionSuites=[
   'test-exhibition-workspace-cleanup.mjs',
   'test-gallery-management.mjs',
   'test-media-runtime.mjs',
+  'test-mobile-home-carousel.mjs',
   'test-performance-runtime.mjs',
   'test-platform-runtime.mjs',
   'test-public-reentry.mjs',
