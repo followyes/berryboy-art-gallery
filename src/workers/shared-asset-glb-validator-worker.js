@@ -1,11 +1,11 @@
 /*
-  Exhibition Platform — V13.1 Shared Asset GLB Validation worker.
+  Exhibition Platform — V14.4.7.1 Shared Asset GLB Validation worker.
   Streams GLB bytes off the main thread, computes SHA-256 incrementally and validates
   the GLB/glTF container without involving Babylon or Supabase table knowledge.
 */
 
 const VALIDATION_SCHEMA = "exhibition-platform-shared-asset-validation.v1";
-const VALIDATOR_VERSION = "V13.1";
+const VALIDATOR_VERSION = "V14.4.7.1";
 const GLB_MAGIC = 0x46546c67;
 const JSON_CHUNK = 0x4e4f534a;
 const BIN_CHUNK = 0x004e4942;
@@ -15,6 +15,11 @@ const COMPONENT_TYPES = new Set([5120, 5121, 5122, 5123, 5125, 5126]);
 const ACCESSOR_TYPES = new Set(["SCALAR", "VEC2", "VEC3", "VEC4", "MAT2", "MAT3", "MAT4"]);
 const COMPONENT_BYTES = new Map([[5120,1],[5121,1],[5122,2],[5123,2],[5125,4],[5126,4]]);
 const TYPE_COMPONENTS = new Map([["SCALAR",1],["VEC2",2],["VEC3",3],["VEC4",4],["MAT2",4],["MAT3",9],["MAT4",16]]);
+const MODULAR_FRAME_LAYOUT = "modular-rails-v1";
+const MODULAR_FRAME_REQUIRED_PARTS = Object.freeze([
+  "CORNER_BL", "CORNER_BR", "CORNER_TL", "CORNER_TR",
+  "RAIL_BOTTOM", "RAIL_LEFT", "RAIL_RIGHT", "RAIL_TOP"
+]);
 
 function hex32(value) { return (value >>> 0).toString(16).padStart(8, "0"); }
 function rotr(x, n) { return (x >>> n) | (x << (32 - n)); }
@@ -440,7 +445,20 @@ async function validate(message) {
   const streamed=await streamSource(message.source,(loaded,total)=>postMessage({type:"progress",id:message.id,loaded,total}));
   errors.push(...streamed.parsed.errors);
   let summary={};
-  if(streamed.parsed.jsonParsed){const inspected=inspectGltf(streamed.parsed.json,streamed.parsed.chunks,assetType||"asset");errors.push(...inspected.errors);warnings.push(...inspected.warnings);summary=inspected.summary;}
+  if(streamed.parsed.jsonParsed){
+    const inspected=inspectGltf(streamed.parsed.json,streamed.parsed.chunks,assetType||"asset");
+    errors.push(...inspected.errors);warnings.push(...inspected.warnings);summary=inspected.summary;
+    if(assetType==="frame"){
+      const runtimeNames=Array.isArray(summary.runtimeMeshNames)?summary.runtimeMeshNames.map(safeText).filter(Boolean):[];
+      const runtimeSet=new Set(runtimeNames);
+      const missing=MODULAR_FRAME_REQUIRED_PARTS.filter(name=>!runtimeSet.has(name));
+      const unexpected=runtimeNames.filter(name=>!MODULAR_FRAME_REQUIRED_PARTS.includes(name));
+      if(missing.length) errors.push(issue("FRAME_MODULAR_PARTS_MISSING",`Frame ${MODULAR_FRAME_LAYOUT} is missing required runtime mesh names: ${missing.join(", ")}.`));
+      if(unexpected.length) errors.push(issue("FRAME_MODULAR_PARTS_UNEXPECTED",`Frame ${MODULAR_FRAME_LAYOUT} contains unexpected renderable runtime mesh names: ${unexpected.join(", ")}.`));
+      if(runtimeNames.length!==MODULAR_FRAME_REQUIRED_PARTS.length) errors.push(issue("FRAME_MODULAR_PART_COUNT",`Frame ${MODULAR_FRAME_LAYOUT} must expose exactly ${MODULAR_FRAME_REQUIRED_PARTS.length} renderable runtime mesh nodes.`));
+      summary.frameLayout={contract:MODULAR_FRAME_LAYOUT,requiredParts:[...MODULAR_FRAME_REQUIRED_PARTS],runtimeParts:runtimeNames,missingParts:missing,unexpectedParts:unexpected};
+    }
+  }
   if(message.expectedSize!==undefined&&message.expectedSize!==null&&Number(message.expectedSize)!==streamed.total) errors.push(issue("SOURCE_SIZE_MISMATCH",`Expected ${Number(message.expectedSize)} bytes but read ${streamed.total}.`));
   if(streamed.total===0) errors.push(issue("FILE_EMPTY","GLB file is empty."));
   const report={

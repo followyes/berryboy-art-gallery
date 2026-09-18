@@ -51,7 +51,7 @@ const mutationWrapper = extractFunction(admin, 'withGalleryMutation');
 const detailRenderer = extractFunction(admin, 'renderGalleryDetail');
 const startPositionHandler = extractFunction(admin, 'handleTestGallery');
 
-expect('current V14.4.2 package preserves V14.2.5 safe deletion', pkg.version.includes('v14-4-7-wall-color-presets'));
+expect('current V14.4.2 package preserves V14.2.5 safe deletion', pkg.version.includes('v14-4-7-1-modular-frame-rail-layout'));
 expect('Core Admin release identity remains V14.1.10 while V14.3.7.1 corrective stage is explicit', admin.includes('const STAGE = "V14.1.10.1"') && admin.includes('ADMIN_PRODUCT_MODEL_STAGE = "V14.3.7"') && admin.includes('ADMIN_PRODUCT_CORRECTION_STAGE = "V14.3.7.1"'));
 expect('Gallery data adapter uses canonical Venue RPCs', api.includes('admin_create_gallery_with_initial_draft') && api.includes('admin_begin_venue_draft') && api.includes('admin_set_venue_asset_slot'));
 expect('V14.3.6 Gallery publication visibility adapter is present', api.includes('GALLERY_PUBLICATION_VISIBILITY_STAGE = "V14.3.6"') && api.includes('admin_set_venue_publication') && api.includes('async setPublication(venueId, published)'));

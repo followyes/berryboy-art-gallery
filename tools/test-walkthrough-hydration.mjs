@@ -40,8 +40,8 @@ function functionBody(name) {
   throw new Error(`Could not extract ${name}`);
 }
 
-assert.equal(pkg.version, '0.14.4-v14-4-7-wall-color-presets');
-assert.ok(pkg.description.includes('V14.4.7 Wall Color Presets'));
+assert.equal(pkg.version, '0.14.4-v14-4-7-1-modular-frame-rail-layout');
+assert.ok(pkg.description.includes('V14.4.7.1 Modular Frame Rail Layout'));
 
 for (const context of ['public-exhibition', 'admin-exhibition']) {
   const policy = createSceneLoadingPolicy(context);

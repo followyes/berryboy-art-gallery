@@ -1,10 +1,16 @@
 # Exhibition Platform
 
-Current repository release: **V14.4.7 — Wall Color Presets**.
+Current repository release: **V14.4.7.1 — Modular Frame Rail Layout** (additive to the V14.4.7 source baseline).
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
 
+
+## V14.4.7.1 Modular Frame Rail Layout
+
+New Frame versions use `frameLayout = modular-rails-v1` and exactly eight renderable runtime parts: `CORNER_BL`, `CORNER_BR`, `CORNER_TL`, `CORNER_TR`, `RAIL_BOTTOM`, `RAIL_LEFT`, `RAIL_RIGHT`, `RAIL_TOP`. The runtime measures the loaded geometry rather than assuming Blender local axes: corners translate only, while each rail scales only along its measured length axis to fit the Artwork opening.
+
+Artwork sizing, logical Shared Asset `assetId`, Artwork -> Frame binding, Replace propagation, picking, Inspect/focus, Local Lights and resident Scene lifecycle remain the existing authorities. Already immutable Published/Previous Frames without `frameLayout` stay on a controlled legacy monolithic fit until replaced; new/draft Frames are required to satisfy the modular contract. Final PASS/CLOSED requires visual smoke with the actual user-exported modular GLB because local QA cannot prove its Blender pivots/origins/facing/seams.
 
 ## V14.4.7 Wall Color Presets
 

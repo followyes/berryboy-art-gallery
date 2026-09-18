@@ -1,8 +1,8 @@
-/* Exhibition Platform — V14.3.9 Unified Asset Placement.
+/* Exhibition Platform — V14.4.7.1 Modular Frame Rail Layout + V14.3.9 Unified Asset Placement.
    Asset catalog remains in the left workspace; Props and Frames share one pointer-driven drag model. */
 
-import { createSharedAssetApi } from "../data/shared-asset-api.js?v=v14_3_9_unified_asset_placement";
-import { getDefaultSharedAssetRuntimeMetadata } from "../validation/shared-asset-validation.js?v=v14_3_9_unified_asset_placement";
+import { createSharedAssetApi } from "../data/shared-asset-api.js?v=v14_4_7_1_modular_frame_rail_layout";
+import { getDefaultSharedAssetRuntimeMetadata } from "../validation/shared-asset-validation.js?v=v14_4_7_1_modular_frame_rail_layout";
 
 export const ADMIN_ASSET_WORKSPACE_STAGE = "V14.4.3";
 
@@ -544,13 +544,13 @@ export function createAdminAssetWorkspace({
 
   function runtimeFieldsMarkup(assetType, defaults) {
     if (assetType === "frame") {
-      return `<div class="assetRuntimeFields"><h4>Frame fit defaults</h4><div class="assetRuntimeGrid">
-        <label class="fieldLabel">Inner width ratio<input id="assetRuntimeInnerWidth" class="adminInput" type="number" min="0.01" max="0.99" step="0.01" value="${defaults.innerWidthRatio}"></label>
-        <label class="fieldLabel">Inner height ratio<input id="assetRuntimeInnerHeight" class="adminInput" type="number" min="0.01" max="0.99" step="0.01" value="${defaults.innerHeightRatio}"></label>
-        <label class="fieldLabel">Depth overlap<input id="assetRuntimeDepthOverlap" class="adminInput" type="number" min="0.01" step="0.01" value="${defaults.depthOverlapRatio}"></label>
-        <label class="fieldLabel">Z rotation<input id="assetRuntimeZRotation" class="adminInput" type="number" step="1" value="${defaults.zRotationDegrees}"></label>
-        <label class="fieldLabel">Y facing<input id="assetRuntimeYFacing" class="adminInput" type="number" step="1" value="${defaults.yFacingDegrees}"></label>
-      </div><div class="assetMuted">Frame remains artwork-only. These values describe the opening/facing contract used later by V13.4.</div></div>`;
+      const canonical = { ...getDefaultSharedAssetRuntimeMetadata("frame"), ...(defaults && typeof defaults === "object" ? defaults : {}), frameLayout: "modular-rails-v1" };
+      return `<div class="assetRuntimeFields"><h4>Frame layout</h4><div class="assetRuntimeGrid">
+        <label class="fieldLabel">Layout<input class="adminInput" value="Modular rails v1" readonly></label>
+        <label class="fieldLabel">Depth overlap<input id="assetRuntimeDepthOverlap" class="adminInput" type="number" min="0" max="1" step="0.01" value="${canonical.depthOverlapRatio}"></label>
+        <label class="fieldLabel">Z rotation<input id="assetRuntimeZRotation" class="adminInput" type="number" step="1" value="${canonical.zRotationDegrees}"></label>
+        <label class="fieldLabel">Y facing<input id="assetRuntimeYFacing" class="adminInput" type="number" step="1" value="${canonical.yFacingDegrees}"></label>
+      </div><div class="assetMuted">New Frame models must contain exactly 8 named parts: 4 CORNER_* meshes and 4 RAIL_* meshes. Corners keep their proportions; only rails stretch along their measured length axis.</div></div>`;
     }
     return `<div class="assetRuntimeFields"><h4>Prop defaults</h4><div class="assetRuntimeGrid"><label class="fieldLabel">Default scale<input id="assetRuntimeDefaultScale" class="adminInput" type="number" min="0.001" step="0.01" value="${defaults.defaultScale}"></label><label class="fieldLabel">Placement<input class="adminInput" value="Floor" readonly></label></div><div class="assetMuted">Published Props are placed per Exhibition. Default scale is applied to every new instance.</div></div>`;
   }
@@ -560,8 +560,8 @@ export function createAdminAssetWorkspace({
     if (assetType === "frame") {
       return {
         ...defaults,
-        innerWidthRatio: safeNumber($("assetRuntimeInnerWidth") && $("assetRuntimeInnerWidth").value, defaults.innerWidthRatio),
-        innerHeightRatio: safeNumber($("assetRuntimeInnerHeight") && $("assetRuntimeInnerHeight").value, defaults.innerHeightRatio),
+        placementMode: "artwork-only",
+        frameLayout: "modular-rails-v1",
         depthOverlapRatio: safeNumber($("assetRuntimeDepthOverlap") && $("assetRuntimeDepthOverlap").value, defaults.depthOverlapRatio),
         zRotationDegrees: safeNumber($("assetRuntimeZRotation") && $("assetRuntimeZRotation").value, defaults.zRotationDegrees),
         yFacingDegrees: safeNumber($("assetRuntimeYFacing") && $("assetRuntimeYFacing").value, defaults.yFacingDegrees)

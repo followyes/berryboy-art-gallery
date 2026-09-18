@@ -10,8 +10,8 @@ const migration = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/V14_4_7_WAL
 const allInOne = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/ALL_IN_ONE.sql', import.meta.url), 'utf8');
 const postcheck = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/V14_4_7_PRODUCTION_POSTCHECK.sql', import.meta.url), 'utf8');
 
-assert.equal(pkg.version, '0.14.4-v14-4-7-wall-color-presets');
-assert.ok(pkg.description.includes('V14.4.7 Wall Color Presets'));
+assert.equal(pkg.version, '0.14.4-v14-4-7-1-modular-frame-rail-layout');
+assert.ok(pkg.description.includes('V14.4.7.1 Modular Frame Rail Layout'));
 
 for (const fragment of [
   'create table public.wall_color_presets',

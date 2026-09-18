@@ -1,8 +1,8 @@
 {
   "name": "exhibition-platform",
-  "version": "0.14.4-v14-4-7-wall-color-presets",
+  "version": "0.14.4-v14-4-7-1-modular-frame-rail-layout",
   "private": true,
-  "description": "Exhibition Platform — V14.4.7 Wall Color Presets",
+  "description": "Exhibition Platform — V14.4.7.1 Modular Frame Rail Layout",
   "type": "module",
   "scripts": {
     "build": "node tools/build-current.mjs",
@@ -13,7 +13,7 @@
     "test:platform": "node tools/test-platform-runtime.mjs",
     "test:performance": "node tools/test-performance-runtime.mjs",
     "test:workspace": "node tools/test-workspace-ui.mjs",
-    "test": "npm run test:core && npm run test:media && npm run test:platform && npm run test:performance && npm run test:workspace && npm run test:gallery && npm run test:space-models && npm run test:sculpture-models && npm run test:creation-targeting && npm run test:creation-lifecycle && npm run test:gallery-assignment && npm run test:workspace-cleanup && npm run test:safe-deletion && npm run test:draft-publish && npm run test:compatibility && npm run test:cross-space && npm run test:runtime-host && npm run test:transitions && npm run test:readiness && npm run test:walkthrough && npm run test:residency && npm run test:reentry && npm run test:assets && npm run test:version-gc && npm run test:mobile-carousel && npm run test:unified-save && npm run test:wall-presets",
+    "test": "npm run test:core && npm run test:media && npm run test:platform && npm run test:performance && npm run test:workspace && npm run test:gallery && npm run test:space-models && npm run test:sculpture-models && npm run test:creation-targeting && npm run test:creation-lifecycle && npm run test:gallery-assignment && npm run test:workspace-cleanup && npm run test:safe-deletion && npm run test:draft-publish && npm run test:compatibility && npm run test:cross-space && npm run test:runtime-host && npm run test:transitions && npm run test:readiness && npm run test:walkthrough && npm run test:residency && npm run test:reentry && npm run test:assets && npm run test:version-gc && npm run test:mobile-carousel && npm run test:unified-save && npm run test:wall-presets && npm run test:modular-frame",
     "check": "npm run build && npm run syntax && npm run verify && npm test",
     "test:gallery": "node tools/test-gallery-management.mjs",
     "test:space-models": "node tools/test-space-model-validation.mjs",
@@ -36,6 +36,7 @@
     "test:version-gc": "node tools/test-version-gc-authority.mjs",
     "test:mobile-carousel": "node tools/test-mobile-home-carousel.mjs",
     "test:unified-save": "node tools/test-unified-exhibition-save.mjs",
-    "test:wall-presets": "node tools/test-wall-color-presets.mjs"
+    "test:wall-presets": "node tools/test-wall-color-presets.mjs",
+    "test:modular-frame": "node tools/test-modular-frame-layout.mjs"
   }
 }

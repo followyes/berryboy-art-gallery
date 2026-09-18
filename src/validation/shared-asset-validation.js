@@ -1,7 +1,7 @@
-/* Exhibition Platform — V13.1 Shared Asset GLB validation browser coordinator. */
+/* Exhibition Platform — V14.4.7.1 Shared Asset GLB validation browser coordinator. */
 
 export const SHARED_ASSET_VALIDATION_SCHEMA = "exhibition-platform-shared-asset-validation.v1";
-export const SHARED_ASSET_VALIDATOR_VERSION = "V13.1";
+export const SHARED_ASSET_VALIDATOR_VERSION = "V14.4.7.1";
 export const SHARED_ASSET_TYPES = Object.freeze(["prop", "frame"]);
 export const SHARED_ASSET_BUCKET = "shared-assets";
 
@@ -13,8 +13,7 @@ const DEFAULT_PROP_RUNTIME_METADATA = Object.freeze({
 
 const DEFAULT_FRAME_RUNTIME_METADATA = Object.freeze({
   placementMode: "artwork-only",
-  innerWidthRatio: 0.68,
-  innerHeightRatio: 0.68,
+  frameLayout: "modular-rails-v1",
   depthOverlapRatio: 0.92,
   zRotationDegrees: 180,
   yFacingDegrees: 180
@@ -23,7 +22,7 @@ const DEFAULT_FRAME_RUNTIME_METADATA = Object.freeze({
 let sequence = 0;
 function nextId() { sequence += 1; return `shared-asset-${Date.now().toString(36)}-${sequence}`; }
 function text(value) { return String(value == null ? "" : value).trim(); }
-function workerUrl() { return new URL("../workers/shared-asset-glb-validator-worker.js?v=v13_2_left_workspace_asset_manager", import.meta.url); }
+function workerUrl() { return new URL("../workers/shared-asset-glb-validator-worker.js?v=v14_4_7_1_modular_frame_rail_layout", import.meta.url); }
 
 export function normalizeSharedAssetType(assetType) {
   const value = text(assetType).toLowerCase();
@@ -43,11 +42,10 @@ export function normalizeSharedAssetRuntimeMetadata(assetType, metadata = {}) {
 
   if (type === "frame") {
     if (value.placementMode !== "artwork-only") throw new Error("Frame placementMode must be artwork-only.");
-    for (const key of ["innerWidthRatio", "innerHeightRatio"]) {
-      const n = Number(value[key]);
-      if (!Number.isFinite(n) || n <= 0 || n >= 1) throw new Error(`${key} must be between 0 and 1.`);
-      value[key] = n;
-    }
+    if (text(value.frameLayout).toLowerCase() !== "modular-rails-v1") throw new Error("New Frame versions must use frameLayout modular-rails-v1.");
+    value.frameLayout = "modular-rails-v1";
+    delete value.innerWidthRatio;
+    delete value.innerHeightRatio;
     for (const key of ["depthOverlapRatio", "zRotationDegrees", "yFacingDegrees"]) {
       const n = Number(value[key]);
       if (!Number.isFinite(n)) throw new Error(`${key} must be finite.`);

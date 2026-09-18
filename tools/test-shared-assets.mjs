@@ -34,9 +34,9 @@ function expect(label, ok) {
   console.log(`✓ ${label}`);
 }
 
-expect('V14.4.3 package preserves V14.4.2 logical Shared Asset authority', pkg.version === '0.14.4-v14-4-7-wall-color-presets' && SHARED_ASSET_AUTHORITY_STAGE === 'V14.4.2');
+expect('V14.4.3 package preserves V14.4.2 logical Shared Asset authority', pkg.version === '0.14.4-v14-4-7-1-modular-frame-rail-layout' && SHARED_ASSET_AUTHORITY_STAGE === 'V14.4.2');
 expect('Shared Asset product adapter is V14.3.8 over the existing shared-assets domain', SHARED_ASSET_STAGE === 'V14.3.8' && SHARED_ASSET_BUCKET === 'shared-assets');
-expect('independent Shared Asset validator schema is frozen', SHARED_ASSET_VALIDATION_SCHEMA === 'exhibition-platform-shared-asset-validation.v1' && SHARED_ASSET_VALIDATOR_VERSION === 'V13.1');
+expect('independent Shared Asset validator schema is frozen', SHARED_ASSET_VALIDATION_SCHEMA === 'exhibition-platform-shared-asset-validation.v1' && SHARED_ASSET_VALIDATOR_VERSION === 'V14.4.7.1');
 expect('renderable GLB worker preserves Shared Asset prop/frame and adds Sculpture validation without Gallery Space roles', workerSource.includes('["prop","frame","sculpture"]') && workerSource.includes('assetType') && !workerSource.includes('["floor","walls","ceiling","props"]'));
 expect('Shared Asset API uses guarded canonical RPCs', apiSource.includes('admin_create_shared_asset') && apiSource.includes('admin_create_shared_asset_version') && apiSource.includes('admin_register_shared_asset_version_binary') && apiSource.includes('admin_publish_shared_asset_version'));
 expect('immutable upload uses UUID version path returned by server and no upsert', apiSource.includes('version.storage_path') && apiSource.includes('upsert: false'));
@@ -67,7 +67,9 @@ expect('V14.4.3 active Public visits cannot be hot-swapped by Replace propagatio
 
 assert.deepEqual(getDefaultSharedAssetRuntimeMetadata('prop'), { placementMode: 'floor', collisionMode: 'none', defaultScale: 1 });
 assert.equal(getDefaultSharedAssetRuntimeMetadata('frame').placementMode, 'artwork-only');
-assert.equal(normalizeSharedAssetRuntimeMetadata('frame', { innerWidthRatio: 0.75 }).innerWidthRatio, 0.75);
+assert.equal(getDefaultSharedAssetRuntimeMetadata('frame').frameLayout, 'modular-rails-v1');
+assert.equal(normalizeSharedAssetRuntimeMetadata('frame', { frameLayout: 'modular-rails-v1', innerWidthRatio: 0.75 }).frameLayout, 'modular-rails-v1');
+assert.equal('innerWidthRatio' in normalizeSharedAssetRuntimeMetadata('frame', { frameLayout: 'modular-rails-v1', innerWidthRatio: 0.75 }), false);
 assert.throws(() => normalizeSharedAssetRuntimeMetadata('frame', { placementMode: 'floor' }), /artwork-only/);
 assert.throws(() => normalizeSharedAssetRuntimeMetadata('prop', { defaultScale: 0 }), /greater than zero/);
 

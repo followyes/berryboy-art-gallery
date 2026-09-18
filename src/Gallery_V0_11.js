@@ -122,6 +122,7 @@ import {
   - Stage 12C66C6C8C: Asset Residency / Egress Guard — artwork Full textures become proximity/Inspect-driven on desktop and mobile, Full residency is bounded globally, repeated Storage asset requests are expected to be served by the persistent browser asset cache across Viewer/Admin navigation, and poster uploads are normalized to a compact delivery asset.
   - Stage 12C66C6C8C1: Runtime Lifecycle / Admin Transition Fix — Exhibition/Save runtimes are initialized before state preload, public Viewer no longer owns editor dirty tracking or unload prompts, Viewer/Admin handoff uses confirmed published snapshots, Admin preview hydration uses the intended desktop concurrency, Full upgrades yield to Preview population, and active Exhibition is preserved when returning to the public page.
   - V14.4.7: Wall Color Presets — global Admin shortcut library; wall state continues to store literal tintHex only.
+  - V14.4.7.1: Modular Frame Rail Layout — new Frame versions use four fixed corners plus four one-axis rails; immutable legacy Frame versions remain readable during controlled replacement.
   - Stage 12C66C6C8C2: Same-Runtime Admin Workspace — authenticated Viewer→Admin transitions reuse the already-running Babylon engine, scene, GPU textures and Space instead of navigating to a second document; Admin can return to the public Viewer without rebuilding the scene, while direct admin.html remains supported.
   - Stage 12C66C6C8C3: Runtime Hygiene / Cache Versioning — editor heartbeat exists only while Admin Workspace is active, same-runtime Admin policies refresh on enter/exit, dirty scene state can be discarded without rebuilding the scene, Space/Frame fixed-path GLBs receive cache-busting versions, and public visibility of Main follows the same publication flag as every other Exhibition.
   - Stage 12C66C6C8C4: Space Residency / Exhibition Delta Switch — switching Exhibitions inside the same space_id keeps the loaded building, static collision geometry and Space assets resident; only Exhibition-owned content/presentation is replaced, global refreshes are batched once, and entering Admin reuses a valid Tour instead of rebuilding it unconditionally.
@@ -9763,6 +9764,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         zRotationDegrees: 180,
         yFacingDegrees: 180
     };
+    var galleryArtworkFrameModularLayout = "modular-rails-v1";
+    var galleryArtworkFrameLegacyLayout = "legacy-monolithic-v1";
+    var galleryArtworkFrameRequiredParts = [
+        "CORNER_BL", "CORNER_BR", "CORNER_TL", "CORNER_TR",
+        "RAIL_BOTTOM", "RAIL_LEFT", "RAIL_RIGHT", "RAIL_TOP"
+    ];
     var galleryArtworkFrameCalibrationOverrides = {};
     var galleryArtworkFrameCatalog = [];
     var galleryArtworkFrameCatalogLoaded = false;
@@ -9806,6 +9813,180 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         calibration.zRotationRadians = BABYLON.Tools.ToRadians(Number(calibration.zRotationDegrees) || 0);
         calibration.yFacingRadians = BABYLON.Tools.ToRadians(isFinite(Number(calibration.yFacingDegrees)) ? Number(calibration.yFacingDegrees) : 180);
         return calibration;
+    }
+
+    function getArtworkFrameLayoutMode(frameState) {
+        frameState = normalizeArtworkFrameState(frameState);
+        var runtimeMetadata = frameState && frameState.runtimeMetadata && typeof frameState.runtimeMetadata === "object"
+            ? frameState.runtimeMetadata
+            : {};
+        return String(runtimeMetadata.frameLayout || runtimeMetadata.frame_layout || "").trim().toLowerCase() === galleryArtworkFrameModularLayout
+            ? galleryArtworkFrameModularLayout
+            : galleryArtworkFrameLegacyLayout;
+    }
+
+    function getArtworkFrameSemanticPartName(mesh) {
+        if (!mesh) return "";
+        var candidates = [mesh.name, mesh.id, mesh.sourceMesh && mesh.sourceMesh.name];
+        for (var candidateIndex = 0; candidateIndex < candidates.length; candidateIndex++) {
+            var normalized = String(candidates[candidateIndex] || "").trim().toUpperCase();
+            if (!normalized) continue;
+            for (var partIndex = 0; partIndex < galleryArtworkFrameRequiredParts.length; partIndex++) {
+                var partName = galleryArtworkFrameRequiredParts[partIndex];
+                if (normalized === partName || normalized.endsWith("_" + partName) || normalized.endsWith("." + partName)) return partName;
+            }
+        }
+        return "";
+    }
+
+    function getArtworkFrameMeshBoundsRelativeToNode(mesh, referenceNode) {
+        if (!mesh || !referenceNode || !mesh.getBoundingInfo) return null;
+        try {
+            mesh.computeWorldMatrix(true);
+            referenceNode.computeWorldMatrix(true);
+            var boundingBox = mesh.getBoundingInfo().boundingBox;
+            if (!boundingBox || !boundingBox.minimum || !boundingBox.maximum) return null;
+            var meshWorld = mesh.getWorldMatrix();
+            var inverseReference = referenceNode.getWorldMatrix().clone();
+            inverseReference.invert();
+            var minimum = boundingBox.minimum;
+            var maximum = boundingBox.maximum;
+            var min = new BABYLON.Vector3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
+            var max = new BABYLON.Vector3(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY);
+            [minimum.x, maximum.x].forEach(function (x) {
+                [minimum.y, maximum.y].forEach(function (y) {
+                    [minimum.z, maximum.z].forEach(function (z) {
+                        var localCorner = new BABYLON.Vector3(x, y, z);
+                        var worldCorner = BABYLON.Vector3.TransformCoordinates(localCorner, meshWorld);
+                        var referenceCorner = BABYLON.Vector3.TransformCoordinates(worldCorner, inverseReference);
+                        min.x = Math.min(min.x, referenceCorner.x);
+                        min.y = Math.min(min.y, referenceCorner.y);
+                        min.z = Math.min(min.z, referenceCorner.z);
+                        max.x = Math.max(max.x, referenceCorner.x);
+                        max.y = Math.max(max.y, referenceCorner.y);
+                        max.z = Math.max(max.z, referenceCorner.z);
+                    });
+                });
+            });
+            return { min: min, max: max, center: min.add(max).scale(0.5), size: max.subtract(min) };
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function createArtworkFrameModularLayoutRuntime(orientationRoot, meshes, frameOwnerId, artworkName) {
+        var parts = Object.create(null);
+        var unexpectedMeshes = [];
+        (meshes || []).forEach(function (mesh) {
+            var semanticName = getArtworkFrameSemanticPartName(mesh);
+            if (!semanticName) { unexpectedMeshes.push(String(mesh && mesh.name || "(unnamed)")); return; }
+            if (parts[semanticName]) throw new Error("Frame modular layout contains duplicate part " + semanticName + ".");
+            var bounds = getArtworkFrameMeshBoundsRelativeToNode(mesh, orientationRoot);
+            if (!bounds || !bounds.size) throw new Error("Frame modular part " + semanticName + " has no measurable bounds.");
+            var partRoot = new BABYLON.TransformNode(artworkName + "_FramePart_" + semanticName, scene);
+            tagGalleryExhibitionNode(partRoot, "artwork-frame-part", frameOwnerId);
+            partRoot.parent = orientationRoot;
+            partRoot.position.copyFrom(bounds.center);
+            partRoot.scaling.set(1, 1, 1);
+            partRoot.computeWorldMatrix(true);
+            if (typeof mesh.setParent === "function") mesh.setParent(partRoot);
+            else mesh.parent = partRoot;
+            parts[semanticName] = {
+                name: semanticName,
+                mesh: mesh,
+                root: partRoot,
+                baseCenter: bounds.center.clone(),
+                baseSize: bounds.size.clone(),
+                baseBounds: { min: bounds.min.clone(), max: bounds.max.clone() }
+            };
+        });
+
+        var missing = galleryArtworkFrameRequiredParts.filter(function (partName) { return !parts[partName]; });
+        if (missing.length) throw new Error("Frame modular layout is missing required parts: " + missing.join(", ") + ".");
+        if (unexpectedMeshes.length) throw new Error("Frame modular layout contains unexpected renderable meshes: " + unexpectedMeshes.join(", ") + ".");
+        if (Object.keys(parts).length !== galleryArtworkFrameRequiredParts.length || (meshes || []).length !== galleryArtworkFrameRequiredParts.length) {
+            throw new Error("Frame modular layout must contain exactly eight renderable semantic parts.");
+        }
+
+        var horizontalX = parts.RAIL_TOP.baseSize.x + parts.RAIL_BOTTOM.baseSize.x;
+        var horizontalY = parts.RAIL_TOP.baseSize.y + parts.RAIL_BOTTOM.baseSize.y;
+        var verticalX = parts.RAIL_LEFT.baseSize.x + parts.RAIL_RIGHT.baseSize.x;
+        var verticalY = parts.RAIL_LEFT.baseSize.y + parts.RAIL_RIGHT.baseSize.y;
+        var horizontalAxis = horizontalX >= horizontalY ? "x" : "y";
+        var verticalAxis = verticalX >= verticalY ? "x" : "y";
+        if (horizontalAxis === verticalAxis) {
+            throw new Error("Frame modular rail axes are not orthogonal after GLB orientation. Apply Blender transforms and verify RAIL_* geometry.");
+        }
+
+        function inwardEdge(part, axis) {
+            var center = Number(part.baseCenter[axis]) || 0;
+            return center <= 0 ? part.baseBounds.max[axis] : part.baseBounds.min[axis];
+        }
+        function sideSign(part, axis, fallback) {
+            var value = Number(part.baseCenter[axis]) || 0;
+            if (Math.abs(value) > 1e-7) return value < 0 ? -1 : 1;
+            return fallback;
+        }
+
+        var baseOpeningWidth = Math.abs(inwardEdge(parts.RAIL_RIGHT, horizontalAxis) - inwardEdge(parts.RAIL_LEFT, horizontalAxis));
+        var baseOpeningHeight = Math.abs(inwardEdge(parts.RAIL_TOP, verticalAxis) - inwardEdge(parts.RAIL_BOTTOM, verticalAxis));
+        if (!(baseOpeningWidth > 1e-6) || !(baseOpeningHeight > 1e-6)) throw new Error("Frame modular opening could not be measured from RAIL_* bounds.");
+
+        return {
+            contract: galleryArtworkFrameModularLayout,
+            parts: parts,
+            horizontalAxis: horizontalAxis,
+            verticalAxis: verticalAxis,
+            baseOpeningWidth: baseOpeningWidth,
+            baseOpeningHeight: baseOpeningHeight,
+            leftSign: sideSign(parts.RAIL_LEFT, horizontalAxis, -1),
+            rightSign: sideSign(parts.RAIL_RIGHT, horizontalAxis, 1),
+            bottomSign: sideSign(parts.RAIL_BOTTOM, verticalAxis, -1),
+            topSign: sideSign(parts.RAIL_TOP, verticalAxis, 1)
+        };
+    }
+
+    function applyArtworkFrameModularLayout(runtime, targetWidth, targetHeight) {
+        var layout = runtime && runtime.modularLayout;
+        if (!layout || layout.contract !== galleryArtworkFrameModularLayout) return false;
+        var parts = layout.parts;
+        var horizontalAxis = layout.horizontalAxis;
+        var verticalAxis = layout.verticalAxis;
+        var deltaWidth = targetWidth - layout.baseOpeningWidth;
+        var deltaHeight = targetHeight - layout.baseOpeningHeight;
+
+        galleryArtworkFrameRequiredParts.forEach(function (partName) {
+            var part = parts[partName];
+            part.root.position.copyFrom(part.baseCenter);
+            part.root.scaling.set(1, 1, 1);
+        });
+
+        ["CORNER_BL", "CORNER_TL", "RAIL_LEFT"].forEach(function (partName) {
+            parts[partName].root.position[horizontalAxis] = parts[partName].baseCenter[horizontalAxis] + layout.leftSign * deltaWidth * 0.5;
+        });
+        ["CORNER_BR", "CORNER_TR", "RAIL_RIGHT"].forEach(function (partName) {
+            parts[partName].root.position[horizontalAxis] = parts[partName].baseCenter[horizontalAxis] + layout.rightSign * deltaWidth * 0.5;
+        });
+        ["CORNER_BL", "CORNER_BR", "RAIL_BOTTOM"].forEach(function (partName) {
+            parts[partName].root.position[verticalAxis] = parts[partName].baseCenter[verticalAxis] + layout.bottomSign * deltaHeight * 0.5;
+        });
+        ["CORNER_TL", "CORNER_TR", "RAIL_TOP"].forEach(function (partName) {
+            parts[partName].root.position[verticalAxis] = parts[partName].baseCenter[verticalAxis] + layout.topSign * deltaHeight * 0.5;
+        });
+
+        ["RAIL_TOP", "RAIL_BOTTOM"].forEach(function (partName) {
+            var part = parts[partName];
+            var baseLength = Math.max(0.0001, Math.abs(part.baseSize[horizontalAxis]));
+            var targetLength = Math.max(baseLength * 0.02, baseLength + deltaWidth);
+            part.root.scaling[horizontalAxis] = targetLength / baseLength;
+        });
+        ["RAIL_LEFT", "RAIL_RIGHT"].forEach(function (partName) {
+            var part = parts[partName];
+            var baseLength = Math.max(0.0001, Math.abs(part.baseSize[verticalAxis]));
+            var targetLength = Math.max(baseLength * 0.02, baseLength + deltaHeight);
+            part.root.scaling[verticalAxis] = targetLength / baseLength;
+        });
+        return true;
     }
 
     async function prefetchGalleryArtworkFrameCatalogAssets(catalog) {
@@ -10222,11 +10403,20 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         // C6C5: the GLB front was facing the wall. Flip around local Y, not Z:
         // local Z is the frame depth/normal, so Y=180 reverses front/back.
         var calibration = getArtworkFrameCalibration(frameState);
+        var layoutMode = getArtworkFrameLayoutMode(frameState);
         facingRoot.rotation.y = calibration.yFacingRadians;
         facingRoot.computeWorldMatrix(true);
+
+        var modularLayout = null;
         var referenceWidth = Math.max(0.0001, outerWidth * calibration.innerWidthRatio);
         var referenceHeight = Math.max(0.0001, outerHeight * calibration.innerHeightRatio);
         var referenceDepth = outerDepth;
+        if (layoutMode === galleryArtworkFrameModularLayout) {
+            scaleRoot.scaling.set(1, 1, 1);
+            modularLayout = createArtworkFrameModularLayoutRuntime(orientationRoot, meshes, frameOwnerId, artwork.name);
+            referenceWidth = Math.max(0.0001, modularLayout.baseOpeningWidth);
+            referenceHeight = Math.max(0.0001, modularLayout.baseOpeningHeight);
+        }
 
         var runtime = {
             root: root,
@@ -10238,6 +10428,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             instance: instance,
             generation: generation,
             frameState: Object.assign({}, frameState),
+            layoutMode: layoutMode,
+            modularLayout: modularLayout,
             referenceWidth: referenceWidth,
             referenceHeight: referenceHeight,
             referenceDepth: referenceDepth,
@@ -10266,9 +10458,14 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             var targetWidth = Math.max(0.0001, baseDimensions.width * transformState.scale);
             var targetHeight = Math.max(0.0001, baseDimensions.height * transformState.scale);
 
-            runtime.scaleRoot.scaling.x = targetWidth / Math.max(0.0001, runtime.referenceWidth || 1);
-            runtime.scaleRoot.scaling.y = targetHeight / Math.max(0.0001, runtime.referenceHeight || 1);
-            runtime.scaleRoot.scaling.z = 1;
+            if (runtime.layoutMode === galleryArtworkFrameModularLayout && runtime.modularLayout) {
+                runtime.scaleRoot.scaling.set(1, 1, 1);
+                applyArtworkFrameModularLayout(runtime, targetWidth, targetHeight);
+            } else {
+                runtime.scaleRoot.scaling.x = targetWidth / Math.max(0.0001, runtime.referenceWidth || 1);
+                runtime.scaleRoot.scaling.y = targetHeight / Math.max(0.0001, runtime.referenceHeight || 1);
+                runtime.scaleRoot.scaling.z = 1;
+            }
 
             var normal = getArtworkVisualNormal(artwork);
             var position = artwork.getAbsolutePosition ? artwork.getAbsolutePosition() : artwork.position;
