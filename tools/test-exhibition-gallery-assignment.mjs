@@ -159,8 +159,8 @@ assert.ok(api.includes('p_published: published === true'));
 assert.ok(api.includes('return this.setPublished(reference, false);'));
 assert.ok(!api.includes('patch.is_published'));
 
-assert.equal(pkg.version, '0.14.4-v14-4-7-2-gallery-version-rebase-preservation');
-assert.ok(pkg.description.includes('V14.4.7.2 Gallery Version Rebase Preservation Guard'));
+assert.equal(pkg.version, '0.14.4-v14-4-7-3-modular-frame-3-axis');
+assert.ok(pkg.description.includes('V14.4.7.3 Modular Frame 3-Axis Layout Hotfix'));
 assert.ok(pkg.scripts.test.includes('test:gallery-assignment'));
 
 console.log('C6C8C24 backend compatibility invariants remain preserved while V14.2.4 removes normal assignment UI.');

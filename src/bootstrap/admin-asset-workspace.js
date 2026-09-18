@@ -1,8 +1,8 @@
 /* Exhibition Platform — V14.4.7.1 Modular Frame Rail Layout + V14.3.9 Unified Asset Placement.
    Asset catalog remains in the left workspace; Props and Frames share one pointer-driven drag model. */
 
-import { createSharedAssetApi } from "../data/shared-asset-api.js?v=v14_4_7_2_gallery_version_rebase_preservation";
-import { getDefaultSharedAssetRuntimeMetadata } from "../validation/shared-asset-validation.js?v=v14_4_7_2_gallery_version_rebase_preservation";
+import { createSharedAssetApi } from "../data/shared-asset-api.js?v=v14_4_7_3_modular_frame_3_axis";
+import { getDefaultSharedAssetRuntimeMetadata } from "../validation/shared-asset-validation.js?v=v14_4_7_3_modular_frame_3_axis";
 
 export const ADMIN_ASSET_WORKSPACE_STAGE = "V14.4.3";
 

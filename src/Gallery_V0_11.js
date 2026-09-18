@@ -13,7 +13,7 @@ import {
     annotateStateWithSameGalleryCompatibility,
     summarizeSameGalleryCompatibility,
     compareStatePreservationInventory
-} from "./runtime/same-gallery-state-compatibility.js?v=v14_4_7_2_gallery_version_rebase_preservation";
+} from "./runtime/same-gallery-state-compatibility.js?v=v14_4_7_3_modular_frame_3_axis";
 
 /*
   Exhibition Platform
@@ -9920,14 +9920,22 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             throw new Error("Frame modular layout must contain exactly eight renderable semantic parts.");
         }
 
-        var horizontalX = parts.RAIL_TOP.baseSize.x + parts.RAIL_BOTTOM.baseSize.x;
-        var horizontalY = parts.RAIL_TOP.baseSize.y + parts.RAIL_BOTTOM.baseSize.y;
-        var verticalX = parts.RAIL_LEFT.baseSize.x + parts.RAIL_RIGHT.baseSize.x;
-        var verticalY = parts.RAIL_LEFT.baseSize.y + parts.RAIL_RIGHT.baseSize.y;
-        var horizontalAxis = horizontalX >= horizontalY ? "x" : "y";
-        var verticalAxis = verticalX >= verticalY ? "x" : "y";
+        function dominantRailAxis(firstPart, secondPart) {
+            var totals = {
+                x: Math.abs(Number(firstPart.baseSize.x) || 0) + Math.abs(Number(secondPart.baseSize.x) || 0),
+                y: Math.abs(Number(firstPart.baseSize.y) || 0) + Math.abs(Number(secondPart.baseSize.y) || 0),
+                z: Math.abs(Number(firstPart.baseSize.z) || 0) + Math.abs(Number(secondPart.baseSize.z) || 0)
+            };
+            return ["x", "y", "z"].sort(function (left, right) { return totals[right] - totals[left]; })[0];
+        }
+
+        // V14.4.7.3: modular Frame geometry may be authored in XY, XZ or YZ.
+        // Measure all three local axes instead of assuming that the two layout axes
+        // are already X/Y. The whole frame is oriented later by orientationRoot.
+        var horizontalAxis = dominantRailAxis(parts.RAIL_TOP, parts.RAIL_BOTTOM);
+        var verticalAxis = dominantRailAxis(parts.RAIL_LEFT, parts.RAIL_RIGHT);
         if (horizontalAxis === verticalAxis) {
-            throw new Error("Frame modular rail axes are not orthogonal after GLB orientation. Apply Blender transforms and verify RAIL_* geometry.");
+            throw new Error("Frame modular rail length axes resolve to the same local axis. Verify RAIL_* geometry and pivots.");
         }
 
         function inwardEdge(part, axis) {

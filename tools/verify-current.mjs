@@ -47,11 +47,11 @@ function extractFunction(text,name){const ms=[`async function ${name}(`,`functio
 assert(index.includes('stage: "V14.1.10.1"'),'Index stage identity missing');
 assert(bootstrap.includes('const STAGE = "V14.1.10.1"'),'Viewer stage identity missing');
 assert(adminBootstrap.includes('const STAGE = "V14.1.10.1"'),'Admin stage identity missing');
-assert(bootstrap.includes('v14_4_7_2_gallery_version_rebase_preservation_20260918')&&adminBootstrap.includes('v14_4_7_2_gallery_version_rebase_preservation_20260918'),'V14.4.7 engine cache key missing');
-assert(index.includes('gallery-viewer-bootstrap.js?v=v14_4_7_2_gallery_version_rebase_preservation'),'V14.4.7 viewer cache key missing');
-assert(admin.includes('admin-workspace-bootstrap.js?v=v14_4_7_2_gallery_version_rebase_preservation'),'V14.4.7 Admin cache key missing');
+assert(bootstrap.includes('v14_4_7_3_modular_frame_3_axis_20260918')&&adminBootstrap.includes('v14_4_7_3_modular_frame_3_axis_20260918'),'V14.4.7 engine cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=v14_4_7_3_modular_frame_3_axis'),'V14.4.7 viewer cache key missing');
+assert(admin.includes('admin-workspace-bootstrap.js?v=v14_4_7_3_modular_frame_3_axis'),'V14.4.7 Admin cache key missing');
 const currentPackage=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
-assert(currentPackage.version==='0.14.4-v14-4-7-2-gallery-version-rebase-preservation'&&currentPackage.description.includes('V14.4.7.2 Gallery Version Rebase Preservation Guard'),'V14.4.7.2 package identity missing');
+assert(currentPackage.version==='0.14.4-v14-4-7-3-modular-frame-3-axis'&&currentPackage.description.includes('V14.4.7.3 Modular Frame 3-Axis Layout Hotfix'),'V14.4.7.3 package identity missing');
 
 
 assert(sharedAssetState.includes('SHARED_ASSET_AUTHORITY_STAGE = "V14.4.2"')&&sharedAssetState.includes('collectSharedAssetIds')&&sharedAssetState.includes('hydrateSharedAssetReferencesWithCurrentVersions'),'V14.4.2 logical Shared Asset state authority missing');
@@ -64,6 +64,7 @@ assert(sharedAssetValidation.includes('SHARED_ASSET_VALIDATOR_VERSION = "V14.4.7
 assert(sharedAssetWorker.includes('FRAME_MODULAR_PARTS_MISSING')&&sharedAssetWorker.includes('CORNER_BL')&&sharedAssetWorker.includes('RAIL_TOP'),'V14.4.7.1 modular Frame GLB contract missing');
 assert(assetWorkspace.includes('frameLayout: "modular-rails-v1"')&&!assetWorkspace.includes('assetRuntimeInnerWidth')&&!assetWorkspace.includes('assetRuntimeInnerHeight'),'V14.4.7.1 Asset Manager modular Frame metadata missing');
 assert(source.includes('galleryArtworkFrameModularLayout = "modular-rails-v1"')&&source.includes('createArtworkFrameModularLayoutRuntime')&&source.includes('applyArtworkFrameModularLayout'),'V14.4.7.1 modular Frame runtime missing');
+assert(source.includes('function dominantRailAxis(firstPart, secondPart)')&&source.includes('["x", "y", "z"]')&&source.includes('horizontalAxis = dominantRailAxis(parts.RAIL_TOP, parts.RAIL_BOTTOM)')&&source.includes('verticalAxis = dominantRailAxis(parts.RAIL_LEFT, parts.RAIL_RIGHT)'),'V14.4.7.3 3-axis modular Frame rail detection missing');
 assert(source.includes('V14.3.10 — WALL TINT SYSTEM')&&source.includes('wallTintInput.type = "color"')&&source.includes('wallTintHexInput.maxLength = 7'),'V14.3.10 arbitrary wall tint authoring UI missing');
 assert(source.includes('legacyWallTintByName')&&source.includes('getWallTintHexFromState')&&source.includes('tintHex: getWallTintHexForMesh(wallMesh)'),'V14.3.10 tint persistence/legacy read compatibility missing');
 assert(source.includes('applyWallTintColorChannel(material, "albedoColor"')&&source.includes('applyWallTintColorChannel(material, "diffuseColor"')&&source.includes('wallTintAuthoredColors'),'V14.3.10 authored base-color multiply path missing');
@@ -78,7 +79,7 @@ assert(galleryStructuralCompatibility.includes('STRUCTURAL_SIGNATURES_MISSING')&
 assert(galleryManagementApi.includes('admin_refresh_venue_asset_structural_metadata')&&galleryManagementApi.includes('venue_version_structural_signature_report'),'V14.3.3 metadata hydration adapter missing');
 assert(sameGalleryCompatibility.includes('exhibition-platform-same-gallery-state-compatibility.v1')&&sameGalleryCompatibility.includes('exhibition-platform-placement-repair.v1'),'V14.3.4 compatibility/repair schemas missing');
 assert(sameGalleryCompatibility.includes('PRESERVE')&&sameGalleryCompatibility.includes('REPAIR')&&sameGalleryCompatibility.includes('REVIEW'),'V14.3.4 preserve/repair/review authority missing');
-assert(source.includes('same-gallery-state-compatibility.js?v=v14_4_7_2_gallery_version_rebase_preservation')&&source.includes('gallery-placement-repair-required'),'V14.3.4 Gallery runtime compatibility bridge missing');
+assert(source.includes('same-gallery-state-compatibility.js?v=v14_4_7_3_modular_frame_3_axis')&&source.includes('gallery-placement-repair-required'),'V14.3.4 Gallery runtime compatibility bridge missing');
 assert(source.includes('gallery-state-cross-gallery-rejected')&&source.includes('gallery-state-version-mismatch-unproven'),'V14.3.4 cross-Gallery/fallback safety guards missing');
 assert(source.includes('venueId: gallerySpaceDefinition && gallerySpaceDefinition.venueId'),'V14.3.4 explicit logical Gallery provenance missing from serialized state');
 assert(exhibitionApi.includes('stateProvenance: Object.freeze')&&exhibitionApi.includes('exhibition_states.draft_venue_version_id')&&exhibitionApi.includes('exhibition_states.published_venue_version_id'),'V14.3.4 relational channel provenance missing');

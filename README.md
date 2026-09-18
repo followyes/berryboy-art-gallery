@@ -1,10 +1,19 @@
 # Exhibition Platform
 
-Current repository release: **V14.4.7.2 — Gallery Version Rebase Preservation Guard** (hotfix on the accepted V14.4.7.1 baseline).
+Current repository release: **V14.4.7.3 — Modular Frame 3-Axis Layout Hotfix** (runtime-only hotfix on the accepted V14.4.7.2 baseline).
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
 
+
+
+## V14.4.7.3 Modular Frame 3-Axis Layout Hotfix
+
+Production smoke with the real `Frame2.glb` exposed a renderer defect in V14.4.7.1: the modular layout measured semantic part bounds in the Frame's local authoring plane but inferred rail length axes from X/Y only. `Frame2.glb` is authored in X/Z (horizontal rails = X, vertical rails = Z, depth = Y), so both rail groups incorrectly resolved to X and the Frame was marked `MODEL UNAVAILABLE — binding preserved`.
+
+The hotfix resolves the dominant rail length axis across **X/Y/Z**. Horizontal and vertical rails may therefore live in XY, XZ or YZ authoring planes; the later `orientationRoot` remains responsible for presenting the completed Frame in Artwork space. Corners remain translation-only and each rail still scales on exactly one measured axis. No Shared Asset identity, Frame binding, Supabase schema/RPC or Storage contract changes.
+
+The real `Frame2.glb` contract was audited: eight required nodes are present, top/bottom rails resolve to X and left/right rails to Z.
 
 ## V14.4.7.2 Gallery Version Rebase Preservation Guard
 

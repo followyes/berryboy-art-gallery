@@ -173,11 +173,11 @@ assert.deepEqual(missingInventory.missing.localLights,['light-1']);
 // V14.4.7.2 Gallery Version rebase preservation SQL/runtime guard regression.
 {
   const engine = fs.readFileSync(new URL('../src/Gallery_V0_11.js', import.meta.url), 'utf8');
-  const migration = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/V14_4_7_2_GALLERY_VERSION_REBASE_PRESERVATION_GUARD.sql', import.meta.url), 'utf8');
-  const recovery = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/V14_4_7_2_PRODUCTION_EXHIBITION_STATE_RECOVERY_PRECHECK.sql', import.meta.url), 'utf8');
+  const migration = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/ARCHIVE/V14_4_7_2_GALLERY_VERSION_REBASE_PRESERVATION_GUARD_DEPLOYED.sql', import.meta.url), 'utf8');
+  const recovery = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/ARCHIVE/V14_4_7_2_PRODUCTION_EXHIBITION_STATE_RECOVERY_PRECHECK_CLOSED.sql', import.meta.url), 'utf8');
   const packageJson = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-  assert.ok(packageJson.version.includes('v14-4-7-2-gallery-version-rebase-preservation'));
-  assert.ok(packageJson.description.includes('V14.4.7.2 Gallery Version Rebase Preservation Guard'));
+  assert.ok(packageJson.version.includes('v14-4-7-3-modular-frame-3-axis'));
+  assert.ok(packageJson.description.includes('V14.4.7.3 Modular Frame 3-Axis Layout Hotfix'));
   assert.ok(engine.includes('function prepareGalleryStateForVersionRebaseSave(state)'));
   assert.ok(engine.includes('gallery-rebase-content-loss-blocked'));
   assert.ok(engine.includes('exhibition-platform-gallery-version-rebase-proof.v1'));

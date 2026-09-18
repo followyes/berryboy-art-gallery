@@ -26,7 +26,7 @@ function expect(label, condition) {
   console.log(`✓ ${label}`);
 }
 
-expect('current release preserves V14.4.7.1 authority', pkg.version === '0.14.4-v14-4-7-2-gallery-version-rebase-preservation' && pkg.description.includes('V14.4.7.2 Gallery Version Rebase Preservation Guard'));
+expect('current release preserves V14.4.7.1 authority', pkg.version === '0.14.4-v14-4-7-3-modular-frame-3-axis' && pkg.description.includes('V14.4.7.3 Modular Frame 3-Axis Layout Hotfix'));
 expect('deep Shared Asset validator version is advanced', SHARED_ASSET_VALIDATOR_VERSION === 'V14.4.7.1');
 
 const defaults = getDefaultSharedAssetRuntimeMetadata('frame');
@@ -59,14 +59,22 @@ for (const part of requiredParts) {
 }
 expect('worker rejects missing/unexpected Frame parts', worker.includes('FRAME_MODULAR_PARTS_MISSING') && worker.includes('FRAME_MODULAR_PARTS_UNEXPECTED') && worker.includes('FRAME_MODULAR_PART_COUNT'));
 expect('worker emits modular frameLayout evidence', worker.includes('summary.frameLayout={contract:MODULAR_FRAME_LAYOUT'));
-expect('browser coordinator uses the new validator/cache version', validation.includes('V14.4.7.1') && validation.includes('v14_4_7_2_gallery_version_rebase_preservation'));
+expect('browser coordinator uses the new validator/cache version', validation.includes('V14.4.7.1') && validation.includes('v14_4_7_3_modular_frame_3_axis'));
 
 expect('Asset Manager removed legacy inner-ratio controls', !workspace.includes('assetRuntimeInnerWidth') && !workspace.includes('assetRuntimeInnerHeight'));
 expect('Asset Manager writes modular layout metadata for Add/Replace', workspace.includes('frameLayout: "modular-rails-v1"') && workspace.includes('New Frame models must contain exactly 8 named parts'));
 
 expect('runtime has explicit modular and legacy layout branches', gallery.includes('galleryArtworkFrameModularLayout = "modular-rails-v1"') && gallery.includes('galleryArtworkFrameLegacyLayout = "legacy-monolithic-v1"'));
 expect('runtime measures semantic parts after actual GLB orientation', gallery.includes('getArtworkFrameMeshBoundsRelativeToNode') && gallery.includes('createArtworkFrameModularLayoutRuntime'));
-expect('runtime derives orthogonal rail axes from measured bounds', gallery.includes('horizontalAxis = horizontalX >= horizontalY ? "x" : "y"') && gallery.includes('verticalAxis = verticalX >= verticalY ? "x" : "y"') && gallery.includes('rail axes are not orthogonal'));
+expect('runtime derives rail axes across X/Y/Z measured bounds', gallery.includes('function dominantRailAxis(firstPart, secondPart)') && gallery.includes('["x", "y", "z"]') && gallery.includes('horizontalAxis = dominantRailAxis(parts.RAIL_TOP, parts.RAIL_BOTTOM)') && gallery.includes('verticalAxis = dominantRailAxis(parts.RAIL_LEFT, parts.RAIL_RIGHT)'));
+
+function dominantAxis(a, b) {
+  const totals = { x: Math.abs(a.x)+Math.abs(b.x), y: Math.abs(a.y)+Math.abs(b.y), z: Math.abs(a.z)+Math.abs(b.z) };
+  return ['x','y','z'].sort((l,r)=>totals[r]-totals[l])[0];
+}
+assert.equal(dominantAxis({x:0.604648,y:0.096437,z:0.166681},{x:0.604648,y:0.096437,z:0.166681}), 'x');
+assert.equal(dominantAxis({x:0.166681,y:0.096437,z:0.604648},{x:0.166681,y:0.096437,z:0.604648}), 'z');
+expect('Frame2-style XZ authored frames resolve horizontal X and vertical Z', true);
 expect('corners are repositioned without scaling', gallery.includes('["CORNER_BL", "CORNER_TL", "RAIL_LEFT"]') && gallery.includes('["CORNER_BR", "CORNER_TR", "RAIL_RIGHT"]') && gallery.includes('part.root.scaling.set(1, 1, 1)'));
 expect('only horizontal rails scale on measured horizontal axis', gallery.includes('["RAIL_TOP", "RAIL_BOTTOM"]') && gallery.includes('part.root.scaling[horizontalAxis] = targetLength / baseLength'));
 expect('only vertical rails scale on measured vertical axis', gallery.includes('["RAIL_LEFT", "RAIL_RIGHT"]') && gallery.includes('part.root.scaling[verticalAxis] = targetLength / baseLength'));
