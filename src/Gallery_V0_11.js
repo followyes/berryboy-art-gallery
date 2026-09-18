@@ -9837,11 +9837,15 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             : galleryArtworkFrameLegacyLayout;
     }
 
+    function normalizeArtworkFrameSemanticCandidate(value) {
+        return String(value || "").trim().toUpperCase().replace(/\.\d{3,}$/, "");
+    }
+
     function getArtworkFrameSemanticPartName(mesh) {
         if (!mesh) return "";
         var candidates = [mesh.name, mesh.id, mesh.sourceMesh && mesh.sourceMesh.name];
         for (var candidateIndex = 0; candidateIndex < candidates.length; candidateIndex++) {
-            var normalized = String(candidates[candidateIndex] || "").trim().toUpperCase();
+            var normalized = normalizeArtworkFrameSemanticCandidate(candidates[candidateIndex]);
             if (!normalized) continue;
             for (var partIndex = 0; partIndex < galleryArtworkFrameRequiredParts.length; partIndex++) {
                 var partName = galleryArtworkFrameRequiredParts[partIndex];

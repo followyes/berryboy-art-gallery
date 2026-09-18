@@ -40,8 +40,8 @@ function functionBody(name) {
   throw new Error(`Could not extract ${name}`);
 }
 
-assert.equal(pkg.version, '0.14.4-v14-4-7-5-authenticated-storage-delete');
-assert.ok(pkg.description.includes('V14.4.7.5 Authenticated Shared Asset Storage Delete Corrective'));
+assert.equal(pkg.version, '0.14.4-v14-4-7-7-frame-blender-suffix');
+assert.ok(pkg.description.includes('V14.4.7.7 Modular Frame Blender Numeric Suffix Compatibility Hotfix'));
 
 for (const context of ['public-exhibition', 'admin-exhibition']) {
   const policy = createSceneLoadingPolicy(context);

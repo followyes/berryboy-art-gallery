@@ -25,6 +25,6 @@ expect("mobile card consumes available carousel height instead of forcing vh min
 expect("touch snap remains strict per card", mobileCss.includes("scroll-snap-stop:always"));
 expect("short mobile viewports get a compact layout", compactCss.includes("max-height:560px") && compactCss.includes("#c25HomepageExhibitionHeader p{display:none}"));
 expect("desktop carousel contract is retained", viewer.includes("#c26HomepageExhibitionTrack{display:flex;align-items:stretch;justify-content:center") && viewer.includes(".c26CarouselNav{width:44px;height:44px"));
-expect("viewer bootstrap cache key remains advanced through V14.4.7", index.includes("gallery-viewer-bootstrap.js?v=v14_4_7_5_authenticated_storage_delete"));
+expect("viewer bootstrap cache key remains advanced through V14.4.7", index.includes("gallery-viewer-bootstrap.js?v=v14_4_7_7_frame_blender_suffix"));
 
 console.log("V14.4.4.2 Mobile Home Carousel responsive regression passed.");

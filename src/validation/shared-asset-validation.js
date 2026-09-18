@@ -1,4 +1,4 @@
-/* Exhibition Platform — V14.4.7.1 Shared Asset GLB validation browser coordinator. */
+/* Exhibition Platform — V14.4.7.7 Shared Asset GLB validation compatibility coordinator. */
 
 export const SHARED_ASSET_VALIDATION_SCHEMA = "exhibition-platform-shared-asset-validation.v1";
 export const SHARED_ASSET_VALIDATOR_VERSION = "V14.4.7.1";
@@ -22,7 +22,7 @@ const DEFAULT_FRAME_RUNTIME_METADATA = Object.freeze({
 let sequence = 0;
 function nextId() { sequence += 1; return `shared-asset-${Date.now().toString(36)}-${sequence}`; }
 function text(value) { return String(value == null ? "" : value).trim(); }
-function workerUrl() { return new URL("../workers/shared-asset-glb-validator-worker.js?v=v14_4_7_3_modular_frame_3_axis", import.meta.url); }
+function workerUrl() { return new URL("../workers/shared-asset-glb-validator-worker.js?v=v14_4_7_7_blender_numeric_suffix", import.meta.url); }
 
 export function normalizeSharedAssetType(assetType) {
   const value = text(assetType).toLowerCase();

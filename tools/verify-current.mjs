@@ -47,11 +47,11 @@ function extractFunction(text,name){const ms=[`async function ${name}(`,`functio
 assert(index.includes('stage: "V14.1.10.1"'),'Index stage identity missing');
 assert(bootstrap.includes('const STAGE = "V14.1.10.1"'),'Viewer stage identity missing');
 assert(adminBootstrap.includes('const STAGE = "V14.1.10.1"'),'Admin stage identity missing');
-assert(bootstrap.includes('v14_4_7_3_modular_frame_3_axis_20260918')&&adminBootstrap.includes('v14_4_7_3_modular_frame_3_axis_20260918'),'V14.4.7 engine cache key missing');
-assert(index.includes('gallery-viewer-bootstrap.js?v=v14_4_7_5_authenticated_storage_delete'),'V14.4.7.4 viewer cache key missing');
-assert(admin.includes('admin-workspace-bootstrap.js?v=v14_4_7_5_authenticated_storage_delete'),'V14.4.7.4 Admin cache key missing');
+assert(bootstrap.includes('v14_4_7_7_frame_blender_suffix_20260918')&&adminBootstrap.includes('v14_4_7_7_frame_blender_suffix_20260918'),'V14.4.7.7 engine cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=v14_4_7_7_frame_blender_suffix'),'V14.4.7.7 viewer cache key missing');
+assert(admin.includes('admin-workspace-bootstrap.js?v=v14_4_7_7_frame_blender_suffix'),'V14.4.7.7 Admin cache key missing');
 const currentPackage=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
-assert(currentPackage.version==='0.14.4-v14-4-7-5-authenticated-storage-delete'&&currentPackage.description.includes('V14.4.7.5 Authenticated Shared Asset Storage Delete Corrective'),'V14.4.7.3 package identity missing');
+assert(currentPackage.version==='0.14.4-v14-4-7-7-frame-blender-suffix'&&currentPackage.description.includes('V14.4.7.7 Modular Frame Blender Numeric Suffix Compatibility Hotfix'),'V14.4.7.3 package identity missing');
 
 
 assert(sharedAssetState.includes('SHARED_ASSET_AUTHORITY_STAGE = "V14.4.2"')&&sharedAssetState.includes('collectSharedAssetIds')&&sharedAssetState.includes('hydrateSharedAssetReferencesWithCurrentVersions'),'V14.4.2 logical Shared Asset state authority missing');
@@ -65,6 +65,7 @@ assert(sharedAssetWorker.includes('FRAME_MODULAR_PARTS_MISSING')&&sharedAssetWor
 assert(assetWorkspace.includes('frameLayout: "modular-rails-v1"')&&!assetWorkspace.includes('assetRuntimeInnerWidth')&&!assetWorkspace.includes('assetRuntimeInnerHeight'),'V14.4.7.1 Asset Manager modular Frame metadata missing');
 assert(source.includes('galleryArtworkFrameModularLayout = "modular-rails-v1"')&&source.includes('createArtworkFrameModularLayoutRuntime')&&source.includes('applyArtworkFrameModularLayout'),'V14.4.7.1 modular Frame runtime missing');
 assert(source.includes('function dominantRailAxis(firstPart, secondPart)')&&source.includes('["x", "y", "z"]')&&source.includes('horizontalAxis = dominantRailAxis(parts.RAIL_TOP, parts.RAIL_BOTTOM)')&&source.includes('verticalAxis = dominantRailAxis(parts.RAIL_LEFT, parts.RAIL_RIGHT)'),'V14.4.7.3 3-axis modular Frame rail detection missing');
+assert(sharedAssetWorker.includes('normalizeModularFrameRuntimePartName')&&sharedAssetWorker.includes('FRAME_MODULAR_PARTS_DUPLICATE_SEMANTIC')&&source.includes('normalizeArtworkFrameSemanticCandidate'),'V14.4.7.7 Blender numeric suffix compatibility missing');
 assert(source.includes('V14.3.10 — WALL TINT SYSTEM')&&source.includes('wallTintInput.type = "color"')&&source.includes('wallTintHexInput.maxLength = 7'),'V14.3.10 arbitrary wall tint authoring UI missing');
 assert(source.includes('legacyWallTintByName')&&source.includes('getWallTintHexFromState')&&source.includes('tintHex: getWallTintHexForMesh(wallMesh)'),'V14.3.10 tint persistence/legacy read compatibility missing');
 assert(source.includes('applyWallTintColorChannel(material, "albedoColor"')&&source.includes('applyWallTintColorChannel(material, "diffuseColor"')&&source.includes('wallTintAuthoredColors'),'V14.3.10 authored base-color multiply path missing');

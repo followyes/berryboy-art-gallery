@@ -1,8 +1,8 @@
 {
   "name": "exhibition-platform",
-  "version": "0.14.4-v14-4-7-5-authenticated-storage-delete",
+  "version": "0.14.4-v14-4-7-7-frame-blender-suffix",
   "private": true,
-  "description": "Exhibition Platform — V14.4.7.5 Authenticated Shared Asset Storage Delete Corrective",
+  "description": "Exhibition Platform — V14.4.7.7 Modular Frame Blender Numeric Suffix Compatibility Hotfix",
   "type": "module",
   "scripts": {
     "build": "node tools/build-current.mjs",

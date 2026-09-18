@@ -1,5 +1,5 @@
 /*
-  Exhibition Platform — V14.4.7.1 Shared Asset GLB Validation worker.
+  Exhibition Platform — V14.4.7.7 Shared Asset GLB Validation compatibility worker.
   Streams GLB bytes off the main thread, computes SHA-256 incrementally and validates
   the GLB/glTF container without involving Babylon or Supabase table knowledge.
 */
@@ -20,6 +20,11 @@ const MODULAR_FRAME_REQUIRED_PARTS = Object.freeze([
   "CORNER_BL", "CORNER_BR", "CORNER_TL", "CORNER_TR",
   "RAIL_BOTTOM", "RAIL_LEFT", "RAIL_RIGHT", "RAIL_TOP"
 ]);
+
+function normalizeModularFrameRuntimePartName(value) {
+  const normalized=safeText(value).toUpperCase().replace(/\.\d{3,}$/, "");
+  return MODULAR_FRAME_REQUIRED_PARTS.includes(normalized) ? normalized : "";
+}
 
 function hex32(value) { return (value >>> 0).toString(16).padStart(8, "0"); }
 function rotr(x, n) { return (x >>> n) | (x << (32 - n)); }
@@ -449,14 +454,19 @@ async function validate(message) {
     const inspected=inspectGltf(streamed.parsed.json,streamed.parsed.chunks,assetType||"asset");
     errors.push(...inspected.errors);warnings.push(...inspected.warnings);summary=inspected.summary;
     if(assetType==="frame"){
-      const runtimeNames=Array.isArray(summary.runtimeMeshNames)?summary.runtimeMeshNames.map(safeText).filter(Boolean):[];
-      const runtimeSet=new Set(runtimeNames);
+      const sourceRuntimeNames=Array.isArray(summary.runtimeMeshNames)?summary.runtimeMeshNames.map(safeText).filter(Boolean):[];
+      const normalizedRuntimeNames=sourceRuntimeNames.map(normalizeModularFrameRuntimePartName);
+      const runtimeParts=normalizedRuntimeNames.filter(Boolean);
+      const runtimeSet=new Set(runtimeParts);
       const missing=MODULAR_FRAME_REQUIRED_PARTS.filter(name=>!runtimeSet.has(name));
-      const unexpected=runtimeNames.filter(name=>!MODULAR_FRAME_REQUIRED_PARTS.includes(name));
+      const unexpected=sourceRuntimeNames.filter((_name,index)=>!normalizedRuntimeNames[index]);
+      const duplicateParts=[...new Set(runtimeParts.filter((name,index,all)=>all.indexOf(name)!==index))];
       if(missing.length) errors.push(issue("FRAME_MODULAR_PARTS_MISSING",`Frame ${MODULAR_FRAME_LAYOUT} is missing required runtime mesh names: ${missing.join(", ")}.`));
       if(unexpected.length) errors.push(issue("FRAME_MODULAR_PARTS_UNEXPECTED",`Frame ${MODULAR_FRAME_LAYOUT} contains unexpected renderable runtime mesh names: ${unexpected.join(", ")}.`));
-      if(runtimeNames.length!==MODULAR_FRAME_REQUIRED_PARTS.length) errors.push(issue("FRAME_MODULAR_PART_COUNT",`Frame ${MODULAR_FRAME_LAYOUT} must expose exactly ${MODULAR_FRAME_REQUIRED_PARTS.length} renderable runtime mesh nodes.`));
-      summary.frameLayout={contract:MODULAR_FRAME_LAYOUT,requiredParts:[...MODULAR_FRAME_REQUIRED_PARTS],runtimeParts:runtimeNames,missingParts:missing,unexpectedParts:unexpected};
+      if(duplicateParts.length) errors.push(issue("FRAME_MODULAR_PARTS_DUPLICATE_SEMANTIC",`Frame ${MODULAR_FRAME_LAYOUT} maps multiple renderable runtime mesh names to the same semantic part: ${duplicateParts.join(", ")}.`));
+      if(sourceRuntimeNames.length!==MODULAR_FRAME_REQUIRED_PARTS.length) errors.push(issue("FRAME_MODULAR_PART_COUNT",`Frame ${MODULAR_FRAME_LAYOUT} must expose exactly ${MODULAR_FRAME_REQUIRED_PARTS.length} renderable runtime mesh nodes.`));
+      summary.runtimeMeshNames=runtimeParts;
+      summary.frameLayout={contract:MODULAR_FRAME_LAYOUT,requiredParts:[...MODULAR_FRAME_REQUIRED_PARTS],runtimeParts:[...runtimeParts],sourceRuntimeParts:[...sourceRuntimeNames],missingParts:missing,unexpectedParts:unexpected,duplicateParts};
     }
   }
   if(message.expectedSize!==undefined&&message.expectedSize!==null&&Number(message.expectedSize)!==streamed.total) errors.push(issue("SOURCE_SIZE_MISMATCH",`Expected ${Number(message.expectedSize)} bytes but read ${streamed.total}.`));

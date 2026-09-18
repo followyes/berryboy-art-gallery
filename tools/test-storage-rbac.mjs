@@ -16,7 +16,7 @@ function blockAfter(marker, end = ');') {
   return sql.slice(start, finish + end.length);
 }
 
-assert.equal(pkg.version, '0.14.4-v14-4-7-5-authenticated-storage-delete');
+assert.equal(pkg.version, '0.14.4-v14-4-7-7-frame-blender-suffix');
 assert.ok(!sql.includes('can_remove_prepared_shared_asset_storage_path'));
 assert.ok(!sql.includes('shared_assets_prepared_delete_select'));
 assert.ok(!sql.includes('gallery_artworks_prepared_shared_asset_delete_select'));
