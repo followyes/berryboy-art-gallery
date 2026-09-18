@@ -5,7 +5,7 @@ import { buildSpaceDefinition } from "../runtime/space-definition-resolver.js?v=
 import { createSceneLoadingRuntimeHost } from "../runtime/scene-loading-orchestrator.js?v=v14_1_10_1_public_reentry_20260911";
 
 const STAGE = "V14.3.7";
-const ENGINE_CACHE_KEY = "v14_4_7_7_frame_blender_suffix_20260918";
+const ENGINE_CACHE_KEY = "v14_4_7_8_mobile_debug_ui_removal_20260918";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);

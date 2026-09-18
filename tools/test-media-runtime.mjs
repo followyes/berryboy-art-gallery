@@ -391,9 +391,7 @@ for(const signal of ['galleryInspectRuntime.target','previousTarget','nextTarget
 const drain=extractFunction(source,'drainGalleryFastStartFullArtworkQueue');
 assert(drain.includes('isGalleryArtworkFullResidencyDesired'),'Full queue ignores residency admission');
 assert(drain.includes('full-wait-for-hard-capacity')&&drain.includes('residencyMemory.hardLimit'),'Full queue does not respect the hard residency ceiling');
-assert(source.includes('berryboy_mobile_survival_last_snapshot_v1'),'Last-session snapshot storage missing');
-for(const label of ['"DBG"','"LIVE"','"FREEZE"','"LAST"','"CLOSE"']) assert(source.includes(label),`On-screen diagnostic control missing ${label}`);
-assert(source.includes('schema: "gallery-mobile-survival-snapshot.v1"'),'Survival snapshot schema missing');
+for(const token of ['berryboyMobileSurvivalDebugButton','berryboyMobileSurvivalDebugBackdrop','ensureGalleryMobileSurvivalDebugUi','BerryboyMobileSurvival','gallery-mobile-survival-snapshot.v1','berryboy_mobile_survival_last_snapshot_v1']) assert(!source.includes(token),`Removed mobile survival debug surface returned: ${token}`);
 assert(source.includes('function unregisterCommonShadowMesh('),'Shadow registry unregister missing');
 const dispose=extractFunction(source,'disposeModel3dSlotRuntime');
 assert(dispose.includes('unregisterCommonShadowMesh')&&dispose.includes('pruneGalleryShadowRegistries'),'Model disposal still leaks shadow registries');

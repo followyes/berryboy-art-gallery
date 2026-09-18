@@ -1,8 +1,14 @@
 # Exhibition Platform
 
-Current repository release: **V14.4.7.7 — Modular Frame Blender Numeric Suffix Compatibility Hotfix** (runtime-only Frame name compatibility patch on the V14.4.7.6 production database baseline; production deploy + Frame3 smoke pending).
+Current repository release: **V14.4.7.8 — Mobile Survival Debug UI Removal** (runtime-only production cleanup layered on V14.4.7.7; no SQL).
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
+
+## V14.4.7.8 Mobile Survival Debug UI Removal
+
+Removes the mobile-only on-screen `DBG` survival diagnostics button, its overlay/panel controls (`LIVE`, `FREEZE`, `LAST`, `CLOSE`), survival snapshot persistence, and the public debug globals/hooks that existed only to drive that panel. The production Viewer no longer installs any visible mobile survival diagnostics UI.
+
+The actual mobile survival system is **not removed**: adaptive quality, bounded Artwork texture residency, Preview/Full promotion/downgrade budgets, memory-pressure cleanup, shadow/resource cleanup, and the non-visual manual Mobile Quality Inspector API remain active. V14.4.7.7 modular Frame Blender suffix compatibility remains unchanged. No SQL/schema/RPC/RLS/Storage change is required.
 
 ## V14.4.7.7 Modular Frame Blender Numeric Suffix Compatibility Hotfix
 

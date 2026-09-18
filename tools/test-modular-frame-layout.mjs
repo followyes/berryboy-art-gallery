@@ -118,7 +118,7 @@ async function validateFrameRuntimeNames(runtimeNames) {
   }
 }
 
-expect('current release preserves V14.4.7.1 authority', pkg.version === '0.14.4-v14-4-7-7-frame-blender-suffix' && pkg.description.includes('V14.4.7.7 Modular Frame Blender Numeric Suffix Compatibility Hotfix'));
+expect('current release preserves V14.4.7.1 authority', pkg.version === '0.14.4-v14-4-7-8-mobile-debug-ui-removal' && pkg.description.includes('V14.4.7.8 Mobile Survival Debug UI Removal'));
 expect('deep Shared Asset validator version is advanced', SHARED_ASSET_VALIDATOR_VERSION === 'V14.4.7.1');
 
 const defaults = getDefaultSharedAssetRuntimeMetadata('frame');

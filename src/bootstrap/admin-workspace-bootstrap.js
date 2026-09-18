@@ -17,13 +17,13 @@ import {
 import { getRuntimeVenueVersionKey } from "../runtime/scene-lifecycle-controller.js?v=v14_2_6_draft_publish_20260914";
 import { createSceneLoadingRuntimeHost } from "../runtime/scene-loading-orchestrator.js?v=v14_2_6_draft_publish_20260914";
 import { buildAuthoringSpaceDefinition } from "../runtime/space-definition-resolver.js?v=c6c8c25_2_admin_gallery_preview";
-import { createAdminAssetWorkspace } from "./admin-asset-workspace.js?v=v14_4_7_7_frame_blender_suffix";
+import { createAdminAssetWorkspace } from "./admin-asset-workspace.js?v=v14_4_7_8_mobile_debug_ui_removal";
 import { createWallColorPresetApi } from "../data/wall-color-preset-api.js?v=v14_4_7_3_modular_frame_3_axis";
 
 const STAGE = "V14.1.10.1";
 const ADMIN_PRODUCT_MODEL_STAGE = "V14.3.7";
 const ADMIN_PRODUCT_CORRECTION_STAGE = "V14.3.7.1";
-const ENGINE_CACHE_KEY = "v14_4_7_7_frame_blender_suffix_20260918";
+const ENGINE_CACHE_KEY = "v14_4_7_8_mobile_debug_ui_removal_20260918";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
 const inlineRuntimeContext = window.__EXHIBITION_INLINE_ADMIN_CONTEXT__ || null;

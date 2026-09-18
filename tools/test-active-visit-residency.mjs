@@ -33,8 +33,8 @@ function functionBody(name) {
   throw new Error(`Could not extract ${name}`);
 }
 
-assert.equal(pkg.version, '0.14.4-v14-4-7-7-frame-blender-suffix');
-assert.ok(pkg.description.includes('V14.4.7.7 Modular Frame Blender Numeric Suffix Compatibility Hotfix'));
+assert.equal(pkg.version, '0.14.4-v14-4-7-8-mobile-debug-ui-removal');
+assert.ok(pkg.description.includes('V14.4.7.8 Mobile Survival Debug UI Removal'));
 assert.ok(pkg.scripts['test:residency']?.includes('test-active-visit-residency.mjs'));
 assert.ok(pkg.scripts.test.includes('test:residency'));
 

@@ -12,7 +12,7 @@ const engine = fs.readFileSync(new URL('../src/Gallery_V0_11.js', import.meta.ur
 const api = fs.readFileSync(new URL('../src/data/exhibition-api.js', import.meta.url), 'utf8');
 const adminHtml = fs.readFileSync(new URL('../admin.html', import.meta.url), 'utf8');
 
-assert.ok(pkg.description.includes('V14.4.7.7 Modular Frame Blender Numeric Suffix Compatibility Hotfix'));
+assert.ok(pkg.description.includes('V14.4.7.8 Mobile Survival Debug UI Removal'));
 assert.ok(sql.includes('create function public.admin_save_exhibition_product('));
 for (const fragment of [
   'select * into e from public.exhibitions where id=p_exhibition_id for update',
