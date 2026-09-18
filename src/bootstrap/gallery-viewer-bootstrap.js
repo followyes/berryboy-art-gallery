@@ -852,7 +852,7 @@ async function openInlineAdminWorkspace(exhibitionId) {
     if (window.ExhibitionPlatformDataAdapter && typeof window.ExhibitionPlatformDataAdapter.setMode === "function") window.ExhibitionPlatformDataAdapter.setMode("admin");
     if (window.GalleryApp && typeof window.GalleryApp.setExhibitionDataMode === "function") window.GalleryApp.setExhibitionDataMode("admin");
     if (window.GalleryApp.enterAdminWorkspaceMode) window.GalleryApp.enterAdminWorkspaceMode();
-    if (!inlineAdminModulePromise) inlineAdminModulePromise = import(`./admin-workspace-bootstrap.js?v=v14_4_7_4_prepared_storage_delete`);
+    if (!inlineAdminModulePromise) inlineAdminModulePromise = import(`./admin-workspace-bootstrap.js?v=v14_4_7_5_authenticated_storage_delete`);
     const adminModule = await inlineAdminModulePromise;
     if (adminModule && typeof adminModule.resumeAdminWorkspace === "function") await adminModule.resumeAdminWorkspace();
     window.requestAnimationFrame(() => { if (activeEngine) activeEngine.resize(); });

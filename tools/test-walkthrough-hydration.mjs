@@ -40,8 +40,8 @@ function functionBody(name) {
   throw new Error(`Could not extract ${name}`);
 }
 
-assert.equal(pkg.version, '0.14.4-v14-4-7-4-prepared-storage-delete');
-assert.ok(pkg.description.includes('V14.4.7.4 Prepared Shared Asset Storage Delete Hotfix'));
+assert.equal(pkg.version, '0.14.4-v14-4-7-5-authenticated-storage-delete');
+assert.ok(pkg.description.includes('V14.4.7.5 Authenticated Shared Asset Storage Delete Corrective'));
 
 for (const context of ['public-exhibition', 'admin-exhibition']) {
   const policy = createSceneLoadingPolicy(context);

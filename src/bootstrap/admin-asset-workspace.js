@@ -1,7 +1,7 @@
 /* Exhibition Platform — V14.4.7.1 Modular Frame Rail Layout + V14.3.9 Unified Asset Placement.
    Asset catalog remains in the left workspace; Props and Frames share one pointer-driven drag model. */
 
-import { createSharedAssetApi } from "../data/shared-asset-api.js?v=v14_4_7_4_prepared_storage_delete";
+import { createSharedAssetApi } from "../data/shared-asset-api.js?v=v14_4_7_5_authenticated_storage_delete";
 import { getDefaultSharedAssetRuntimeMetadata } from "../validation/shared-asset-validation.js?v=v14_4_7_3_modular_frame_3_axis";
 
 export const ADMIN_ASSET_WORKSPACE_STAGE = "V14.4.3";
@@ -133,7 +133,6 @@ function ensureStyles() {
 
 export function createAdminAssetWorkspace({
   supabase,
-  preparedStorageSupabase = null,
   sidebar,
   showToast = () => {},
   loadVenueOptions = async () => [],
@@ -155,7 +154,7 @@ export function createAdminAssetWorkspace({
   if (!supabase) throw new Error("Supabase client is required for the Asset Workspace.");
   if (!sidebar) throw new Error("Canonical Admin sidebar is required for the Asset Workspace.");
   ensureStyles();
-  const api = createSharedAssetApi({ supabase, preparedStorageSupabase: preparedStorageSupabase || supabase });
+  const api = createSharedAssetApi({ supabase });
 
   const state = {
     visible: false,

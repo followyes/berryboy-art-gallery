@@ -10,8 +10,8 @@ const migration = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/V14_4_7_WAL
 const allInOne = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/ALL_IN_ONE.sql', import.meta.url), 'utf8');
 const postcheck = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/V14_4_7_PRODUCTION_POSTCHECK.sql', import.meta.url), 'utf8');
 
-assert.equal(pkg.version, '0.14.4-v14-4-7-4-prepared-storage-delete');
-assert.ok(pkg.description.includes('V14.4.7.4 Prepared Shared Asset Storage Delete Hotfix'));
+assert.equal(pkg.version, '0.14.4-v14-4-7-5-authenticated-storage-delete');
+assert.ok(pkg.description.includes('V14.4.7.5 Authenticated Shared Asset Storage Delete Corrective'));
 
 for (const fragment of [
   'create table public.wall_color_presets',

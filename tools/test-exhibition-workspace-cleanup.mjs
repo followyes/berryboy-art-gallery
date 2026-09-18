@@ -59,8 +59,8 @@ assert.ok(api.includes('admin_rollback_exhibition_bundle'));
 assert.ok(admin.includes('const detail = exhibitionAdminDetail;'));
 assert.ok(admin.includes('const draftBinding = detail ? c24Binding(detail, "draft") : null;'));
 
-assert.equal(pkg.version, '0.14.4-v14-4-7-4-prepared-storage-delete');
-assert.ok(pkg.description.includes('V14.4.7.4 Prepared Shared Asset Storage Delete Hotfix'));
+assert.equal(pkg.version, '0.14.4-v14-4-7-5-authenticated-storage-delete');
+assert.ok(pkg.description.includes('V14.4.7.5 Authenticated Shared Asset Storage Delete Corrective'));
 assert.ok(pkg.scripts.test.includes('test:workspace-cleanup'));
 
 console.log('V14.2.6 Canonical Draft / Publish Model regression passed.');

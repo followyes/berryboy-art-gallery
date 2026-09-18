@@ -48,10 +48,10 @@ assert(index.includes('stage: "V14.1.10.1"'),'Index stage identity missing');
 assert(bootstrap.includes('const STAGE = "V14.1.10.1"'),'Viewer stage identity missing');
 assert(adminBootstrap.includes('const STAGE = "V14.1.10.1"'),'Admin stage identity missing');
 assert(bootstrap.includes('v14_4_7_3_modular_frame_3_axis_20260918')&&adminBootstrap.includes('v14_4_7_3_modular_frame_3_axis_20260918'),'V14.4.7 engine cache key missing');
-assert(index.includes('gallery-viewer-bootstrap.js?v=v14_4_7_4_prepared_storage_delete'),'V14.4.7.4 viewer cache key missing');
-assert(admin.includes('admin-workspace-bootstrap.js?v=v14_4_7_4_prepared_storage_delete'),'V14.4.7.4 Admin cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=v14_4_7_5_authenticated_storage_delete'),'V14.4.7.4 viewer cache key missing');
+assert(admin.includes('admin-workspace-bootstrap.js?v=v14_4_7_5_authenticated_storage_delete'),'V14.4.7.4 Admin cache key missing');
 const currentPackage=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
-assert(currentPackage.version==='0.14.4-v14-4-7-4-prepared-storage-delete'&&currentPackage.description.includes('V14.4.7.4 Prepared Shared Asset Storage Delete Hotfix'),'V14.4.7.3 package identity missing');
+assert(currentPackage.version==='0.14.4-v14-4-7-5-authenticated-storage-delete'&&currentPackage.description.includes('V14.4.7.5 Authenticated Shared Asset Storage Delete Corrective'),'V14.4.7.3 package identity missing');
 
 
 assert(sharedAssetState.includes('SHARED_ASSET_AUTHORITY_STAGE = "V14.4.2"')&&sharedAssetState.includes('collectSharedAssetIds')&&sharedAssetState.includes('hydrateSharedAssetReferencesWithCurrentVersions'),'V14.4.2 logical Shared Asset state authority missing');
@@ -339,6 +339,7 @@ const expectedRegressionSuites=[
   'test-sculpture-model-validation.mjs',
   'test-shared-assets.mjs',
   'test-space-model-validation.mjs',
+  'test-storage-rbac.mjs',
   'test-transition-session-ownership.mjs',
   'test-unified-exhibition-save.mjs',
   'test-version-gc-authority.mjs',

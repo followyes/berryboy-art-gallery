@@ -1,19 +1,18 @@
 # Exhibition Platform
 
-Current repository release: **V14.4.7.4 — Prepared Shared Asset Storage Delete Hotfix** (maintenance hotfix on the V14.4.7.3 source baseline; production SQL + deploy + delete smoke pending).
+Current repository release: **V14.4.7.5 — Authenticated Shared Asset Storage Delete Corrective** (corrective maintenance on the V14.4.7.4 production-failed delete path; production SQL + deploy + delete smoke pending).
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
+## V14.4.7.5 Authenticated Shared Asset Storage Delete Corrective
 
+The production failure is catalog-wide for the existing seeded Frames, not a `Classic Oak` special case. Every original `gallery-artworks/main/frames/*.glb` object was seeded as a logical Shared Asset with a legacy Published version. Permanent Shared Asset deletion inventories **all** exact version Storage paths for the Asset, so a seeded Frame still requires cleanup of its legacy `gallery-artworks` object even after later Replace operations publish a newer model in `shared-assets`.
 
+V14.4.7.4 incorrectly moved prepared physical cleanup to a non-session Supabase client. That client reaches Storage as `anon`, while the pre-existing `gallery_artworks_canonical_select` anon policy also referenced the authenticated-only `can_edit_exhibition_artwork_path(...)` helper. Production therefore returned `permission denied for function can_edit_exhibition_artwork_path` while Storage was evaluating the SELECT authority required by `Storage.remove()`.
 
-## V14.4.7.4 Prepared Shared Asset Storage Delete Hotfix
+V14.4.7.5 removes that anon prepared-delete bridge completely. One authenticated Admin client now owns the whole two-phase path: guarded prepare RPC -> exact Storage SELECT/DELETE -> guarded finalize RPC. `gallery-artworks` public reads and authenticated Admin reads are split into separate policies, and exact pending Shared Asset delete/Version-GC paths are explicitly admitted to authenticated SELECT as well as DELETE. The same invariant is made explicit for `shared-assets`.
 
-Production diagnosis of the legacy `Classic Oak` Frame proved that canonical Shared Asset delete preparation succeeds, retained usage is zero, the exact legacy object is still present at `gallery-artworks/main/frames/Classic_Oak.glb`, and the existing authenticated management/delete helpers all evaluate true. The browser nevertheless receives HTTP 400 from the Supabase Storage delete request, leaving the Asset correctly in `deletion_pending_at` rather than corrupting DB/Storage truth.
-
-V14.4.7.4 keeps authenticated Admin RPCs as the only authority allowed to create or finalize Shared Asset delete/GC state. After `deletion_pending_at` or `gc_pending_at` has been authored by those guarded RPCs, physical Storage cleanup is performed through a dedicated non-persistent, non-session Supabase client. Additive Storage RLS policies grant that client only an exact-path capability derived from the already-pending server state. No service-role key is exposed, no direct SQL deletion from `storage.objects` is introduced, and ordinary Shared Asset upload/edit cleanup continues to use the authenticated Admin client.
-
-The already-pending `Classic Oak` record is intentionally recoverable by retry: do not clear `deletion_pending_at`. A retry re-inventories the remaining object, removes it through the prepared Storage capability, and only then executes the existing authenticated final-delete RPC. V14.4.5 historical Storage cleanup remains independently frozen under its safety hold.
+Already-pending Assets such as `Classic Oak` must not have `deletion_pending_at` cleared manually. After SQL + REPO deployment, Delete is retried normally; prepare re-inventories remaining objects, the authenticated client removes them through Storage API, and finalization runs only after Storage truth is clean. No service-role key is exposed and SQL never deletes directly from `storage.objects`.
 
 ## V14.4.7.3 Modular Frame 3-Axis Layout Hotfix
 

@@ -10,7 +10,7 @@ const migration = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/ARCHIVE/V14
 const sharedApiText = fs.readFileSync(new URL('../src/data/shared-asset-api.js', import.meta.url), 'utf8');
 const galleryApiText = fs.readFileSync(new URL('../src/data/gallery-management-api.js', import.meta.url), 'utf8');
 
-assert.equal(pkg.version, '0.14.4-v14-4-7-4-prepared-storage-delete');
+assert.equal(pkg.version, '0.14.4-v14-4-7-5-authenticated-storage-delete');
 for (const text of [sql, migration]) {
   assert.ok(text.includes('gc_eligible_after'));
   assert.ok(text.includes('gc_pending_at'));

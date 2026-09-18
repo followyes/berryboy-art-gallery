@@ -159,8 +159,8 @@ assert.ok(api.includes('p_published: published === true'));
 assert.ok(api.includes('return this.setPublished(reference, false);'));
 assert.ok(!api.includes('patch.is_published'));
 
-assert.equal(pkg.version, '0.14.4-v14-4-7-4-prepared-storage-delete');
-assert.ok(pkg.description.includes('V14.4.7.4 Prepared Shared Asset Storage Delete Hotfix'));
+assert.equal(pkg.version, '0.14.4-v14-4-7-5-authenticated-storage-delete');
+assert.ok(pkg.description.includes('V14.4.7.5 Authenticated Shared Asset Storage Delete Corrective'));
 assert.ok(pkg.scripts.test.includes('test:gallery-assignment'));
 
 console.log('C6C8C24 backend compatibility invariants remain preserved while V14.2.4 removes normal assignment UI.');
