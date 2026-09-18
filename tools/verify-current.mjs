@@ -37,6 +37,7 @@ const sharedAssetValidation=fs.readFileSync(new URL('../src/validation/shared-as
 const sculptureValidation=fs.readFileSync(new URL('../src/validation/sculpture-model-validation.js',import.meta.url),'utf8');
 const sharedAssetWorker=fs.readFileSync(new URL('../src/workers/shared-asset-glb-validator-worker.js',import.meta.url),'utf8');
 const assetWorkspace=fs.readFileSync(new URL('../src/bootstrap/admin-asset-workspace.js',import.meta.url),'utf8');
+const wallColorPresetApi=fs.readFileSync(new URL('../src/data/wall-color-preset-api.js',import.meta.url),'utf8');
 
 function assert(c,m){if(!c)throw new Error(m)}
 function count(h,n){return h.split(n).length-1}
@@ -46,11 +47,11 @@ function extractFunction(text,name){const ms=[`async function ${name}(`,`functio
 assert(index.includes('stage: "V14.1.10.1"'),'Index stage identity missing');
 assert(bootstrap.includes('const STAGE = "V14.1.10.1"'),'Viewer stage identity missing');
 assert(adminBootstrap.includes('const STAGE = "V14.1.10.1"'),'Admin stage identity missing');
-assert(bootstrap.includes('v14_4_6_unified_exhibition_save_20260917')&&adminBootstrap.includes('v14_4_6_unified_exhibition_save_20260917'),'V14.4.6 engine cache key missing');
-assert(index.includes('gallery-viewer-bootstrap.js?v=v14_4_6_unified_exhibition_save'),'V14.4.6 viewer cache key missing');
-assert(admin.includes('admin-workspace-bootstrap.js?v=v14_4_6_unified_exhibition_save'),'V14.4.6 Admin cache key missing');
+assert(bootstrap.includes('v14_4_7_wall_color_presets_20260918')&&adminBootstrap.includes('v14_4_7_wall_color_presets_20260918'),'V14.4.7 engine cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=v14_4_7_wall_color_presets'),'V14.4.7 viewer cache key missing');
+assert(admin.includes('admin-workspace-bootstrap.js?v=v14_4_7_wall_color_presets'),'V14.4.7 Admin cache key missing');
 const currentPackage=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
-assert(currentPackage.version==='0.14.4-v14-4-6-unified-exhibition-save-authority'&&currentPackage.description.includes('V14.4.6 Unified Exhibition Save Authority'),'V14.4.6 package identity missing');
+assert(currentPackage.version==='0.14.4-v14-4-7-wall-color-presets'&&currentPackage.description.includes('V14.4.7 Wall Color Presets'),'V14.4.7 package identity missing');
 
 
 assert(sharedAssetState.includes('SHARED_ASSET_AUTHORITY_STAGE = "V14.4.2"')&&sharedAssetState.includes('collectSharedAssetIds')&&sharedAssetState.includes('hydrateSharedAssetReferencesWithCurrentVersions'),'V14.4.2 logical Shared Asset state authority missing');
@@ -63,6 +64,9 @@ assert(source.includes('V14.3.10 — WALL TINT SYSTEM')&&source.includes('wallTi
 assert(source.includes('legacyWallTintByName')&&source.includes('getWallTintHexFromState')&&source.includes('tintHex: getWallTintHexForMesh(wallMesh)'),'V14.3.10 tint persistence/legacy read compatibility missing');
 assert(source.includes('applyWallTintColorChannel(material, "albedoColor"')&&source.includes('applyWallTintColorChannel(material, "diffuseColor"')&&source.includes('wallTintAuthoredColors'),'V14.3.10 authored base-color multiply path missing');
 assert(!source.includes('basecolor_black.png')&&!source.includes('data-wall-texture-url')&&!source.includes('var wallColorMaterials = {}'),'V14.3.10 legacy texture-swap wall palette remains active');
+assert(source.includes('V14.4.7 — Wall Color Presets')&&source.includes('saveCurrentWallColorPreset')&&source.includes('removeWallColorPreset')&&source.includes('setWallColorPresetApi'),'V14.4.7 Wall Color Preset runtime missing');
+assert(wallColorPresetApi.includes('admin_list_wall_color_presets')&&wallColorPresetApi.includes('admin_create_wall_color_preset')&&wallColorPresetApi.includes('admin_delete_wall_color_preset'),'V14.4.7 Wall Color Preset data adapter missing');
+assert(adminBootstrap.includes('createWallColorPresetApi')&&adminBootstrap.includes('setWallColorPresetApi'),'V14.4.7 Admin preset bridge missing');
 
 assert(galleryGlbValidator.includes('exhibition-platform-gallery-runtime-mesh-signatures.v1')&&galleryGlbValidator.includes('geometryFingerprint')&&galleryGlbValidator.includes('transformFingerprint'),'V14.3.3 worker structural signatures missing');
 assert(galleryModelValidation.includes('GALLERY_STRUCTURAL_SIGNATURE_SCHEMA')&&galleryModelValidation.includes('hasCurrentGalleryStructuralSignatures'),'V14.3.3 browser structural signature contract missing');
@@ -331,6 +335,7 @@ const expectedRegressionSuites=[
   'test-unified-exhibition-save.mjs',
   'test-version-gc-authority.mjs',
   'test-walkthrough-hydration.mjs',
+  'test-wall-color-presets.mjs',
   'test-workspace-ui.mjs'
 ];
 const actualRegressionSuites=fs.readdirSync(new URL('./',import.meta.url))

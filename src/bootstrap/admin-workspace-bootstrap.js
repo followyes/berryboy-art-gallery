@@ -1,11 +1,11 @@
 /*
-  Exhibition Platform — V14.4.6 Admin Workspace / Unified Exhibition Save Authority
+  Exhibition Platform — V14.4.7 Admin Workspace / Wall Color Presets
   Authenticated exhibition management + constrained 3D editor viewport.
 */
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { registerExhibitionAssetCache, getExhibitionAssetCacheStatus, getExhibitionAssetDeliveryStats, evictExhibitionAssetCacheUrl } from "./asset-cache-bootstrap.js?v=c6c8c22_gallery_management_20260908";
 import { beginTransitionGuard, endTransitionGuard, isTransitionGuardActive } from "./transition-guard.js?v=v14_2_6_draft_publish_20260914";
-import { createExhibitionDataAdapter, resolveInitialAdminRuntime } from "../data/exhibition-api.js?v=v14_4_6_unified_exhibition_save";
+import { createExhibitionDataAdapter, resolveInitialAdminRuntime } from "../data/exhibition-api.js?v=v14_4_7_wall_color_presets";
 import { createGalleryManagementApi, CONTROLLED_GALLERY_ASSET_ROLES } from "../data/gallery-management-api.js?v=v14_3_7_1_product_save";
 import {
   REQUIRED_GALLERY_MODEL_ROLES,
@@ -18,11 +18,12 @@ import { getRuntimeVenueVersionKey } from "../runtime/scene-lifecycle-controller
 import { createSceneLoadingRuntimeHost } from "../runtime/scene-loading-orchestrator.js?v=v14_2_6_draft_publish_20260914";
 import { buildAuthoringSpaceDefinition } from "../runtime/space-definition-resolver.js?v=c6c8c25_2_admin_gallery_preview";
 import { createAdminAssetWorkspace } from "./admin-asset-workspace.js?v=v14_3_9_unified_asset_placement";
+import { createWallColorPresetApi } from "../data/wall-color-preset-api.js?v=v14_4_7_wall_color_presets";
 
 const STAGE = "V14.1.10.1";
 const ADMIN_PRODUCT_MODEL_STAGE = "V14.3.7";
 const ADMIN_PRODUCT_CORRECTION_STAGE = "V14.3.7.1";
-const ENGINE_CACHE_KEY = "v14_4_6_unified_exhibition_save_20260917";
+const ENGINE_CACHE_KEY = "v14_4_7_wall_color_presets_20260918";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
 const inlineRuntimeContext = window.__EXHIBITION_INLINE_ADMIN_CONTEXT__ || null;
@@ -37,6 +38,8 @@ const supabase = inlineRuntimeContext && inlineRuntimeContext.supabase
   : createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 window.gallerySupabase = supabase;
 const assetCacheReadyPromise = registerExhibitionAssetCache();
+const wallColorPresetApi = createWallColorPresetApi({ supabase });
+window.ExhibitionPlatformWallColorPresetApi = wallColorPresetApi;
 
 const el = (id) => document.getElementById(id);
 const canvas = el("renderCanvas");
@@ -1067,6 +1070,7 @@ async function startEngine(initialId, initialSnapshot) {
     if (window.GalleryApp) {
       if (typeof window.GalleryApp.setExhibitionDataMode === "function") window.GalleryApp.setExhibitionDataMode("admin");
       window.GalleryApp.setEditorAuthenticated(true);
+      if (typeof window.GalleryApp.setWallColorPresetApi === "function") window.GalleryApp.setWallColorPresetApi(wallColorPresetApi);
       window.GalleryApp.hideViewerIntroOverlay();
       if (typeof window.GalleryApp.enterAdminWorkspaceMode === "function") {
         window.GalleryApp.enterAdminWorkspaceMode();
@@ -1112,9 +1116,9 @@ async function startEngine(initialId, initialSnapshot) {
         exhibitionData,
         resolveRuntime: (reference, options = {}) => exhibitionData.resolveRuntime(reference, Object.assign({ mode: "admin" }, options)),
         initialRuntime,
-        initialStartOptions: { initialSnapshot: initialSnapshot || null, sceneOptions: { adminWorkspace: true } },
+        initialStartOptions: { initialSnapshot: initialSnapshot || null, sceneOptions: { adminWorkspace: true, wallColorPresetApi } },
         getApp: () => window.GalleryApp || null,
-        getCreateSceneOptions: () => ({ adminWorkspace: true })
+        getCreateSceneOptions: () => ({ adminWorkspace: true, wallColorPresetApi })
       };
     },
     createEngine: () => {
@@ -1145,6 +1149,7 @@ async function startEngine(initialId, initialSnapshot) {
   if (window.GalleryApp) {
     if (typeof window.GalleryApp.setExhibitionDataMode === "function") window.GalleryApp.setExhibitionDataMode("admin");
     window.GalleryApp.setEditorAuthenticated(true);
+    if (typeof window.GalleryApp.setWallColorPresetApi === "function") window.GalleryApp.setWallColorPresetApi(wallColorPresetApi);
     window.GalleryApp.hideViewerIntroOverlay();
     if (typeof window.GalleryApp.enterAdminWorkspaceMode === "function") window.GalleryApp.enterAdminWorkspaceMode();
     else window.GalleryApp.setEditMode(true);

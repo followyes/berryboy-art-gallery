@@ -59,8 +59,8 @@ assert.ok(api.includes('admin_rollback_exhibition_bundle'));
 assert.ok(admin.includes('const detail = exhibitionAdminDetail;'));
 assert.ok(admin.includes('const draftBinding = detail ? c24Binding(detail, "draft") : null;'));
 
-assert.equal(pkg.version, '0.14.4-v14-4-6-unified-exhibition-save-authority');
-assert.ok(pkg.description.includes('V14.4.6 Unified Exhibition Save Authority'));
+assert.equal(pkg.version, '0.14.4-v14-4-7-wall-color-presets');
+assert.ok(pkg.description.includes('V14.4.7 Wall Color Presets'));
 assert.ok(pkg.scripts.test.includes('test:workspace-cleanup'));
 
 console.log('V14.2.6 Canonical Draft / Publish Model regression passed.');

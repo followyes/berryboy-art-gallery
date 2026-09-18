@@ -4,7 +4,7 @@ import { createExhibitionDataAdapter } from '../src/data/exhibition-api.js';
 
 const root = new URL('../', import.meta.url);
 const pkg = JSON.parse(fs.readFileSync(new URL('package.json', root), 'utf8'));
-const sql = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/V14_4_6_UNIFIED_EXHIBITION_SAVE_AUTHORITY.sql', import.meta.url), 'utf8');
+const sql = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/ARCHIVE/V14_4_6_UNIFIED_EXHIBITION_SAVE_AUTHORITY_DEPLOYED.sql', import.meta.url), 'utf8');
 const allInOne = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/ALL_IN_ONE.sql', import.meta.url), 'utf8');
 const admin = fs.readFileSync(new URL('../src/bootstrap/admin-workspace-bootstrap.js', import.meta.url), 'utf8');
 const viewer = fs.readFileSync(new URL('../src/bootstrap/gallery-viewer-bootstrap.js', import.meta.url), 'utf8');
@@ -12,7 +12,7 @@ const engine = fs.readFileSync(new URL('../src/Gallery_V0_11.js', import.meta.ur
 const api = fs.readFileSync(new URL('../src/data/exhibition-api.js', import.meta.url), 'utf8');
 const adminHtml = fs.readFileSync(new URL('../admin.html', import.meta.url), 'utf8');
 
-assert.equal(pkg.version, '0.14.4-v14-4-6-unified-exhibition-save-authority');
+assert.ok(pkg.description.includes('V14.4.7 Wall Color Presets'));
 assert.ok(sql.includes('create function public.admin_save_exhibition_product('));
 for (const fragment of [
   'select * into e from public.exhibitions where id=p_exhibition_id for update',
@@ -42,8 +42,8 @@ assert.ok(engine.includes('galleryEditorSaveBar.hidden = true'));
 assert.ok(!engine.includes('galleryEditorSaveBar.appendChild(sharedSaveStateButton)'));
 assert.ok(adminHtml.includes('id="saveMetadataButton"'));
 assert.ok(adminHtml.includes('data-save-state="clean" disabled>ALL CHANGES SAVED'));
-assert.ok(viewer.includes('v14_4_6_unified_exhibition_save'));
-assert.ok(admin.includes('v14_4_6_unified_exhibition_save'));
+assert.ok(viewer.includes('v14_4_7_wall_color_presets'));
+assert.ok(admin.includes('v14_4_7_wall_color_presets'));
 
 const calls = [];
 const fakeSupabase = {

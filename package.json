@@ -1,19 +1,19 @@
 {
   "name": "exhibition-platform",
-  "version": "0.14.4-v14-4-6-unified-exhibition-save-authority",
+  "version": "0.14.4-v14-4-7-wall-color-presets",
   "private": true,
-  "description": "Exhibition Platform — V14.4.6 Unified Exhibition Save Authority",
+  "description": "Exhibition Platform — V14.4.7 Wall Color Presets",
   "type": "module",
   "scripts": {
     "build": "node tools/build-current.mjs",
-    "syntax": "node --check src/Gallery_V0_11.js && node --check src/Gallery_V0_11.min.js && node --check src/config/space-fixture.js && node --check src/runtime/space-definition-resolver.js && node --check src/runtime/scene-lifecycle-controller.js && node --check src/runtime/scene-loading-policies.js && node --check src/runtime/scene-loading-orchestrator.js && node --check src/runtime/public-space-entry-policy.js && node --check src/runtime/same-gallery-state-compatibility.js && node --check src/data/exhibition-api.js && node --check src/data/exhibition-gallery-assignment.js && node --check src/data/gallery-management-api.js && node --check src/bootstrap/gallery-viewer-bootstrap.js && node --check src/bootstrap/gallery-editor-bootstrap.js && node --check src/bootstrap/admin-workspace-bootstrap.js && node --check src/bootstrap/admin-asset-workspace.js && node --check src/bootstrap/gallery-test-bootstrap.js && node --check src/bootstrap/asset-cache-bootstrap.js && node --check src/bootstrap/transition-guard.js && node --check asset-cache-sw.js && node --check src/workers/gallery-avif-encoder-worker.js && node --check src/workers/gallery-glb-validator-worker.js && node --check src/validation/gallery-model-validation.js && node --check src/validation/gallery-structural-compatibility.js && node --check src/vendor/gallery-avif-encoder.mjs && node --check src/data/shared-asset-api.js && node --check src/runtime/shared-asset-state.js && node --check src/validation/shared-asset-validation.js && node --check src/validation/sculpture-model-validation.js && node --check src/workers/shared-asset-glb-validator-worker.js",
+    "syntax": "node --check src/Gallery_V0_11.js && node --check src/Gallery_V0_11.min.js && node --check src/config/space-fixture.js && node --check src/runtime/space-definition-resolver.js && node --check src/runtime/scene-lifecycle-controller.js && node --check src/runtime/scene-loading-policies.js && node --check src/runtime/scene-loading-orchestrator.js && node --check src/runtime/public-space-entry-policy.js && node --check src/runtime/same-gallery-state-compatibility.js && node --check src/data/exhibition-api.js && node --check src/data/exhibition-gallery-assignment.js && node --check src/data/gallery-management-api.js && node --check src/bootstrap/gallery-viewer-bootstrap.js && node --check src/bootstrap/gallery-editor-bootstrap.js && node --check src/bootstrap/admin-workspace-bootstrap.js && node --check src/bootstrap/admin-asset-workspace.js && node --check src/bootstrap/gallery-test-bootstrap.js && node --check src/bootstrap/asset-cache-bootstrap.js && node --check src/bootstrap/transition-guard.js && node --check asset-cache-sw.js && node --check src/workers/gallery-avif-encoder-worker.js && node --check src/workers/gallery-glb-validator-worker.js && node --check src/validation/gallery-model-validation.js && node --check src/validation/gallery-structural-compatibility.js && node --check src/vendor/gallery-avif-encoder.mjs && node --check src/data/shared-asset-api.js && node --check src/data/wall-color-preset-api.js && node --check src/runtime/shared-asset-state.js && node --check src/validation/shared-asset-validation.js && node --check src/validation/sculpture-model-validation.js && node --check src/workers/shared-asset-glb-validator-worker.js",
     "verify": "node tools/verify-current.mjs",
     "test:core": "node tools/test-core-runtime.mjs",
     "test:media": "node tools/test-media-runtime.mjs",
     "test:platform": "node tools/test-platform-runtime.mjs",
     "test:performance": "node tools/test-performance-runtime.mjs",
     "test:workspace": "node tools/test-workspace-ui.mjs",
-    "test": "npm run test:core && npm run test:media && npm run test:platform && npm run test:performance && npm run test:workspace && npm run test:gallery && npm run test:space-models && npm run test:sculpture-models && npm run test:creation-targeting && npm run test:creation-lifecycle && npm run test:gallery-assignment && npm run test:workspace-cleanup && npm run test:safe-deletion && npm run test:draft-publish && npm run test:compatibility && npm run test:cross-space && npm run test:runtime-host && npm run test:transitions && npm run test:readiness && npm run test:walkthrough && npm run test:residency && npm run test:reentry && npm run test:assets && npm run test:version-gc && npm run test:mobile-carousel && npm run test:unified-save",
+    "test": "npm run test:core && npm run test:media && npm run test:platform && npm run test:performance && npm run test:workspace && npm run test:gallery && npm run test:space-models && npm run test:sculpture-models && npm run test:creation-targeting && npm run test:creation-lifecycle && npm run test:gallery-assignment && npm run test:workspace-cleanup && npm run test:safe-deletion && npm run test:draft-publish && npm run test:compatibility && npm run test:cross-space && npm run test:runtime-host && npm run test:transitions && npm run test:readiness && npm run test:walkthrough && npm run test:residency && npm run test:reentry && npm run test:assets && npm run test:version-gc && npm run test:mobile-carousel && npm run test:unified-save && npm run test:wall-presets",
     "check": "npm run build && npm run syntax && npm run verify && npm test",
     "test:gallery": "node tools/test-gallery-management.mjs",
     "test:space-models": "node tools/test-space-model-validation.mjs",
@@ -35,6 +35,7 @@
     "test:compatibility": "node tools/test-same-gallery-compatibility.mjs",
     "test:version-gc": "node tools/test-version-gc-authority.mjs",
     "test:mobile-carousel": "node tools/test-mobile-home-carousel.mjs",
-    "test:unified-save": "node tools/test-unified-exhibition-save.mjs"
+    "test:unified-save": "node tools/test-unified-exhibition-save.mjs",
+    "test:wall-presets": "node tools/test-wall-color-presets.mjs"
   }
 }

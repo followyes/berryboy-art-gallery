@@ -121,6 +121,7 @@ import {
   - Stage 12C66C6C7C8B1: Public Viewer / Admin Edit Gate — the public index is viewer-only; its Edit Mode control routes authenticated editors into admin.html for the active exhibition, while Edit Mode can only be enabled inside Admin Workspace.
   - Stage 12C66C6C8C: Asset Residency / Egress Guard — artwork Full textures become proximity/Inspect-driven on desktop and mobile, Full residency is bounded globally, repeated Storage asset requests are expected to be served by the persistent browser asset cache across Viewer/Admin navigation, and poster uploads are normalized to a compact delivery asset.
   - Stage 12C66C6C8C1: Runtime Lifecycle / Admin Transition Fix — Exhibition/Save runtimes are initialized before state preload, public Viewer no longer owns editor dirty tracking or unload prompts, Viewer/Admin handoff uses confirmed published snapshots, Admin preview hydration uses the intended desktop concurrency, Full upgrades yield to Preview population, and active Exhibition is preserved when returning to the public page.
+  - V14.4.7: Wall Color Presets — global Admin shortcut library; wall state continues to store literal tintHex only.
   - Stage 12C66C6C8C2: Same-Runtime Admin Workspace — authenticated Viewer→Admin transitions reuse the already-running Babylon engine, scene, GPU textures and Space instead of navigating to a second document; Admin can return to the public Viewer without rebuilding the scene, while direct admin.html remains supported.
   - Stage 12C66C6C8C3: Runtime Hygiene / Cache Versioning — editor heartbeat exists only while Admin Workspace is active, same-runtime Admin policies refresh on enter/exit, dirty scene state can be discarded without rebuilding the scene, Space/Frame fixed-path GLBs receive cache-busting versions, and public visibility of Main follows the same publication flag as every other Exhibition.
   - Stage 12C66C6C8C4: Space Residency / Exhibition Delta Switch — switching Exhibitions inside the same space_id keeps the loaded building, static collision geometry and Space assets resident; only Exhibition-owned content/presentation is replaced, global refreshes are batched once, and entering Admin reuses a valid Tour instead of rebuilding it unconditionally.
@@ -439,6 +440,7 @@ export const createScene = function (engineArg, canvasArg, runtimeOptionsArg) {
 
     var gallerySpaceDefinition = runtimeOptions.spaceDefinition || globalThis.ExhibitionPlatformSpaceDefinition || null;
     var galleryExhibitionDataAdapter = runtimeOptions.exhibitionData && typeof runtimeOptions.exhibitionData === "object" ? runtimeOptions.exhibitionData : null;
+    var galleryWallColorPresetApi = runtimeOptions.wallColorPresetApi && typeof runtimeOptions.wallColorPresetApi === "object" ? runtimeOptions.wallColorPresetApi : null;
     // V14.3.4: explicit compatibility evidence is optional on the current pinned resolver.
     // V14.3.5 can provide it when source state provenance and current Gallery shell diverge.
     var galleryStateCompatibilityContext = runtimeOptions.stateCompatibilityContext && typeof runtimeOptions.stateCompatibilityContext === "object"
@@ -15380,6 +15382,12 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     var selectedWallTintHex = null;
     var wallTintInput = null;
     var wallTintHexInput = null;
+    var wallColorPresetAddButton = null;
+    var wallColorPresetList = null;
+    var wallColorPresetStatus = null;
+    var wallColorPresets = [];
+    var wallColorPresetsLoaded = false;
+    var wallColorPresetsLoading = false;
 
     var lastArtworkClickTime = 0;
     var lastArtworkClickMesh = null;
@@ -21283,6 +21291,76 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             box-shadow: 0 0 0 2px rgba(63, 127, 61, 0.18);
         }
 
+        .gallery-editor-wall-preset-add {
+            width: 38px;
+            height: 38px;
+            border: 1px solid rgba(0, 0, 0, 0.16);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.76);
+            color: #303030;
+            font-size: 23px;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .gallery-editor-wall-preset-add:hover:not(:disabled) {
+            border-color: rgba(63, 127, 61, 0.55);
+            background: rgba(255, 255, 255, 0.96);
+        }
+
+        .gallery-editor-wall-preset-add:disabled { opacity: 0.45; cursor: wait; }
+
+        .gallery-editor-wall-preset-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+            min-height: 34px;
+        }
+
+        .gallery-editor-wall-preset-item {
+            position: relative;
+            width: 42px;
+            height: 34px;
+        }
+
+        .gallery-editor-wall-preset-swatch {
+            width: 42px;
+            height: 34px;
+            border: 1px solid rgba(0, 0, 0, 0.24);
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.28);
+        }
+
+        .gallery-editor-wall-preset-swatch:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 7px rgba(0,0,0,0.16), inset 0 0 0 1px rgba(255,255,255,0.35);
+        }
+
+        .gallery-editor-wall-preset-remove {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 18px;
+            height: 18px;
+            border: 1px solid rgba(0,0,0,0.18);
+            border-radius: 50%;
+            background: rgba(255,255,255,0.96);
+            color: #555;
+            font-size: 13px;
+            line-height: 15px;
+            padding: 0;
+            cursor: pointer;
+        }
+
+        .gallery-editor-wall-preset-status {
+            margin-top: 7px;
+            color: #6a6a6a;
+            font-size: 11px;
+            line-height: 1.3;
+        }
+
         .gallery-editor-color-status {
             margin-top: 14px;
             font-size: 15px;
@@ -27120,8 +27198,26 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         }
     });
 
+    wallColorPresetAddButton = document.createElement("button");
+    wallColorPresetAddButton.type = "button";
+    wallColorPresetAddButton.className = "gallery-editor-wall-preset-add";
+    wallColorPresetAddButton.textContent = "+";
+    wallColorPresetAddButton.title = "Save current wall tint as a reusable preset";
+    wallColorPresetAddButton.setAttribute("aria-label", "Save current wall tint as preset");
+    wallColorPresetAddButton.addEventListener("click", function () { void saveCurrentWallColorPreset(); });
+
     wallPalette.appendChild(wallTintInput);
     wallPalette.appendChild(wallTintHexInput);
+    wallPalette.appendChild(wallColorPresetAddButton);
+
+    wallColorPresetList = document.createElement("div");
+    wallColorPresetList.id = "editorWallColorPresetList";
+    wallColorPresetList.className = "gallery-editor-wall-preset-list";
+    wallColorPresetList.setAttribute("aria-label", "Saved wall color presets");
+
+    wallColorPresetStatus = document.createElement("div");
+    wallColorPresetStatus.className = "gallery-editor-wall-preset-status";
+    wallColorPresetStatus.textContent = "Presets load in Admin mode.";
 
     var selectedWallColorStatus = document.createElement("div");
     selectedWallColorStatus.id = "editorSelectedWallColorStatus";
@@ -27129,6 +27225,8 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     selectedWallColorStatus.innerHTML = "Selected Tint: <span class=\"gallery-editor-accent-text\">None</span>";
 
     wallColorSectionData.section.appendChild(wallPalette);
+    wallColorSectionData.section.appendChild(wallColorPresetList);
+    wallColorSectionData.section.appendChild(wallColorPresetStatus);
     wallColorSectionData.section.appendChild(selectedWallColorStatus);
     editorScroll.appendChild(wallColorSectionData.section);
 
@@ -32696,6 +32794,150 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return true;
     }
 
+    // V14.4.7 — Wall Color Presets are global Admin shortcuts only.
+    // Exhibition state continues to own literal tintHex values; there is intentionally
+    // no preset id/reference in serialized wall state.
+    function resolveWallColorPresetApi() {
+        if (galleryWallColorPresetApi && typeof galleryWallColorPresetApi === "object") return galleryWallColorPresetApi;
+        if (globalThis.ExhibitionPlatformWallColorPresetApi && typeof globalThis.ExhibitionPlatformWallColorPresetApi === "object") {
+            galleryWallColorPresetApi = globalThis.ExhibitionPlatformWallColorPresetApi;
+            return galleryWallColorPresetApi;
+        }
+        return null;
+    }
+
+    function normalizeWallColorPresetRecord(value) {
+        if (!value || typeof value !== "object") return null;
+        var tintHex = normalizeWallTintHex(value.tintHex || value.tint_hex);
+        var id = String(value.id || "").trim();
+        if (!id || !tintHex) return null;
+        return { id: id, tintHex: tintHex, displayOrder: Number(value.displayOrder != null ? value.displayOrder : value.display_order) || 0 };
+    }
+
+    function setWallColorPresetStatus(message) {
+        if (wallColorPresetStatus) wallColorPresetStatus.textContent = String(message || "");
+    }
+
+    function renderWallColorPresets() {
+        if (!wallColorPresetList) return;
+        wallColorPresetList.innerHTML = "";
+        var presets = wallColorPresets.slice().sort(function (a, b) {
+            return (Number(a.displayOrder) || 0) - (Number(b.displayOrder) || 0) || String(a.tintHex).localeCompare(String(b.tintHex));
+        });
+        if (!presets.length) {
+            setWallColorPresetStatus(wallColorPresetsLoaded ? "No saved presets. Choose a tint and press +." : "Presets load in Admin mode.");
+            return;
+        }
+        presets.forEach(function (preset) {
+            var item = document.createElement("div");
+            item.className = "gallery-editor-wall-preset-item";
+
+            var swatch = document.createElement("button");
+            swatch.type = "button";
+            swatch.className = "gallery-editor-wall-preset-swatch";
+            swatch.style.backgroundColor = preset.tintHex;
+            swatch.title = "Use " + preset.tintHex + " — then click a wall segment";
+            swatch.setAttribute("aria-label", "Use wall color preset " + preset.tintHex);
+            swatch.addEventListener("click", function () {
+                if (setSelectedWallTintHex(preset.tintHex)) {
+                    notifyGalleryStatus("Wall preset " + preset.tintHex + " selected. Click a wall segment to apply it.");
+                }
+            });
+
+            var remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "gallery-editor-wall-preset-remove";
+            remove.textContent = "×";
+            remove.title = "Remove preset " + preset.tintHex;
+            remove.setAttribute("aria-label", "Remove wall color preset " + preset.tintHex);
+            remove.addEventListener("click", function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                void removeWallColorPreset(preset);
+            });
+
+            item.appendChild(swatch);
+            item.appendChild(remove);
+            wallColorPresetList.appendChild(item);
+        });
+        setWallColorPresetStatus(presets.length + (presets.length === 1 ? " preset" : " presets") + " · shared across Admin authoring");
+    }
+
+    async function refreshWallColorPresets(force) {
+        if (!editorAuthenticated) return [];
+        if (wallColorPresetsLoading) return wallColorPresets.slice();
+        if (wallColorPresetsLoaded && !force) { renderWallColorPresets(); return wallColorPresets.slice(); }
+        var api = resolveWallColorPresetApi();
+        if (!api || typeof api.list !== "function") {
+            setWallColorPresetStatus("Preset library unavailable in this runtime.");
+            return [];
+        }
+        wallColorPresetsLoading = true;
+        if (wallColorPresetAddButton) wallColorPresetAddButton.disabled = true;
+        setWallColorPresetStatus("Loading presets…");
+        try {
+            var rows = await api.list();
+            wallColorPresets = (Array.isArray(rows) ? rows : []).map(normalizeWallColorPresetRecord).filter(Boolean);
+            wallColorPresetsLoaded = true;
+            renderWallColorPresets();
+            return wallColorPresets.slice();
+        } catch (error) {
+            console.warn("V14.4.7 wall preset load warning:", error);
+            setWallColorPresetStatus("Could not load presets.");
+            return [];
+        } finally {
+            wallColorPresetsLoading = false;
+            if (wallColorPresetAddButton) wallColorPresetAddButton.disabled = false;
+        }
+    }
+
+    async function saveCurrentWallColorPreset() {
+        var tintHex = normalizeWallTintHex(selectedWallTintHex || (wallTintHexInput && wallTintHexInput.value) || (wallTintInput && wallTintInput.value));
+        if (!tintHex) { notifyGalleryStatus("Choose a valid #RRGGBB wall tint first."); return false; }
+        var api = resolveWallColorPresetApi();
+        if (!api || typeof api.create !== "function") { notifyGalleryStatus("Wall preset library is unavailable."); return false; }
+        if (wallColorPresetAddButton) wallColorPresetAddButton.disabled = true;
+        try {
+            var created = normalizeWallColorPresetRecord(await api.create(tintHex));
+            await refreshWallColorPresets(true);
+            notifyGalleryStatus("Wall preset " + (created ? created.tintHex : tintHex) + " saved.");
+            return true;
+        } catch (error) {
+            console.error("V14.4.7 wall preset create failed:", error);
+            notifyGalleryStatus("Could not save wall color preset.");
+            return false;
+        } finally {
+            if (wallColorPresetAddButton) wallColorPresetAddButton.disabled = false;
+        }
+    }
+
+    async function removeWallColorPreset(preset) {
+        preset = normalizeWallColorPresetRecord(preset);
+        if (!preset) return false;
+        if (typeof window !== "undefined" && typeof window.confirm === "function" && !window.confirm("Remove preset " + preset.tintHex + "? Existing walls will not change.")) return false;
+        var api = resolveWallColorPresetApi();
+        if (!api || typeof api.remove !== "function") { notifyGalleryStatus("Wall preset library is unavailable."); return false; }
+        try {
+            await api.remove(preset.id);
+            wallColorPresets = wallColorPresets.filter(function (item) { return item.id !== preset.id; });
+            wallColorPresetsLoaded = true;
+            renderWallColorPresets();
+            notifyGalleryStatus("Preset removed. Existing wall colors were not changed.");
+            return true;
+        } catch (error) {
+            console.error("V14.4.7 wall preset remove failed:", error);
+            notifyGalleryStatus("Could not remove wall color preset.");
+            return false;
+        }
+    }
+
+    function setWallColorPresetApi(api) {
+        galleryWallColorPresetApi = api && typeof api === "object" ? api : null;
+        wallColorPresetsLoaded = false;
+        if (galleryAdminWorkspaceMode && editorAuthenticated) void refreshWallColorPresets(true);
+        return !!galleryWallColorPresetApi;
+    }
+
     function getWallSegmentPaintDebug() {
         return wallMeshes.map(function (wallMesh) {
             var material = wallMesh && wallMesh.material ? wallMesh.material : null;
@@ -33677,6 +33919,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         installGalleryAdminBeforeUnloadGuard();
         if (gallerySaveIntegrityRuntime.baselineReady) startGalleryDraftStateWatcher();
         if (editorAuthenticated && typeof warmGalleryArtworkFrameLibrary === "function") warmGalleryArtworkFrameLibrary();
+        if (editorAuthenticated) void refreshWallColorPresets(false);
         if (typeof scheduleGalleryZoneStreamingPump === "function") scheduleGalleryZoneStreamingPump("same-runtime-admin-enter", 0);
         if (!editMode) setGallerySameRuntimeModeState(true, "same-runtime-admin-enter");
         return !!editMode;
@@ -33807,8 +34050,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         // V14.3.10 wall tint uses the authored wall material directly; there are no
         // authenticated-only external color textures to hydrate.
 
-        if (galleryAdminWorkspaceMode && editorAuthenticated) startGalleryEditorTabHeartbeat();
-        else stopGalleryEditorTabHeartbeat(true);
+        if (galleryAdminWorkspaceMode && editorAuthenticated) {
+            startGalleryEditorTabHeartbeat();
+            void refreshWallColorPresets(false);
+        } else stopGalleryEditorTabHeartbeat(true);
 
         if (galleryEditorLoginEnabled && !editorAuthenticated && editMode) {
             editMode = false;
@@ -47796,6 +48041,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
     globalThis.GalleryApp = {
         __lifecycleId: galleryLifecycleId,
         setEditorAuthenticated: setEditorAuthenticated,
+        setWallColorPresetApi: setWallColorPresetApi,
+        refreshWallColorPresets: function () { return refreshWallColorPresets(true); },
+        getWallColorPresetDebug: function () { return { stage: "V14.4.7", loaded: wallColorPresetsLoaded, loading: wallColorPresetsLoading, count: wallColorPresets.length, presets: wallColorPresets.map(function (item) { return { id: item.id, tintHex: item.tintHex, displayOrder: item.displayOrder }; }) }; },
         setExhibitionDataMode: function (mode) {
             if (galleryExhibitionDataAdapter && typeof galleryExhibitionDataAdapter.setMode === "function") return galleryExhibitionDataAdapter.setMode(mode);
             return null;

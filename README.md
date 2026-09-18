@@ -1,9 +1,16 @@
 # Exhibition Platform
 
-Current repository release: **V14.4.6 — Unified Exhibition Save Authority**.
+Current repository release: **V14.4.7 — Wall Color Presets**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
+
+
+## V14.4.7 Wall Color Presets
+
+`SPACE -> WALL COLOR` keeps literal per-wall `tintHex` as the only Exhibition truth and adds a global Admin shortcut library. `+` stores the currently selected canonical `#RRGGBB` in `wall_color_presets`; clicking a saved swatch selects that tint for the existing wall-paint flow; removing a preset deletes only the shortcut and never changes any Exhibition state.
+
+Preset access is through guarded Supabase RPCs (`admin_list_wall_color_presets`, `admin_create_wall_color_preset`, `admin_delete_wall_color_preset`). There is intentionally no Exhibition foreign key to a preset.
 
 ## V14.4.6 Unified Exhibition Save Authority
 
