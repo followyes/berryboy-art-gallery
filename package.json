@@ -1,8 +1,8 @@
 {
   "name": "exhibition-platform",
-  "version": "0.14.4-v14-4-7-1-modular-frame-rail-layout",
+  "version": "0.14.4-v14-4-7-2-gallery-version-rebase-preservation",
   "private": true,
-  "description": "Exhibition Platform — V14.4.7.1 Modular Frame Rail Layout",
+  "description": "Exhibition Platform — V14.4.7.2 Gallery Version Rebase Preservation Guard",
   "type": "module",
   "scripts": {
     "build": "node tools/build-current.mjs",

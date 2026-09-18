@@ -170,6 +170,7 @@ function createHarness({
     galleryExhibitionDataAdapter,
     galleryExhibitionRuntime,
     gallerySaveIntegrityRuntime: runtime,
+    galleryStateRebaseGuard: { active: false },
     getActiveGalleryExhibitionId() { return 'main'; },
     getGalleryFallbackMainExhibition() { return galleryExhibitionRuntime.active; },
     cacheGalleryExhibitionState(exhibition, state, options = {}) {
@@ -177,6 +178,7 @@ function createHarness({
       return galleryExhibitionRuntime.stateCache[exhibition.id];
     },
     serializeGalleryState() { return JSON.parse(JSON.stringify(draftState)); },
+    prepareGalleryStateForVersionRebaseSave(state) { return state; },
     notifyGalleryStatus(message) { messages.push(message); },
     clearModel3dClipboardIfStoragePathMatches() {},
     startGalleryDraftStateWatcher() {}

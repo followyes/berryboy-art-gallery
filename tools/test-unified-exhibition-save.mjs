@@ -12,7 +12,7 @@ const engine = fs.readFileSync(new URL('../src/Gallery_V0_11.js', import.meta.ur
 const api = fs.readFileSync(new URL('../src/data/exhibition-api.js', import.meta.url), 'utf8');
 const adminHtml = fs.readFileSync(new URL('../admin.html', import.meta.url), 'utf8');
 
-assert.ok(pkg.description.includes('V14.4.7.1 Modular Frame Rail Layout'));
+assert.ok(pkg.description.includes('V14.4.7.2 Gallery Version Rebase Preservation Guard'));
 assert.ok(sql.includes('create function public.admin_save_exhibition_product('));
 for (const fragment of [
   'select * into e from public.exhibitions where id=p_exhibition_id for update',
@@ -42,8 +42,8 @@ assert.ok(engine.includes('galleryEditorSaveBar.hidden = true'));
 assert.ok(!engine.includes('galleryEditorSaveBar.appendChild(sharedSaveStateButton)'));
 assert.ok(adminHtml.includes('id="saveMetadataButton"'));
 assert.ok(adminHtml.includes('data-save-state="clean" disabled>ALL CHANGES SAVED'));
-assert.ok(viewer.includes('v14_4_7_1_modular_frame_rail_layout'));
-assert.ok(admin.includes('v14_4_7_1_modular_frame_rail_layout'));
+assert.ok(viewer.includes('v14_4_7_2_gallery_version_rebase_preservation'));
+assert.ok(admin.includes('v14_4_7_2_gallery_version_rebase_preservation'));
 
 const calls = [];
 const fakeSupabase = {

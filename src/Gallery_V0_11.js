@@ -11,8 +11,9 @@ import {
 import {
     evaluateSameGalleryStateCompatibility,
     annotateStateWithSameGalleryCompatibility,
-    summarizeSameGalleryCompatibility
-} from "./runtime/same-gallery-state-compatibility.js?v=v14_3_4_same_gallery_repair";
+    summarizeSameGalleryCompatibility,
+    compareStatePreservationInventory
+} from "./runtime/same-gallery-state-compatibility.js?v=v14_4_7_2_gallery_version_rebase_preservation";
 
 /*
   Exhibition Platform
@@ -448,6 +449,17 @@ export const createScene = function (engineArg, canvasArg, runtimeOptionsArg) {
         ? runtimeOptions.stateCompatibilityContext
         : null;
     var galleryLastStateCompatibilityPlan = null;
+    // V14.4.7.2 — same-Gallery Version advance must never turn retained Exhibition
+    // content into a blank savable state. This guard survives only until the first
+    // preservation-verified rebase Save onto the current physical Gallery Version.
+    var galleryStateRebaseGuard = {
+        active: false,
+        sourceState: null,
+        sourceVenueVersionId: null,
+        currentVenueVersionId: null,
+        plan: null,
+        lastPreservation: null
+    };
 
     function normalizeGalleryRuntimeId(value, fallbackValue) {
         var normalized = String(value || "")
@@ -47587,13 +47599,73 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         return error;
     }
 
+    function clearGalleryStateRebaseGuard(reason) {
+        galleryStateRebaseGuard.active = false;
+        galleryStateRebaseGuard.sourceState = null;
+        galleryStateRebaseGuard.sourceVenueVersionId = null;
+        galleryStateRebaseGuard.currentVenueVersionId = null;
+        galleryStateRebaseGuard.plan = null;
+        galleryStateRebaseGuard.lastPreservation = reason ? { cleared: true, reason: reason, at: Date.now() } : null;
+    }
+
+    function armGalleryStateRebaseGuard(state, plan) {
+        if (!plan || plan.mode !== "SAME_GALLERY_DIFFERENT_VERSION") {
+            clearGalleryStateRebaseGuard("not-cross-version-same-gallery");
+            return;
+        }
+        galleryStateRebaseGuard.active = true;
+        galleryStateRebaseGuard.sourceState = cloneGalleryJson(state);
+        galleryStateRebaseGuard.sourceVenueVersionId = String(plan.source && plan.source.venueVersionId || "").trim() || null;
+        galleryStateRebaseGuard.currentVenueVersionId = String(plan.current && plan.current.venueVersionId || "").trim() || null;
+        galleryStateRebaseGuard.plan = cloneGalleryJson(plan);
+        galleryStateRebaseGuard.lastPreservation = null;
+    }
+
+    function prepareGalleryStateForVersionRebaseSave(state) {
+        if (!galleryStateRebaseGuard.active) return state;
+        var sourceState = galleryStateRebaseGuard.sourceState;
+        if (!sourceState || !galleryStateRebaseGuard.sourceVenueVersionId || !galleryStateRebaseGuard.currentVenueVersionId) {
+            var incompleteError = new Error("Gallery update preservation guard is incomplete. Reload this Exhibition before saving.");
+            incompleteError.code = "gallery-rebase-proof-unavailable";
+            throw incompleteError;
+        }
+        var preservation = compareStatePreservationInventory(sourceState, state);
+        galleryStateRebaseGuard.lastPreservation = cloneGalleryJson(preservation);
+        if (!preservation.preserved) {
+            var families = Object.keys(preservation.missing || {}).filter(function (family) {
+                return Array.isArray(preservation.missing[family]) && preservation.missing[family].length > 0;
+            }).map(function (family) {
+                return family + ": " + preservation.missing[family].length;
+            });
+            var preservationError = new Error("Save blocked: Gallery update did not preserve all Exhibition content" + (families.length ? " (" + families.join(", ") + ")" : "") + ". Reload/review before saving.");
+            preservationError.code = "gallery-rebase-content-loss-blocked";
+            preservationError.preservation = cloneGalleryJson(preservation);
+            throw preservationError;
+        }
+        state.context = state.context && typeof state.context === "object" ? state.context : {};
+        state.context.galleryVersionRebase = {
+            schema: "exhibition-platform-gallery-version-rebase-proof.v1",
+            sourceVenueVersionId: galleryStateRebaseGuard.sourceVenueVersionId,
+            currentVenueVersionId: galleryStateRebaseGuard.currentVenueVersionId,
+            classification: galleryStateRebaseGuard.plan && galleryStateRebaseGuard.plan.classification || null,
+            preserved: true,
+            inventorySchema: preservation.schema || null,
+            checkedAt: new Date().toISOString()
+        };
+        return state;
+    }
+
     function evaluateGalleryStateCompatibilityForApply(state, options) {
         var input = getGalleryStateCompatibilityInput(state, options);
-        if (!input) return { state: state, plan: null };
+        if (!input) {
+            clearGalleryStateRebaseGuard("exact-version-apply");
+            return { state: state, plan: null };
+        }
         var plan = evaluateSameGalleryStateCompatibility(input);
         galleryLastStateCompatibilityPlan = cloneGalleryJson(plan);
 
         if (plan.mode === "CROSS_GALLERY" || plan.classification === "REJECT") {
+            clearGalleryStateRebaseGuard("cross-gallery-rejected");
             dispatchGalleryCompatibilityEvent("gallery-state-compatibility-rejected", plan);
             throw makeGalleryCompatibilityError(
                 "Exhibition state belongs to another logical Gallery and cannot be applied to this Scene.",
@@ -47602,6 +47674,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             );
         }
         if (plan.allowed !== true) {
+            clearGalleryStateRebaseGuard("same-gallery-proof-unavailable");
             dispatchGalleryCompatibilityEvent("gallery-placement-repair-required", plan);
             throw makeGalleryCompatibilityError(
                 "Gallery state compatibility could not be proven for this Gallery Version.",
@@ -47609,20 +47682,22 @@ syncControl("bloomEnabled", "visualBloomEnabled");
                 plan
             );
         }
+
+        // V14.4.7.2: REPAIR/REVIEW is no longer converted into a blank Exhibition.
+        // The retained state is applied non-destructively, annotated for repair/review,
+        // and the first rebase Save is protected by an inventory-preservation proof.
+        var annotatedState = annotateStateWithSameGalleryCompatibility(state, plan);
+        armGalleryStateRebaseGuard(state, plan);
         if (plan.safeToApply !== true) {
             dispatchGalleryCompatibilityEvent("gallery-placement-repair-required", plan);
-            throw makeGalleryCompatibilityError(
-                plan.requiresRepair
-                    ? "Gallery update requires targeted placement repair before this Exhibition state can be applied."
-                    : "Gallery update requires placement compatibility review before this Exhibition state can be applied.",
-                plan.requiresRepair ? "gallery-placement-repair-required" : "gallery-placement-review-required",
-                plan
+            notifyGalleryStatus(
+                "Gallery model changed. Exhibition content was preserved for review; Save is protected against missing Artworks, Lights, Sculptures or Props.",
+                { code: "gallery-version-rebase-preserved", level: "warning" }
             );
+        } else {
+            dispatchGalleryCompatibilityEvent("gallery-state-compatibility-safe", plan);
         }
-
-        var annotatedState = annotateStateWithSameGalleryCompatibility(state, plan);
-        dispatchGalleryCompatibilityEvent("gallery-state-compatibility-safe", plan);
-        return { state: annotatedState, plan: plan };
+        return { state: annotatedState, plan: plan, preservedForRepair: plan.safeToApply !== true };
     }
 
     function evaluateGalleryStateCompatibility(input) {
@@ -48108,6 +48183,7 @@ syncControl("bloomEnabled", "visualBloomEnabled");
         );
         var nextRevision = previousRevision + 1;
         var state = serializeGalleryState();
+        state = prepareGalleryStateForVersionRebaseSave(state);
         var savedAt = new Date().toISOString();
         state.savedAt = savedAt;
         state.saveIntegrity = {
@@ -48159,6 +48235,10 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             draftUploads: draftUploadReconcileResult,
             cleanup: cleanupResult
         };
+        if (galleryStateRebaseGuard.active) {
+            clearGalleryStateRebaseGuard("rebase-save-committed");
+            galleryStateCompatibilityContext = null;
+        }
         notifyGalleryStatus("Zapisano wystawe " + (galleryExhibitionRuntime.active ? galleryExhibitionRuntime.active.name : activeExhibitionId) + ". Rewizja: " + canonicalRevision + ".");
         return true;
     }

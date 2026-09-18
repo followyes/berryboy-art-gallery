@@ -388,6 +388,41 @@ export function annotateStateWithSameGalleryCompatibility(state, plan) {
   return root;
 }
 
+
+export function captureStatePreservationInventory(state) {
+  const content = contentOf(state);
+  const editor = object(content.editor) || {};
+  const key = (value, fallback = "") => text(value) || text(fallback);
+  const unique = (values) => Array.from(new Set(values.map(text).filter(Boolean))).sort();
+  return Object.freeze({
+    artworks: unique(array(editor.artworks).map((item, index) => key(item && (item.artworkId || item.name), `artwork:${index}`))),
+    sculptures: unique(array(editor.spheres).map((item, index) => key(item && (item.slotId || item.name), `sculpture:${index}`))),
+    sharedProps: unique(array(editor.assetInstances).map((item, index) => key(item && (item.instanceId || item.id), `prop:${index}`))),
+    localLights: unique(array(object(content.localLights) && object(content.localLights).lights).map((item, index) => key(item && (item.id || item.name), `light:${index}`)))
+  });
+}
+
+export function compareStatePreservationInventory(sourceState, candidateState) {
+  const source = captureStatePreservationInventory(sourceState);
+  const candidate = captureStatePreservationInventory(candidateState);
+  const families = ["artworks", "sculptures", "sharedProps", "localLights"];
+  const missing = {};
+  let missingCount = 0;
+  for (const family of families) {
+    const current = new Set(candidate[family]);
+    missing[family] = source[family].filter((id) => !current.has(id));
+    missingCount += missing[family].length;
+  }
+  return Object.freeze({
+    schema: "exhibition-platform-state-preservation-inventory.v1",
+    preserved: missingCount === 0,
+    missingCount,
+    source,
+    candidate,
+    missing: Object.freeze(missing)
+  });
+}
+
 export function summarizeSameGalleryCompatibility(plan) {
   const value = object(plan) || {};
   const counts = object(value.counts) || {};

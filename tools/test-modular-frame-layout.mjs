@@ -12,9 +12,9 @@ const validation = fs.readFileSync(new URL('src/validation/shared-asset-validati
 const worker = fs.readFileSync(new URL('src/workers/shared-asset-glb-validator-worker.js', root), 'utf8');
 const workspace = fs.readFileSync(new URL('src/bootstrap/admin-asset-workspace.js', root), 'utf8');
 const gallery = fs.readFileSync(new URL('src/Gallery_V0_11.js', root), 'utf8');
-const migration = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/V14_4_7_1_MODULAR_FRAME_RAIL_LAYOUT_AUTHORITY.sql', import.meta.url), 'utf8');
+const migration = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/ARCHIVE/V14_4_7_1_MODULAR_FRAME_RAIL_LAYOUT_AUTHORITY_DEPLOYED.sql', import.meta.url), 'utf8');
 const allInOne = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/ALL_IN_ONE.sql', import.meta.url), 'utf8');
-const postcheck = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/V14_4_7_1_PRODUCTION_POSTCHECK.sql', import.meta.url), 'utf8');
+const postcheck = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/ARCHIVE/V14_4_7_1_PRODUCTION_POSTCHECK_DEPLOYED.sql', import.meta.url), 'utf8');
 
 const requiredParts = [
   'CORNER_BL','CORNER_BR','CORNER_TL','CORNER_TR',
@@ -26,7 +26,7 @@ function expect(label, condition) {
   console.log(`✓ ${label}`);
 }
 
-expect('release identity is V14.4.7.1', pkg.version === '0.14.4-v14-4-7-1-modular-frame-rail-layout' && pkg.description.includes('V14.4.7.1 Modular Frame Rail Layout'));
+expect('current release preserves V14.4.7.1 authority', pkg.version === '0.14.4-v14-4-7-2-gallery-version-rebase-preservation' && pkg.description.includes('V14.4.7.2 Gallery Version Rebase Preservation Guard'));
 expect('deep Shared Asset validator version is advanced', SHARED_ASSET_VALIDATOR_VERSION === 'V14.4.7.1');
 
 const defaults = getDefaultSharedAssetRuntimeMetadata('frame');
@@ -59,7 +59,7 @@ for (const part of requiredParts) {
 }
 expect('worker rejects missing/unexpected Frame parts', worker.includes('FRAME_MODULAR_PARTS_MISSING') && worker.includes('FRAME_MODULAR_PARTS_UNEXPECTED') && worker.includes('FRAME_MODULAR_PART_COUNT'));
 expect('worker emits modular frameLayout evidence', worker.includes('summary.frameLayout={contract:MODULAR_FRAME_LAYOUT'));
-expect('browser coordinator uses the new validator/cache version', validation.includes('V14.4.7.1') && validation.includes('v14_4_7_1_modular_frame_rail_layout'));
+expect('browser coordinator uses the new validator/cache version', validation.includes('V14.4.7.1') && validation.includes('v14_4_7_2_gallery_version_rebase_preservation'));
 
 expect('Asset Manager removed legacy inner-ratio controls', !workspace.includes('assetRuntimeInnerWidth') && !workspace.includes('assetRuntimeInnerHeight'));
 expect('Asset Manager writes modular layout metadata for Add/Replace', workspace.includes('frameLayout: "modular-rails-v1"') && workspace.includes('New Frame models must contain exactly 8 named parts'));

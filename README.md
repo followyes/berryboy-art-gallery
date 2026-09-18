@@ -1,16 +1,26 @@
 # Exhibition Platform
 
-Current repository release: **V14.4.7.1 — Modular Frame Rail Layout** (additive to the V14.4.7 source baseline).
+Current repository release: **V14.4.7.2 — Gallery Version Rebase Preservation Guard** (hotfix on the accepted V14.4.7.1 baseline).
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
+
+
+## V14.4.7.2 Gallery Version Rebase Preservation Guard
+
+A Gallery model update publishes a new immutable `venue_version_id`, while retained Exhibition Draft/Published state may still be authored against the previous exact version of the same logical Gallery. V14.4.7.2 prevents that legitimate same-Gallery version transition from becoming a blank authoring runtime. `REPAIR / REVIEW` state is applied non-destructively and remains explicitly surfaced for structural review; cross-Gallery state remains rejected.
+
+Before the first Exhibition runtime Save rebases Draft provenance onto the new Gallery Version, the browser verifies that the retained source Artwork, Local Lights, Sculptures and Shared Props are still present. A preservation proof is then required by Supabase `save_exhibition_runtime_state(...)`; missing/mismatched proof or missing authoring inventory blocks the Save instead of accepting a blank/partial Exhibition.
+Supabase also independently compares retained Draft authoring identities to the incoming state, so the browser proof is not trusted by itself. First-ever Exhibition Saves with no retained Draft provenance remain normal Saves.
+
+Production recovery precheck was executed READ ONLY. The affected Test Exhibition still retains 33 Artwork + 35 Local Lights in Draft/Published on Gallery v7 while the Gallery current version is v8, so no manual rollback is required. V14.4.7.2 preserves and rebases that retained state non-destructively.
 
 
 ## V14.4.7.1 Modular Frame Rail Layout
 
 New Frame versions use `frameLayout = modular-rails-v1` and exactly eight renderable runtime parts: `CORNER_BL`, `CORNER_BR`, `CORNER_TL`, `CORNER_TR`, `RAIL_BOTTOM`, `RAIL_LEFT`, `RAIL_RIGHT`, `RAIL_TOP`. The runtime measures the loaded geometry rather than assuming Blender local axes: corners translate only, while each rail scales only along its measured length axis to fit the Artwork opening.
 
-Artwork sizing, logical Shared Asset `assetId`, Artwork -> Frame binding, Replace propagation, picking, Inspect/focus, Local Lights and resident Scene lifecycle remain the existing authorities. Already immutable Published/Previous Frames without `frameLayout` stay on a controlled legacy monolithic fit until replaced; new/draft Frames are required to satisfy the modular contract. Final PASS/CLOSED requires visual smoke with the actual user-exported modular GLB because local QA cannot prove its Blender pivots/origins/facing/seams.
+Artwork sizing, logical Shared Asset `assetId`, Artwork -> Frame binding, Replace propagation, picking, Inspect/focus, Local Lights and resident Scene lifecycle remain the existing authorities. Already immutable Published/Previous Frames without `frameLayout` stay on a controlled legacy monolithic fit until replaced; new/draft Frames are required to satisfy the modular contract. V14.4.7.1 is PASS/CLOSED by user confirmation after production validation of the modular Frame flow.
 
 ## V14.4.7 Wall Color Presets
 

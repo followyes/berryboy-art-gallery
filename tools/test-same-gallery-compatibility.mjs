@@ -1,10 +1,13 @@
+import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {
   SAME_GALLERY_COMPATIBILITY_SCHEMA,
   SAME_GALLERY_COMPATIBILITY_STAGE,
   evaluateSameGalleryStateCompatibility,
   annotateStateWithSameGalleryCompatibility,
-  summarizeSameGalleryCompatibility
+  summarizeSameGalleryCompatibility,
+  captureStatePreservationInventory,
+  compareStatePreservationInventory
 } from '../src/runtime/same-gallery-state-compatibility.js';
 
 function role(role, classification, meshes = [], verifiable = true) {
@@ -145,5 +148,58 @@ const summary=summarizeSameGalleryCompatibility(removed);
 assert.equal(summary.repair>0,true);
 assert.equal(summary.sourceVenueVersionId,'version-old');
 assert.equal(summary.currentVenueVersionId,'version-new');
+
+
+const sourceInventory=captureStatePreservationInventory(state());
+assert.deepEqual(sourceInventory.artworks,['art-1']);
+assert.deepEqual(sourceInventory.sculptures,['sculpture-1']);
+assert.deepEqual(sourceInventory.sharedProps,['prop-1']);
+assert.deepEqual(sourceInventory.localLights,['light-1']);
+
+const preservedCandidate=state();
+preservedCandidate.context.venueVersionId='version-new';
+const preservedInventory=compareStatePreservationInventory(state(),preservedCandidate);
+assert.equal(preservedInventory.preserved,true);
+assert.equal(preservedInventory.missingCount,0);
+
+const missingLightCandidate=state();
+missingLightCandidate.localLights.lights=[];
+const missingInventory=compareStatePreservationInventory(state(),missingLightCandidate);
+assert.equal(missingInventory.preserved,false);
+assert.deepEqual(missingInventory.missing.localLights,['light-1']);
+
+
+
+// V14.4.7.2 Gallery Version rebase preservation SQL/runtime guard regression.
+{
+  const engine = fs.readFileSync(new URL('../src/Gallery_V0_11.js', import.meta.url), 'utf8');
+  const migration = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/V14_4_7_2_GALLERY_VERSION_REBASE_PRESERVATION_GUARD.sql', import.meta.url), 'utf8');
+  const recovery = fs.readFileSync(new URL('../../../OUTSIDE_REPO/SQL/V14_4_7_2_PRODUCTION_EXHIBITION_STATE_RECOVERY_PRECHECK.sql', import.meta.url), 'utf8');
+  const packageJson = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.ok(packageJson.version.includes('v14-4-7-2-gallery-version-rebase-preservation'));
+  assert.ok(packageJson.description.includes('V14.4.7.2 Gallery Version Rebase Preservation Guard'));
+  assert.ok(engine.includes('function prepareGalleryStateForVersionRebaseSave(state)'));
+  assert.ok(engine.includes('gallery-rebase-content-loss-blocked'));
+  assert.ok(engine.includes('exhibition-platform-gallery-version-rebase-proof.v1'));
+  assert.ok(engine.includes('Exhibition content was preserved for review'));
+  assert.ok(!engine.includes('Gallery state requires placement repair before it can be applied.'));
+  for (const fragment of [
+    'galleryVersionRebase',
+    'es.draft_venue_version_id is not null and es.draft_venue_version_id is distinct from vv.id',
+    'exhibition-platform-gallery-version-rebase-proof.v1',
+    'rebase_source_version_id is distinct from es.draft_venue_version_id',
+    'rebase_current_version_id is distinct from vv.id',
+    'rebase_preserved is not true',
+    'retained Artwork inventory is not preserved',
+    'retained Local Light inventory is not preserved',
+    'retained Sculpture inventory is not preserved',
+    'retained Shared Prop inventory is not preserved'
+  ]) assert.ok(migration.includes(fragment), `missing V14.4.7.2 migration guard: ${fragment}`);
+  assert.ok(!/delete\s+from\s+storage\.objects/i.test(migration));
+  assert.match(recovery, /set\s+transaction\s+read\s+only/i);
+  assert.match(recovery, /rollback\s*;\s*$/i);
+  assert.ok(recovery.includes('RECOVERY_REVIEW_DRAFT_LOOKS_EMPTY'));
+  assert.ok(recovery.includes('RECOVERY_REVIEW_PUBLISHED_LOOKS_EMPTY_PREVIOUS_HAS_CONTENT'));
+}
 
 console.log('V14.3.4 Same-Gallery compatibility + targeted placement repair authority tests passed.');
