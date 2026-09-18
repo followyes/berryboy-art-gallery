@@ -1,11 +1,19 @@
 # Exhibition Platform
 
-Current repository release: **V14.4.7.3 — Modular Frame 3-Axis Layout Hotfix** (runtime-only hotfix on the accepted V14.4.7.2 baseline).
+Current repository release: **V14.4.7.4 — Prepared Shared Asset Storage Delete Hotfix** (maintenance hotfix on the V14.4.7.3 source baseline; production SQL + deploy + delete smoke pending).
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
 
 
 
+
+## V14.4.7.4 Prepared Shared Asset Storage Delete Hotfix
+
+Production diagnosis of the legacy `Classic Oak` Frame proved that canonical Shared Asset delete preparation succeeds, retained usage is zero, the exact legacy object is still present at `gallery-artworks/main/frames/Classic_Oak.glb`, and the existing authenticated management/delete helpers all evaluate true. The browser nevertheless receives HTTP 400 from the Supabase Storage delete request, leaving the Asset correctly in `deletion_pending_at` rather than corrupting DB/Storage truth.
+
+V14.4.7.4 keeps authenticated Admin RPCs as the only authority allowed to create or finalize Shared Asset delete/GC state. After `deletion_pending_at` or `gc_pending_at` has been authored by those guarded RPCs, physical Storage cleanup is performed through a dedicated non-persistent, non-session Supabase client. Additive Storage RLS policies grant that client only an exact-path capability derived from the already-pending server state. No service-role key is exposed, no direct SQL deletion from `storage.objects` is introduced, and ordinary Shared Asset upload/edit cleanup continues to use the authenticated Admin client.
+
+The already-pending `Classic Oak` record is intentionally recoverable by retry: do not clear `deletion_pending_at`. A retry re-inventories the remaining object, removes it through the prepared Storage capability, and only then executes the existing authenticated final-delete RPC. V14.4.5 historical Storage cleanup remains independently frozen under its safety hold.
 
 ## V14.4.7.3 Modular Frame 3-Axis Layout Hotfix
 

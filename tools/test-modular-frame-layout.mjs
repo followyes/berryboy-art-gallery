@@ -26,7 +26,7 @@ function expect(label, condition) {
   console.log(`✓ ${label}`);
 }
 
-expect('current release preserves V14.4.7.1 authority', pkg.version === '0.14.4-v14-4-7-3-modular-frame-3-axis' && pkg.description.includes('V14.4.7.3 Modular Frame 3-Axis Layout Hotfix'));
+expect('current release preserves V14.4.7.1 authority', pkg.version === '0.14.4-v14-4-7-4-prepared-storage-delete' && pkg.description.includes('V14.4.7.4 Prepared Shared Asset Storage Delete Hotfix'));
 expect('deep Shared Asset validator version is advanced', SHARED_ASSET_VALIDATOR_VERSION === 'V14.4.7.1');
 
 const defaults = getDefaultSharedAssetRuntimeMetadata('frame');

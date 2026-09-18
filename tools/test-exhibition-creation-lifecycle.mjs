@@ -71,7 +71,7 @@ assert.ok(galleryShortcutBody.includes('newExhibitionName.focus()'));
 assert.ok(!galleryShortcutBody.includes('exhibitionData.create('), 'Gallery shortcut must not fork the canonical create flow');
 
 // Cache/version gate makes the new bootstrap transition path deploy-safe.
-assert.equal(pkg.version, '0.14.4-v14-4-7-3-modular-frame-3-axis');
+assert.equal(pkg.version, '0.14.4-v14-4-7-4-prepared-storage-delete');
 assert.ok(pkg.scripts.test.includes('test:creation-lifecycle'));
 assert.ok(admin.includes('v14_4_7_3_modular_frame_3_axis_20260918'));
 

@@ -17,7 +17,7 @@ import {
 import { getRuntimeVenueVersionKey } from "../runtime/scene-lifecycle-controller.js?v=v14_2_6_draft_publish_20260914";
 import { createSceneLoadingRuntimeHost } from "../runtime/scene-loading-orchestrator.js?v=v14_2_6_draft_publish_20260914";
 import { buildAuthoringSpaceDefinition } from "../runtime/space-definition-resolver.js?v=c6c8c25_2_admin_gallery_preview";
-import { createAdminAssetWorkspace } from "./admin-asset-workspace.js?v=v14_4_7_3_modular_frame_3_axis";
+import { createAdminAssetWorkspace } from "./admin-asset-workspace.js?v=v14_4_7_4_prepared_storage_delete";
 import { createWallColorPresetApi } from "../data/wall-color-preset-api.js?v=v14_4_7_3_modular_frame_3_axis";
 
 const STAGE = "V14.1.10.1";
@@ -36,6 +36,17 @@ const POSTER_DELIVERY_QUALITY = 0.82;
 const supabase = inlineRuntimeContext && inlineRuntimeContext.supabase
   ? inlineRuntimeContext.supabase
   : createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+// V14.4.7.4: prepared Shared Asset physical cleanup deliberately uses a client with
+// no persisted user session. The authenticated Admin client remains the only authority
+// allowed to create deletion_pending_at / gc_pending_at through RPC. Storage then receives
+// a narrow exact-path capability from those server-authored pending states.
+const preparedStorageSupabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false
+  }
+});
 window.gallerySupabase = supabase;
 const assetCacheReadyPromise = registerExhibitionAssetCache();
 const wallColorPresetApi = createWallColorPresetApi({ supabase });
@@ -1633,6 +1644,7 @@ function ensureGalleryManagementUi() {
 
   assetWorkspace = createAdminAssetWorkspace({
     supabase,
+    preparedStorageSupabase,
     sidebar,
     showToast,
     loadVenueOptions: async () => {

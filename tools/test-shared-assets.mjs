@@ -34,7 +34,7 @@ function expect(label, ok) {
   console.log(`✓ ${label}`);
 }
 
-expect('V14.4.3 package preserves V14.4.2 logical Shared Asset authority', pkg.version === '0.14.4-v14-4-7-3-modular-frame-3-axis' && SHARED_ASSET_AUTHORITY_STAGE === 'V14.4.2');
+expect('V14.4.3 package preserves V14.4.2 logical Shared Asset authority', pkg.version === '0.14.4-v14-4-7-4-prepared-storage-delete' && SHARED_ASSET_AUTHORITY_STAGE === 'V14.4.2');
 expect('Shared Asset product adapter is V14.3.8 over the existing shared-assets domain', SHARED_ASSET_STAGE === 'V14.3.8' && SHARED_ASSET_BUCKET === 'shared-assets');
 expect('independent Shared Asset validator schema is frozen', SHARED_ASSET_VALIDATION_SCHEMA === 'exhibition-platform-shared-asset-validation.v1' && SHARED_ASSET_VALIDATOR_VERSION === 'V14.4.7.1');
 expect('renderable GLB worker preserves Shared Asset prop/frame and adds Sculpture validation without Gallery Space roles', workerSource.includes('["prop","frame","sculpture"]') && workerSource.includes('assetType') && !workerSource.includes('["floor","walls","ceiling","props"]'));
@@ -80,6 +80,9 @@ expect('V14.3.8 normal Asset lifecycle removes Archive/Restore and uses guarded 
 expect('V14.3.8 Replace still auto-publishes hidden technical versions while V14.4.2 runtime resolves logical current', apiSource.includes('async function replaceModel') && apiSource.includes('admin_publish_shared_asset_version') && apiSource.includes('discardDraftVersion(uploaded.version') && stateSource.includes('assetId')); 
 expect('V14.3.8 Add creates one usable Asset and cleans a failed new identity best-effort', apiSource.includes('async addWithModel') && apiSource.includes('await replaceModel(created.id') && apiSource.includes('await deletePermanent(created.id)'));
 expect('V14.3.8 permanent Delete is two-phase and removes returned Storage inventory before final DB delete', apiSource.includes('admin_prepare_shared_asset_delete') && apiSource.includes('removeStorageItemsOrThrow') && apiSource.includes('admin_delete_shared_asset'));
+expect('V14.4.7.4 prepared Storage cleanup is isolated from the authenticated Admin session', apiSource.includes('preparedStorageSupabase = null') && apiSource.includes('preparedStorageClient') && apiSource.includes('removeStorageItemsOrThrow(preparedStorageClient'));
+expect('V14.4.7.4 Admin supplies a non-persistent Storage client only for prepared deletion/GC', adminSource.includes('const preparedStorageSupabase = createClient') && adminSource.includes('persistSession: false') && adminSource.includes('autoRefreshToken: false') && assetWorkspaceSource.includes('preparedStorageSupabase: preparedStorageSupabase || supabase'));
+
 
 
 const assetId = '11111111-1111-4111-8111-111111111111';
@@ -184,4 +187,28 @@ assert.equal(rpcCalls[0][1].p_asset_type, 'prop');
 assert.equal((await api.get(assetId)).asset.id, assetId);
 expect('data adapter keeps catalog/get reads compatible while V14.3.8 adds product lifecycle orchestration', true);
 
-console.log('Shared Asset foundation/runtime invariants plus V14.4.3 Replace propagation passed.');
+
+const preparedRemovalCalls = [];
+const authenticatedStorageCalls = [];
+const deleteRpcCalls = [];
+const deleteSupabase = {
+  rpc(name, args) {
+    deleteRpcCalls.push([name, args]);
+    if (name === 'admin_prepare_shared_asset_delete') return Promise.resolve({ data: [{ storageItems: [{ bucket: 'gallery-artworks', path: 'main/frames/Classic_Oak.glb' }] }], error: null });
+    if (name === 'admin_delete_shared_asset') return Promise.resolve({ data: [{ deleted: true, id: assetId }], error: null });
+    throw new Error(`Unexpected delete mock RPC: ${name}`);
+  },
+  storage: { from(bucket) { authenticatedStorageCalls.push(bucket); return { remove() { throw new Error('authenticated Storage client must not be used for prepared delete'); } }; } }
+};
+const preparedStorageSupabase = {
+  storage: { from(bucket) { return { remove(paths) { preparedRemovalCalls.push([bucket, paths]); return Promise.resolve({ data: paths, error: null }); } }; } }
+};
+const deleteApi = createSharedAssetApi({ supabase: deleteSupabase, preparedStorageSupabase });
+const deleted = await deleteApi.deletePermanent(assetId);
+assert.equal(deleted.deleted, true);
+assert.deepEqual(deleteRpcCalls.map(([name]) => name), ['admin_prepare_shared_asset_delete', 'admin_delete_shared_asset']);
+assert.deepEqual(preparedRemovalCalls, [['gallery-artworks', ['main/frames/Classic_Oak.glb']]]);
+assert.deepEqual(authenticatedStorageCalls, []);
+expect('V14.4.7.4 prepared delete routes legacy Frame Storage cleanup through the isolated client then finalizes via authenticated RPC authority', true);
+
+console.log('Shared Asset foundation/runtime invariants plus V14.4.7.4 prepared Storage delete passed.');

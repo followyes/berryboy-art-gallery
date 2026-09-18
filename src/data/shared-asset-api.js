@@ -57,8 +57,9 @@ function randomUuid() {
   return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
 }
 
-export function createSharedAssetApi({ supabase }) {
+export function createSharedAssetApi({ supabase, preparedStorageSupabase = null }) {
   if (!supabase) throw new Error("Supabase client is required for Shared Assets.");
+  const preparedStorageClient = preparedStorageSupabase || supabase;
 
   async function get(assetId) {
     const result = one(await supabase.rpc("admin_get_shared_asset", { p_asset_id: assetId }));
@@ -107,7 +108,10 @@ export function createSharedAssetApi({ supabase }) {
     if (!plan) throw new Error("Shared Asset Version GC preparation returned no result.");
     // Version GC has the same retry boundary as whole-Asset deletion: after prepare,
     // never reactivate the technical version if Storage removal is partial.
-    await removeStorageItemsOrThrow(supabase, plan.storageItems || plan.storage_items || []);
+    // Prepared GC Storage removal intentionally uses the isolated non-session Storage client.
+    // Authorization comes from the server-authored gc_pending_at capability, not from browser
+    // session propagation through Supabase Storage.
+    await removeStorageItemsOrThrow(preparedStorageClient, plan.storageItems || plan.storage_items || []);
     const result = one(await supabase.rpc("admin_finalize_shared_asset_version_gc", { p_asset_version_id: assetVersionId }));
     if (!result || result.deleted !== true) throw new Error("Shared Asset Version GC returned no confirmation.");
     return result;
@@ -121,7 +125,11 @@ export function createSharedAssetApi({ supabase }) {
     // deletion_pending_at on failure could expose an Asset whose immutable binary is
     // already missing. Keep the Asset deletion-pending and let a retry re-inventory the
     // remaining objects before final DB deletion.
-    await removeStorageItemsOrThrow(supabase, plan.storageItems || plan.storage_items || []);
+    // Whole-Asset Storage cleanup uses the isolated non-session client after the authenticated
+    // prepare RPC has created the exact deletion_pending_at capability. This keeps the DB
+    // authorization boundary authoritative even if hosted Storage rejects an authenticated
+    // DELETE request before RLS sees the intended role.
+    await removeStorageItemsOrThrow(preparedStorageClient, plan.storageItems || plan.storage_items || []);
     const result = one(await supabase.rpc("admin_delete_shared_asset", { p_asset_id: assetId }));
     if (!result || result.deleted !== true) throw new Error("Shared Asset delete returned no confirmation.");
     return result;
