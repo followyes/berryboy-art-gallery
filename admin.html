@@ -97,6 +97,11 @@
     #posterPreview { width:94px; aspect-ratio:4/5; object-fit:cover; border-radius:10px; border:1px solid var(--line-strong); background:#101210; }
     .posterActions { display:grid; gap:7px; }
     #posterFileInput { display:none; }
+    #saveMetadataButton { position:sticky; bottom:0; z-index:5; width:100%; min-height:48px; margin-top:4px; box-shadow:0 -10px 24px rgba(11,13,12,.72),0 12px 24px rgba(49,95,52,.14); }
+    #saveMetadataButton[data-save-state="clean"], #saveMetadataButton[data-save-state="saved"] { opacity:.58; box-shadow:none; }
+    #saveMetadataButton[data-save-state="dirty"] { background:#315f34; border-color:rgba(154,180,155,.58); opacity:1; }
+    #saveMetadataButton[data-save-state="saving"] { opacity:.74; cursor:progress; }
+    #saveMetadataButton[data-save-state="failed"] { background:#873c3c; border-color:rgba(209,139,139,.58); opacity:1; }
     .publicationControls { display:grid; gap:8px; padding-top:11px; border-top:1px solid var(--line); }
     .publicationActions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:7px; }
     .publicationNotice.blocked { color:#f0b5b5; }
@@ -182,7 +187,7 @@
                 </div>
               </div>
               <div class="fieldMeta">Gallery: <strong id="exhibitionSpaceId">—</strong></div>
-              <button id="saveMetadataButton" class="adminButton primary" type="submit">SAVE CHANGES</button>
+              <button id="saveMetadataButton" class="adminButton primary" type="submit" data-save-state="clean" disabled>ALL CHANGES SAVED</button>
               <div class="publicationControls">
                 <div id="exhibitionPublicationNotice" class="fieldMeta publicationNotice hidden"></div>
                 <div class="publicationActions">
@@ -231,6 +236,6 @@
     </form>
   </div>
 
-  <script type="module" src="./src/bootstrap/admin-workspace-bootstrap.js?v=v14_4_4_1_local_light_editor_resume_hotfix"></script>
+  <script type="module" src="./src/bootstrap/admin-workspace-bootstrap.js?v=v14_4_6_unified_exhibition_save"></script>
 </body>
 </html>

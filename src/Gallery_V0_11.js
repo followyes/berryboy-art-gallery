@@ -24124,8 +24124,9 @@ syncControl("bloomEnabled", "visualBloomEnabled");
             box-shadow: 0 -12px 28px rgba(0,0,0,0.08);
         }
 
+        /* V14.4.6 — product Save authority lives only in the left Exhibition panel. */
         body.is-editor-authenticated.gallery-edit-mode-active .gallery-editor-save-bar {
-            display: flex;
+            display: none !important;
         }
 
         #galleryEditorPanel #saveStateButton {
@@ -32318,12 +32319,11 @@ syncControl("bloomEnabled", "visualBloomEnabled");
 
     // Lighting is available only through the primary LIGHTING tab.
 
+    // V14.4.6 — the right 3D editor is tools-only. Keep the legacy technical
+    // save button outside this panel so only the left Exhibition SAVE CHANGES is visible.
     var galleryEditorSaveBar = document.createElement("div");
     galleryEditorSaveBar.className = "gallery-editor-save-bar";
-    var sharedSaveStateButton = document.getElementById("saveStateButton");
-    if (sharedSaveStateButton) {
-        galleryEditorSaveBar.appendChild(sharedSaveStateButton);
-    }
+    galleryEditorSaveBar.hidden = true;
     editHelpPanel.appendChild(galleryEditorSaveBar);
 
     setGalleryEditorPrimaryTab("exhibits");

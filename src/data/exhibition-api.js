@@ -339,6 +339,8 @@ export function createExhibitionDataAdapter({ supabase, mode = "public", initial
   // C6C8C25: Public and Admin can legitimately resolve the same Exhibition to different
   // immutable Venue Versions (Published vs Draft). Cache them in separate channels.
   const runtimeByKey = new Map();
+  const pendingProductSaveByExhibition = new Map();
+  let lastProductSaveResult = null;
   let modeName = mode === "admin" ? "admin" : "public";
   const runtimeKey = (modeValue, id) => `${modeValue === "admin" ? "admin" : "public"}:${text(id)}`;
   function cacheRuntime(runtime, modeValue = modeName) {
@@ -346,6 +348,80 @@ export function createExhibitionDataAdapter({ supabase, mode = "public", initial
     return runtime;
   }
   if (initialRuntime && initialRuntime.exhibition) cacheRuntime(initialRuntime, initialRuntime.mode || modeName);
+
+  function normalizeProductSavePayload(payload = {}) {
+    const metadataPatch = payload.metadataPatch && typeof payload.metadataPatch === "object" && !Array.isArray(payload.metadataPatch)
+      ? { ...payload.metadataPatch }
+      : {};
+    const coverPatch = payload.coverPatch && typeof payload.coverPatch === "object" && !Array.isArray(payload.coverPatch)
+      ? { ...payload.coverPatch }
+      : null;
+    return {
+      metadataPatch,
+      coverPatch,
+      runtimeChanged: payload.runtimeChanged === true
+    };
+  }
+
+  function getRuntimeCardRevision(runtime) {
+    const card = runtime && runtime.adminDetail && runtime.adminDetail.card ? runtime.adminDetail.card : {};
+    return {
+      revision: Number(card.draft_revision) || 0,
+      lockVersion: Number(card.lock_version) || 0
+    };
+  }
+
+  function applyCompositeSaveResult(runtime, result, state, payload) {
+    if (!runtime || !result) return result;
+    runtime.revision = Number(result.stateDraftRevision != null ? result.stateDraftRevision : runtime.revision) || 0;
+    runtime.lockVersion = Number(result.stateLockVersion != null ? result.stateLockVersion : runtime.lockVersion) || 0;
+    runtime.updatedAt = result.updatedAt || runtime.updatedAt || new Date().toISOString();
+    if (payload && payload.runtimeChanged === true && state) runtime.state = state;
+    runtime.rowExists = true;
+    runtime.adminDetail = runtime.adminDetail || {};
+    runtime.adminDetail.state = Object.assign({}, runtime.adminDetail.state || {}, {
+      draft_revision: runtime.revision,
+      lock_version: runtime.lockVersion,
+      updated_at: runtime.updatedAt
+    });
+    runtime.adminDetail.card = Object.assign({}, runtime.adminDetail.card || {}, {
+      draft_revision: Number(result.cardDraftRevision != null ? result.cardDraftRevision : (runtime.adminDetail.card && runtime.adminDetail.card.draft_revision)) || 0,
+      lock_version: Number(result.cardLockVersion != null ? result.cardLockVersion : (runtime.adminDetail.card && runtime.adminDetail.card.lock_version)) || 0
+    });
+    if (result.exhibition && typeof result.exhibition === "object") {
+      runtime.exhibition = canonicalToRuntimeExhibition(result.exhibition, {
+        coverPath: payload && payload.coverPatch && payload.coverPatch.mode === "replace"
+          ? text(payload.coverPatch.storagePath)
+          : payload && payload.coverPatch && payload.coverPatch.mode === "remove"
+            ? null
+            : runtime.exhibition.cover_path,
+        spaceId: runtime.exhibition.space_id,
+        venueId: runtime.exhibition.venue_id,
+        venueVersionId: runtime.exhibition.venue_version_id,
+        venueVersionNumber: runtime.exhibition.venue_version_number,
+        storagePrefix: runtime.exhibition.storage_prefix
+      });
+    }
+    return result;
+  }
+
+  async function saveCompositeProduct(runtime, state, payload) {
+    const normalized = normalizeProductSavePayload(payload);
+    const card = getRuntimeCardRevision(runtime);
+    const response = rpcOne(await supabase.rpc("admin_save_exhibition_product", {
+      p_exhibition_id: runtime.exhibition.id,
+      p_expected_draft_revision: Number(runtime.revision) || 0,
+      p_expected_state_lock_version: Number(runtime.lockVersion) || 0,
+      p_expected_card_revision: card.revision,
+      p_expected_card_lock_version: card.lockVersion,
+      p_metadata_patch: normalized.metadataPatch,
+      p_state: normalized.runtimeChanged ? state : null,
+      p_cover_patch: normalized.coverPatch
+    }));
+    if (!response || response.saved !== true) throw new Error("Unified Exhibition product Save returned no result.");
+    lastProductSaveResult = applyCompositeSaveResult(runtime, response, state, normalized);
+    return lastProductSaveResult;
+  }
 
   async function resolve(reference, force = false) {
     const ref = text(reference || "main") || "main";
@@ -403,8 +479,51 @@ export function createExhibitionDataAdapter({ supabase, mode = "public", initial
     async saveState(reference, state) {
       if (modeName !== "admin") throw new Error("Public Viewer cannot save Exhibition state.");
       const runtime = await resolve(reference, false);
-      return saveCanonicalState(supabase, runtime, state);
+      const pending = pendingProductSaveByExhibition.get(runtime.exhibition.id) || null;
+      if (!pending) return saveCanonicalState(supabase, runtime, state);
+      try {
+        const result = await saveCompositeProduct(runtime, state, pending);
+        pendingProductSaveByExhibition.delete(runtime.exhibition.id);
+        return {
+          state,
+          revision: runtime.revision,
+          lockVersion: runtime.lockVersion,
+          updatedAt: runtime.updatedAt,
+          rowExists: true,
+          published: result.autoPublished === true,
+          productSave: result
+        };
+      } catch (error) {
+        throw error;
+      }
     },
+    async saveProduct(reference, payload = {}) {
+      if (modeName !== "admin") throw new Error("Public Viewer cannot save Exhibition product state.");
+      const runtime = await resolve(reference, false);
+      const normalized = normalizeProductSavePayload(payload);
+      normalized.runtimeChanged = false;
+      return saveCompositeProduct(runtime, null, normalized);
+    },
+    async stageProductSave(reference, payload = {}) {
+      if (modeName !== "admin") throw new Error("Public Viewer cannot stage Exhibition product Save data.");
+      const runtime = await resolve(reference, false);
+      const normalized = normalizeProductSavePayload(payload);
+      pendingProductSaveByExhibition.set(runtime.exhibition.id, normalized);
+      return normalized;
+    },
+    clearProductSaveStage(reference) {
+      const ref = text(reference);
+      for (const [key, runtime] of runtimeByKey.entries()) {
+        if (!key.startsWith("admin:")) continue;
+        if (runtime && runtime.exhibition && (runtime.exhibition.id === ref || runtime.exhibition.slug === ref)) {
+          pendingProductSaveByExhibition.delete(runtime.exhibition.id);
+          return true;
+        }
+      }
+      pendingProductSaveByExhibition.delete(ref);
+      return true;
+    },
+    getLastProductSaveResult() { return lastProductSaveResult ? { ...lastProductSaveResult } : null; },
     async listCreationTargets() {
       if (modeName !== "admin") throw new Error("Public Viewer cannot list Exhibition creation targets.");
       const venues = asRows(await supabase.rpc("admin_list_venues", { p_status: null, p_search: null }));

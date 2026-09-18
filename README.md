@@ -1,8 +1,17 @@
 # Exhibition Platform
 
-Current repository release: **V14.4.4 — Shared Asset + Gallery Version GC Authority**.
+Current repository release: **V14.4.6 — Unified Exhibition Save Authority**.
 
 This repository contains the deployable Babylon.js 3D Exhibition Platform plus repository-local build and regression tooling. Database migration/deployment SQL is intentionally kept outside `REPO` in the documented release package.
+
+
+## V14.4.6 Unified Exhibition Save Authority
+
+Normal Exhibition authoring now exposes one product-level `SAVE CHANGES` control in the left Admin panel. Metadata, dirty Babylon runtime state and staged poster replacement/removal share one dirty/save lifecycle. The right-side 3D editor no longer exposes a competing Save control.
+
+The matching Supabase release adds one composite `admin_save_exhibition_product(...)` transaction. It locks and verifies the Exhibition state/card revision+lock boundary, reuses the existing exact-current-Gallery runtime save guard plus canonical metadata/cover authorities, and when the Exhibition is Published ON performs exactly one final bundle cutover after every requested mutation succeeds. Private/off Exhibitions stay private.
+
+Poster binary upload remains outside PostgreSQL as an immutable Storage candidate. If the DB transaction fails before commit the browser removes the unbound candidate best-effort; a failure after successful commit cannot delete the now-bound poster or report the canonical Save as rolled back. V14.4.5 historical Storage cleanup remains independent and under its safety hold.
 
 
 

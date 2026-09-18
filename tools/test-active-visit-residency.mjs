@@ -33,8 +33,8 @@ function functionBody(name) {
   throw new Error(`Could not extract ${name}`);
 }
 
-assert.equal(pkg.version, '0.14.4-v14-4-4-shared-asset-gallery-version-gc-authority');
-assert.ok(pkg.description.includes('V14.4.4 Shared Asset + Gallery Version GC Authority'));
+assert.equal(pkg.version, '0.14.4-v14-4-6-unified-exhibition-save-authority');
+assert.ok(pkg.description.includes('V14.4.6 Unified Exhibition Save Authority'));
 assert.ok(pkg.scripts['test:residency']?.includes('test-active-visit-residency.mjs'));
 assert.ok(pkg.scripts.test.includes('test:residency'));
 

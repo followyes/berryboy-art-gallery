@@ -46,11 +46,11 @@ function extractFunction(text,name){const ms=[`async function ${name}(`,`functio
 assert(index.includes('stage: "V14.1.10.1"'),'Index stage identity missing');
 assert(bootstrap.includes('const STAGE = "V14.1.10.1"'),'Viewer stage identity missing');
 assert(adminBootstrap.includes('const STAGE = "V14.1.10.1"'),'Admin stage identity missing');
-assert(bootstrap.includes('v14_4_4_1_local_light_editor_resume_hotfix_20260917')&&adminBootstrap.includes('v14_4_4_1_local_light_editor_resume_hotfix_20260917'),'V14.4.4.1 engine cache key missing');
-assert(index.includes('gallery-viewer-bootstrap.js?v=v14_4_4_2_mobile_home_carousel_hotfix'),'V14.4.4.2 viewer cache key missing');
-assert(admin.includes('admin-workspace-bootstrap.js?v=v14_4_4_1_local_light_editor_resume_hotfix'),'V14.4.4.1 Admin cache key missing');
+assert(bootstrap.includes('v14_4_6_unified_exhibition_save_20260917')&&adminBootstrap.includes('v14_4_6_unified_exhibition_save_20260917'),'V14.4.6 engine cache key missing');
+assert(index.includes('gallery-viewer-bootstrap.js?v=v14_4_6_unified_exhibition_save'),'V14.4.6 viewer cache key missing');
+assert(admin.includes('admin-workspace-bootstrap.js?v=v14_4_6_unified_exhibition_save'),'V14.4.6 Admin cache key missing');
 const currentPackage=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
-assert(currentPackage.version==='0.14.4-v14-4-4-shared-asset-gallery-version-gc-authority'&&currentPackage.description.includes('V14.4.4 Shared Asset + Gallery Version GC Authority'),'V14.4.4 package identity missing');
+assert(currentPackage.version==='0.14.4-v14-4-6-unified-exhibition-save-authority'&&currentPackage.description.includes('V14.4.6 Unified Exhibition Save Authority'),'V14.4.6 package identity missing');
 
 
 assert(sharedAssetState.includes('SHARED_ASSET_AUTHORITY_STAGE = "V14.4.2"')&&sharedAssetState.includes('collectSharedAssetIds')&&sharedAssetState.includes('hydrateSharedAssetReferencesWithCurrentVersions'),'V14.4.2 logical Shared Asset state authority missing');
@@ -293,8 +293,8 @@ assert(adminBootstrap.includes('inlineRuntimeContext.close({ preserveDraft: true
 assert(!adminBootstrap.includes('Discard them and return to the public Viewer?'),'C6C8C15 old PUBLIC PAGE discard confirmation remains');
 assert(source.includes('var galleryAdminDraftPreviewActive = false;')&&source.includes('options.preserveDraft === true'),'C6C8C15 persistent draft runtime flag/path missing');
 assert(source.includes('galleryAdminDraftPreviewActive = !!(preserveDraft && sceneDraftDirty)'),'C6C8C15 scene draft is not retained for Public Preview');
-assert(adminBootstrap.includes('metadataDraftPreviewActive = options.preserveDraft === true && metadataDirty'),'C6C8C15 metadata draft persistence missing');
-assert(adminBootstrap.includes('const preserveMetadataDraft = metadataDraftPreviewActive && metadataDirty'),'C6C8C15 Admin resume may overwrite metadata draft');
+assert(adminBootstrap.includes('metadataDraftPreviewActive = options.preserveDraft === true && (metadataDirty || hasStagedPosterChange())'),'C6C8C15 metadata/poster draft persistence missing');
+assert(adminBootstrap.includes('const preserveMetadataDraft = metadataDraftPreviewActive && (metadataDirty || hasStagedPosterChange())'),'C6C8C15 Admin resume may overwrite Exhibition product draft');
 assert(bootstrap.includes('exitAdminWorkspaceMode({ discardUnsaved, preserveDraft })'),'C6C8C15 viewer close does not forward preserveDraft');
 
 assert(sceneLifecycle.includes('createSceneLifecycleController')&&sceneLifecycle.includes('getRuntimeVenueVersionKey'),'C6C8C25 Scene lifecycle controller missing');
@@ -328,6 +328,7 @@ const expectedRegressionSuites=[
   'test-shared-assets.mjs',
   'test-space-model-validation.mjs',
   'test-transition-session-ownership.mjs',
+  'test-unified-exhibition-save.mjs',
   'test-version-gc-authority.mjs',
   'test-walkthrough-hydration.mjs',
   'test-workspace-ui.mjs'

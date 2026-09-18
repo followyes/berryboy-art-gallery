@@ -1,11 +1,11 @@
 /*
-  Exhibition Platform — V14.1.10 Admin Workspace / No-Reload Residency & Frame-Time Closure
+  Exhibition Platform — V14.4.6 Admin Workspace / Unified Exhibition Save Authority
   Authenticated exhibition management + constrained 3D editor viewport.
 */
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { registerExhibitionAssetCache, getExhibitionAssetCacheStatus, getExhibitionAssetDeliveryStats, evictExhibitionAssetCacheUrl } from "./asset-cache-bootstrap.js?v=c6c8c22_gallery_management_20260908";
 import { beginTransitionGuard, endTransitionGuard, isTransitionGuardActive } from "./transition-guard.js?v=v14_2_6_draft_publish_20260914";
-import { createExhibitionDataAdapter, resolveInitialAdminRuntime } from "../data/exhibition-api.js?v=v14_4_3_canonical_shared_asset_replace";
+import { createExhibitionDataAdapter, resolveInitialAdminRuntime } from "../data/exhibition-api.js?v=v14_4_6_unified_exhibition_save";
 import { createGalleryManagementApi, CONTROLLED_GALLERY_ASSET_ROLES } from "../data/gallery-management-api.js?v=v14_3_7_1_product_save";
 import {
   REQUIRED_GALLERY_MODEL_ROLES,
@@ -22,7 +22,7 @@ import { createAdminAssetWorkspace } from "./admin-asset-workspace.js?v=v14_3_9_
 const STAGE = "V14.1.10.1";
 const ADMIN_PRODUCT_MODEL_STAGE = "V14.3.7";
 const ADMIN_PRODUCT_CORRECTION_STAGE = "V14.3.7.1";
-const ENGINE_CACHE_KEY = "v14_4_4_1_local_light_editor_resume_hotfix_20260917";
+const ENGINE_CACHE_KEY = "v14_4_6_unified_exhibition_save_20260917";
 const SUPABASE_URL = "https://bazbszvhoxmuekxahokc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_iCDi8Ls8ZMvqQgcAuE78MQ_OnPVWqfn";
 const inlineRuntimeContext = window.__EXHIBITION_INLINE_ADMIN_CONTEXT__ || null;
@@ -94,6 +94,9 @@ let resizeCleanup = null;
 let workspaceActive = true;
 let metadataBaseline = "";
 let metadataDirty = false;
+let stagedPoster = null;
+let unifiedSaveInFlight = false;
+let unifiedSaveFeedback = "clean";
 let metadataBeforeUnloadInstalled = false;
 let metadataDraftPreviewActive = false;
 let exhibitionData = window.ExhibitionPlatformDataAdapter || null;
@@ -239,10 +242,32 @@ function getMetadataDraftFingerprint() {
   return JSON.stringify(getMetadataDraftPayload());
 }
 
-function updateMetadataDirtyUi() {
+function hasStagedPosterChange() {
+  return !!stagedPoster;
+}
+
+function hasExhibitionProductUnsavedChanges() {
+  return !!(metadataDirty || hasStagedPosterChange() || hasSceneUnsavedChanges());
+}
+
+function updateUnifiedSaveButton() {
   if (!saveMetadataButton) return;
-  saveMetadataButton.dataset.saveState = metadataDirty ? "dirty" : "clean";
-  saveMetadataButton.textContent = metadataDirty ? "SAVE EXHIBITION DETAILS" : "DETAILS SAVED";
+  const dirty = hasExhibitionProductUnsavedChanges();
+  const state = unifiedSaveInFlight ? "saving" : dirty ? "dirty" : unifiedSaveFeedback === "failed" ? "failed" : unifiedSaveFeedback === "saved" ? "saved" : "clean";
+  saveMetadataButton.dataset.saveState = state;
+  saveMetadataButton.disabled = unifiedSaveInFlight || !dirty;
+  saveMetadataButton.textContent = state === "saving"
+    ? "SAVING…"
+    : state === "dirty" || state === "failed"
+      ? "SAVE CHANGES"
+      : state === "saved"
+        ? "✓ SAVED"
+        : "ALL CHANGES SAVED";
+}
+
+function updateMetadataDirtyUi() {
+  if (metadataDirty || hasStagedPosterChange() || hasSceneUnsavedChanges()) unifiedSaveFeedback = "clean";
+  updateUnifiedSaveButton();
 }
 
 function syncMetadataDirtyState() {
@@ -277,11 +302,12 @@ function hasSceneUnsavedChanges() {
 function hasAnyAdminUnsavedChanges() {
   syncGalleryMetadataDirty();
   syncGalleryEntryDirty();
-  return !!(metadataDirty || galleryMetadataDirty || galleryEntryDirty || hasSceneUnsavedChanges());
+  return !!(metadataDirty || hasStagedPosterChange() || galleryMetadataDirty || galleryEntryDirty || hasSceneUnsavedChanges());
 }
 
 function discardAdminUnsavedChanges() {
   if (metadataDirty) discardMetadataDraft();
+  if (hasStagedPosterChange()) discardStagedPosterChange();
   if (galleryMetadataDirty || galleryEntryDirty) discardGalleryFormDraft();
   if (hasSceneUnsavedChanges() && window.GalleryApp && typeof window.GalleryApp.discardUnsavedChanges === "function") {
     return window.GalleryApp.discardUnsavedChanges("admin-workspace-discard");
@@ -300,7 +326,7 @@ function onMetadataBeforeUnload(event) {
   syncMetadataDirtyState();
   syncGalleryMetadataDirty();
   syncGalleryEntryDirty();
-  if ((!workspaceActive && !metadataDraftPreviewActive) || (!metadataDirty && !galleryMetadataDirty && !galleryEntryDirty)) return;
+  if ((!workspaceActive && !metadataDraftPreviewActive) || (!metadataDirty && !hasStagedPosterChange() && !galleryMetadataDirty && !galleryEntryDirty)) return;
   event.preventDefault();
   event.returnValue = "";
   return "";
@@ -478,7 +504,7 @@ async function handleToggleExhibitionPublished() {
   if (!selectedExhibition || exhibitionPublicationInFlight) return;
   const isPublic = !!selectedExhibition.is_published;
   syncMetadataDirtyState();
-  if (metadataDirty || hasSceneUnsavedChanges()) { showToast("Save or discard Exhibition changes before changing Published visibility."); return; }
+  if (metadataDirty || hasStagedPosterChange() || hasSceneUnsavedChanges()) { showToast("Save or discard Exhibition changes before changing Published visibility."); return; }
   const detail = exhibitionAdminDetail || await refreshExhibitionAdminDetail(selectedExhibition.id);
   if (!isPublic) {
     if (!detail || !(detail.validation && detail.validation.valid) || (detail.migration && detail.migration.status === "needs-layout-confirmation")) {
@@ -508,7 +534,7 @@ async function handleToggleExhibitionPublished() {
 async function handleDeleteExhibition() {
   if (!selectedExhibition || exhibitionPublicationInFlight) return;
   syncMetadataDirtyState();
-  if (metadataDirty || hasSceneUnsavedChanges()) { showToast("Save or discard Exhibition changes before deleting it."); return; }
+  if (metadataDirty || hasStagedPosterChange() || hasSceneUnsavedChanges()) { showToast("Save or discard Exhibition changes before deleting it."); return; }
   const deleting = { ...selectedExhibition };
   if (!window.confirm(`Delete “${deleting.name}” permanently? This removes the Exhibition and its owned files. This cannot be undone.`)) return;
   exhibitionPublicationInFlight = true;
@@ -656,11 +682,7 @@ function setSelectedExhibition(record) {
   exhibitionSortOrder.value = String(selectedExhibition.sort_order);
   if (exhibitionPublicationStatus) exhibitionPublicationStatus.textContent = selectedExhibition.is_published ? "Published ON" : "Published OFF";
   exhibitionSpaceId.textContent = selectedExhibition.space_id;
-  const posterUrl = publicUrlFor(selectedExhibition.cover_path);
-  posterPreview.src = posterUrl || "";
-  posterPreview.style.visibility = posterUrl ? "visible" : "hidden";
-  posterStatus.textContent = selectedExhibition.cover_path ? selectedExhibition.cover_path : "No poster assigned.";
-  removePosterButton.disabled = !selectedExhibition.cover_path;
+  renderPosterDraft();
   updatePublicPageHref(selectedExhibition.id);
   setMetadataBaselineFromForm();
   renderCatalog();
@@ -745,24 +767,6 @@ async function selectAndSwitchExhibition(id, options = {}) {
   }
 }
 
-async function saveMetadata(patch) {
-  if (!selectedExhibition) return null;
-  if (window.GalleryApp && typeof window.GalleryApp.updateExhibitionMetadata === "function") {
-    return window.GalleryApp.updateExhibitionMetadata(selectedExhibition.id, patch);
-  }
-  if (!exhibitionData) exhibitionData = createExhibitionDataAdapter({ supabase, mode: "admin" });
-  if (typeof exhibitionData.setMode === "function") exhibitionData.setMode("admin");
-  return exhibitionData.updateMetadata(selectedExhibition.id, patch);
-}
-
-async function savePosterProduct(patch) {
-  if (!selectedExhibition) return null;
-  if (!exhibitionData) exhibitionData = createExhibitionDataAdapter({ supabase, mode: "admin" });
-  if (typeof exhibitionData.setMode === "function") exhibitionData.setMode("admin");
-  if (typeof exhibitionData.updateCover !== "function") throw new Error("Exhibition poster product Save is unavailable.");
-  return exhibitionData.updateCover(selectedExhibition.id, patch);
-}
-
 async function decodePosterImage(file) {
   if (typeof createImageBitmap === "function") {
     try { return await createImageBitmap(file); } catch (_error) {}
@@ -799,48 +803,178 @@ async function optimizePosterForDelivery(file) {
   return { blob, width: targetWidth, height: targetHeight, size: blob.size || 0, mimeType: "image/webp" };
 }
 
-async function uploadPoster(file) {
-  if (!selectedExhibition || !file) return;
-  if (!/^image\//i.test(file.type || "")) throw new Error("Choose an image file.");
-  if (file.size > MAX_POSTER_BYTES) throw new Error("Poster source is too large. Maximum input size is 14 MB.");
-  const base = sanitizeFileName(file.name.replace(/\.[^.]+$/, ""));
-  posterStatus.textContent = "Optimizing poster for delivery…";
-  const optimized = await optimizePosterForDelivery(file);
-  const path = `${selectedExhibition.storage_prefix}/branding/posters/${Date.now()}-${base}-cover.webp`;
-  posterStatus.textContent = `Uploading optimized poster · ${optimized.width}×${optimized.height} · ${(optimized.size / 1024).toFixed(0)} KB…`;
-  const upload = await supabase.storage.from(STORAGE_BUCKET).upload(path, optimized.blob, {
-    cacheControl: "31536000",
-    upsert: false,
-    contentType: optimized.mimeType
-  });
-  if (upload.error) throw upload.error;
-  try {
-    const saved = await savePosterProduct({ cover_path: path, cover_mime_type: optimized.mimeType, cover_file_size: optimized.size });
-    const updated = saved && saved.exhibition ? saved.exhibition : Object.assign({}, selectedExhibition, { cover_path: path });
-    const localUpdated = upsertLocalCatalogRecord(updated);
-    setSelectedExhibition(localUpdated);
-    const cleanupCandidates = saved && Array.isArray(saved.cleanupCandidates) ? saved.cleanupCandidates.filter(Boolean) : [];
-    if (cleanupCandidates.length) {
-      await supabase.storage.from(STORAGE_BUCKET).remove(cleanupCandidates).catch(() => null);
-      for (const cleanupPath of cleanupCandidates) { const cleanupUrl = publicUrlFor(cleanupPath); if (cleanupUrl) evictExhibitionAssetCacheUrl(cleanupUrl).catch(() => {}); }
-    }
-    showToast(`Poster optimized to ${(optimized.size / 1024).toFixed(0)} KB and saved.`);
-  } catch (error) {
-    await supabase.storage.from(STORAGE_BUCKET).remove([path]).catch(() => {});
-    throw error;
+function revokeStagedPosterPreview() {
+  if (stagedPoster && stagedPoster.previewUrl) {
+    try { URL.revokeObjectURL(stagedPoster.previewUrl); } catch (_error) {}
   }
 }
 
-async function removePoster() {
-  if (!selectedExhibition || !selectedExhibition.cover_path) return;
-  const saved = await savePosterProduct({ cover_path: null });
-  const updated = saved && saved.exhibition ? saved.exhibition : Object.assign({}, selectedExhibition, { cover_path: null });
-  const localUpdated = upsertLocalCatalogRecord(updated);
-  setSelectedExhibition(localUpdated);
-  const cleanupCandidates = saved && Array.isArray(saved.cleanupCandidates) ? saved.cleanupCandidates.filter(Boolean) : [];
-  if (cleanupCandidates.length) await supabase.storage.from(STORAGE_BUCKET).remove(cleanupCandidates).catch(() => null);
+function renderPosterDraft() {
+  if (!posterPreview || !posterStatus || !removePosterButton) return;
+  if (stagedPoster && stagedPoster.mode === "replace") {
+    posterPreview.src = stagedPoster.previewUrl || "";
+    posterPreview.style.visibility = stagedPoster.previewUrl ? "visible" : "hidden";
+    posterStatus.textContent = `New poster staged · ${stagedPoster.width}×${stagedPoster.height} · ${(stagedPoster.size / 1024).toFixed(0)} KB · SAVE CHANGES to apply`;
+    removePosterButton.disabled = false;
+    return;
+  }
+  if (stagedPoster && stagedPoster.mode === "remove") {
+    posterPreview.src = "";
+    posterPreview.style.visibility = "hidden";
+    posterStatus.textContent = "Poster removal staged · SAVE CHANGES to apply";
+    removePosterButton.disabled = true;
+    return;
+  }
+  const posterUrl = selectedExhibition ? publicUrlFor(selectedExhibition.cover_path) : "";
+  posterPreview.src = posterUrl || "";
+  posterPreview.style.visibility = posterUrl ? "visible" : "hidden";
+  posterStatus.textContent = selectedExhibition && selectedExhibition.cover_path ? selectedExhibition.cover_path : "No poster assigned.";
+  removePosterButton.disabled = !(selectedExhibition && selectedExhibition.cover_path);
+}
+
+function discardStagedPosterChange() {
+  revokeStagedPosterPreview();
+  stagedPoster = null;
+  renderPosterDraft();
+  updateUnifiedSaveButton();
+}
+
+async function stagePoster(file) {
+  if (!selectedExhibition || !file) return;
+  if (!/^image\//i.test(file.type || "")) throw new Error("Choose an image file.");
+  if (file.size > MAX_POSTER_BYTES) throw new Error("Poster source is too large. Maximum input size is 14 MB.");
+  posterStatus.textContent = "Optimizing poster for delivery…";
+  const optimized = await optimizePosterForDelivery(file);
+  revokeStagedPosterPreview();
+  stagedPoster = {
+    mode: "replace",
+    blob: optimized.blob,
+    width: optimized.width,
+    height: optimized.height,
+    size: optimized.size,
+    mimeType: optimized.mimeType,
+    sourceName: sanitizeFileName(file.name.replace(/\.[^.]+$/, "")),
+    previewUrl: URL.createObjectURL(optimized.blob)
+  };
+  unifiedSaveFeedback = "clean";
+  renderPosterDraft();
+  updateUnifiedSaveButton();
+}
+
+function stagePosterRemoval() {
+  if (!selectedExhibition || (!selectedExhibition.cover_path && !stagedPoster)) return;
+  if (!selectedExhibition.cover_path && stagedPoster && stagedPoster.mode === "replace") {
+    discardStagedPosterChange();
+    return;
+  }
+  revokeStagedPosterPreview();
+  stagedPoster = { mode: "remove" };
+  unifiedSaveFeedback = "clean";
+  renderPosterDraft();
+  updateUnifiedSaveButton();
+}
+
+async function uploadStagedPosterCandidate() {
+  if (!stagedPoster) return { coverPatch: null, uploadedPath: null };
+  if (stagedPoster.mode === "remove") return { coverPatch: { mode: "remove" }, uploadedPath: null };
+  const path = `${selectedExhibition.storage_prefix}/branding/posters/${Date.now()}-${stagedPoster.sourceName || "poster"}-cover.webp`;
+  posterStatus.textContent = `Uploading staged poster · ${stagedPoster.width}×${stagedPoster.height} · ${(stagedPoster.size / 1024).toFixed(0)} KB…`;
+  const upload = await supabase.storage.from(STORAGE_BUCKET).upload(path, stagedPoster.blob, {
+    cacheControl: "31536000",
+    upsert: false,
+    contentType: stagedPoster.mimeType
+  });
+  if (upload.error) throw upload.error;
+  return {
+    uploadedPath: path,
+    coverPatch: { mode: "replace", storagePath: path, mimeType: stagedPoster.mimeType, fileSize: stagedPoster.size }
+  };
+}
+
+async function cleanupProductSavePaths(paths) {
+  const candidates = Array.isArray(paths) ? paths.filter(Boolean) : [];
+  if (!candidates.length) return;
+  await supabase.storage.from(STORAGE_BUCKET).remove(candidates).catch(() => null);
+  for (const cleanupPath of candidates) {
+    const cleanupUrl = publicUrlFor(cleanupPath);
+    if (cleanupUrl) evictExhibitionAssetCacheUrl(cleanupUrl).catch(() => {});
+  }
   assetCacheStatusReadAt = 0;
-  showToast("Poster removed and saved.");
+}
+
+async function handleUnifiedExhibitionSave() {
+  if (!selectedExhibition || unifiedSaveInFlight) return false;
+  syncMetadataDirtyState();
+  const sceneDirty = hasSceneUnsavedChanges();
+  if (!metadataDirty && !sceneDirty && !hasStagedPosterChange()) return true;
+  if (!exhibitionData) exhibitionData = createExhibitionDataAdapter({ supabase, mode: "admin" });
+  if (typeof exhibitionData.setMode === "function") exhibitionData.setMode("admin");
+
+  const exhibitionId = selectedExhibition.id;
+  const metadataDraft = getMetadataDraftPayload();
+  const metadataPatch = metadataDirty ? {
+    title: metadataDraft.name,
+    short_description: metadataDraft.description,
+    display_order: metadataDraft.sort_order
+  } : {};
+  let uploadedPath = null;
+  let committed = false;
+  unifiedSaveInFlight = true;
+  unifiedSaveFeedback = "clean";
+  updateUnifiedSaveButton();
+  try {
+    const preparedPoster = await uploadStagedPosterCandidate();
+    uploadedPath = preparedPoster.uploadedPath;
+    const payload = { metadataPatch, coverPatch: preparedPoster.coverPatch, runtimeChanged: sceneDirty };
+    let result = null;
+    if (sceneDirty) {
+      if (!window.GalleryApp || typeof window.GalleryApp.saveStateToSupabase !== "function") throw new Error("3D runtime Save authority is unavailable.");
+      if (typeof exhibitionData.stageProductSave !== "function") throw new Error("Unified Exhibition Save staging is unavailable.");
+      await exhibitionData.stageProductSave(exhibitionId, payload);
+      const ok = await window.GalleryApp.saveStateToSupabase();
+      if (!ok) throw new Error("Unified Exhibition runtime Save failed.");
+      result = typeof exhibitionData.getLastProductSaveResult === "function" ? exhibitionData.getLastProductSaveResult() : null;
+    } else {
+      if (typeof exhibitionData.saveProduct !== "function") throw new Error("Unified Exhibition Save authority is unavailable.");
+      result = await exhibitionData.saveProduct(exhibitionId, payload);
+    }
+    if (!result || result.saved !== true) throw new Error("Unified Exhibition Save returned no confirmation.");
+    committed = true;
+
+    await cleanupProductSavePaths(result.cleanupCandidates);
+    revokeStagedPosterPreview();
+    stagedPoster = null;
+    metadataDirty = false;
+    unifiedSaveFeedback = "saved";
+    try {
+      const refreshed = await exhibitionData.resolve(exhibitionId, { force: true });
+      if (refreshed) {
+        const localUpdated = upsertLocalCatalogRecord(refreshed);
+        if (localUpdated) setSelectedExhibition(localUpdated);
+      } else {
+        setMetadataBaselineFromForm();
+        renderPosterDraft();
+      }
+      await refreshExhibitionAdminDetail(exhibitionId);
+    } catch (refreshError) {
+      console.warn("Unified Exhibition Save committed, but Admin refresh failed:", refreshError);
+      setMetadataBaselineFromForm();
+      renderPosterDraft();
+    }
+    showToast(result.autoPublished === true ? "All Exhibition changes saved and published." : "All Exhibition changes saved.");
+    return true;
+  } catch (error) {
+    if (typeof exhibitionData.clearProductSaveStage === "function") exhibitionData.clearProductSaveStage(exhibitionId);
+    if (!committed && uploadedPath) await supabase.storage.from(STORAGE_BUCKET).remove([uploadedPath]).catch(() => null);
+    unifiedSaveFeedback = committed ? "saved" : "failed";
+    renderPosterDraft();
+    showToast(committed ? "Exhibition was saved, but the Admin view could not refresh. Reload to continue." : (error.message || String(error)));
+    return committed;
+  } finally {
+    unifiedSaveInFlight = false;
+    sceneSaveState.saveInFlight = false;
+    updateUnifiedSaveButton();
+  }
 }
 
 function loadScript(src, id) {
@@ -1027,11 +1161,12 @@ async function startEngine(initialId, initialSnapshot) {
   startAssetDeliveryMonitoring();
 }
 function updateSceneSaveButton() {
-  if (!saveStateButton) return;
-  const state = sceneSaveState.saveInFlight ? "saving" : sceneSaveState.dirty ? "dirty" : "clean";
-  saveStateButton.dataset.saveState = state;
-  saveStateButton.disabled = state !== "dirty";
-  saveStateButton.textContent = state === "saving" ? "SAVING…" : state === "dirty" ? "SAVE CHANGES" : "ALL CHANGES SAVED";
+  if (saveStateButton) {
+    saveStateButton.dataset.saveState = sceneSaveState.dirty ? "dirty" : "clean";
+    saveStateButton.disabled = true;
+    saveStateButton.hidden = true;
+  }
+  updateUnifiedSaveButton();
 }
 
 window.addEventListener("gallery-draft-state", (event) => {
@@ -1080,21 +1215,15 @@ window.addEventListener("exhibition-network-diagnostic", () => {
   if (workspaceActive) updateNetworkDiagnosticsStatus();
 });
 
-saveStateButton.addEventListener("click", async () => {
-  if (!window.GalleryApp || sceneSaveState.saveInFlight) return;
-  sceneSaveState.saveInFlight = true;
-  updateSceneSaveButton();
-  const ok = await window.GalleryApp.saveStateToSupabase();
-  sceneSaveState.saveInFlight = false;
-  sceneSaveState.dirty = !ok;
-  updateSceneSaveButton();
-  if (ok && selectedExhibition) void refreshExhibitionAdminDetail(selectedExhibition.id);
+if (saveStateButton) saveStateButton.addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
 });
 
 refreshExhibitionsButton.addEventListener("click", async () => {
   syncMetadataDirtyState();
-  if (metadataDirty && !window.confirm("Exhibition details have unsaved changes. Discard them and refresh the list?")) return;
-  if (metadataDirty) discardMetadataDraft();
+  if (hasExhibitionProductUnsavedChanges() && !window.confirm("Exhibition has unsaved changes. Discard them and refresh the list?")) return;
+  if (hasExhibitionProductUnsavedChanges()) discardAdminUnsavedChanges();
   setBusy(refreshExhibitionsButton, true);
   try { await fetchCatalog(); if (selectedExhibition) syncSelectedFromCatalog(selectedExhibition.id); }
   catch (error) { showToast(error.message || String(error)); }
@@ -1138,23 +1267,10 @@ if (deleteExhibitionButton) deleteExhibitionButton.addEventListener("click", han
 
 detailsForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (!selectedExhibition) return;
-  setBusy(saveMetadataButton, true);
-  try {
-    const updated = await saveMetadata(getMetadataDraftPayload());
-    const localUpdated = upsertLocalCatalogRecord(updated || selectedExhibition);
-    setSelectedExhibition(localUpdated);
-    showToast("Exhibition changes saved.");
-  } catch (error) { showToast(error.message || String(error)); }
-  finally { setBusy(saveMetadataButton, false); }
+  await handleUnifiedExhibitionSave();
 });
 
 choosePosterButton.addEventListener("click", () => {
-  syncMetadataDirtyState();
-  if (metadataDirty) {
-    showToast("Save Exhibition changes before changing the poster.");
-    return;
-  }
   posterFileInput.click();
 });
 posterFileInput.addEventListener("change", async () => {
@@ -1162,21 +1278,14 @@ posterFileInput.addEventListener("change", async () => {
   posterFileInput.value = "";
   if (!file) return;
   setBusy(choosePosterButton, true);
-  try { await uploadPoster(file); }
+  try { await stagePoster(file); }
   catch (error) { posterStatus.textContent = error.message || String(error); showToast(error.message || String(error)); }
-  finally { setBusy(choosePosterButton, false); }
+  finally { setBusy(choosePosterButton, false); updateUnifiedSaveButton(); }
 });
-removePosterButton.addEventListener("click", async () => {
-  syncMetadataDirtyState();
-  if (metadataDirty) {
-    showToast("Save Exhibition changes before removing the poster.");
-    return;
-  }
-  setBusy(removePosterButton, true);
-  try { await removePoster(); }
-  catch (error) { showToast(error.message || String(error)); }
-  finally { setBusy(removePosterButton, false); }
+removePosterButton.addEventListener("click", () => {
+  stagePosterRemoval();
 });
+
 
 // -----------------------------------------------------------------------------
 // C6C8C22.1 — Gallery Management browser-smoke hardening
@@ -2287,6 +2396,11 @@ if (publicPageButton) {
       return;
     }
 
+    if (metadataDirty || hasStagedPosterChange()) {
+      showToast("Save Exhibition changes before opening Public Page from standalone Admin.");
+      return;
+    }
+
     // Direct admin.html cannot keep the same JS heap, but the scene handoff carries
     // the unsaved scene state instead of discarding it before navigation.
     if (isTransitionGuardActive()) return;
@@ -2378,7 +2492,7 @@ if (inlineWorkspaceMode && inlineRuntimeContext.session) {
 
 export async function suspendAdminWorkspace(options = {}) {
   syncMetadataDirtyState();
-  metadataDraftPreviewActive = options.preserveDraft === true && metadataDirty;
+  metadataDraftPreviewActive = options.preserveDraft === true && (metadataDirty || hasStagedPosterChange());
   workspaceActive = false;
   stopAssetDeliveryMonitoring();
   if (!metadataDraftPreviewActive) removeMetadataBeforeUnload();
@@ -2388,17 +2502,20 @@ export async function suspendAdminWorkspace(options = {}) {
 }
 
 export function hasAdminMetadataUnsavedChanges() {
-  return syncMetadataDirtyState();
+  syncMetadataDirtyState();
+  return metadataDirty || hasStagedPosterChange();
 }
 
 export function discardAdminMetadataChanges() {
-  return discardMetadataDraft();
+  if (metadataDirty) discardMetadataDraft();
+  if (hasStagedPosterChange()) discardStagedPosterChange();
+  return true;
 }
 
 export async function resumeAdminWorkspace() {
   if (!session && inlineRuntimeContext && inlineRuntimeContext.session) session = inlineRuntimeContext.session;
   if (!session) return false;
-  const preserveMetadataDraft = metadataDraftPreviewActive && metadataDirty;
+  const preserveMetadataDraft = metadataDraftPreviewActive && (metadataDirty || hasStagedPosterChange());
   metadataDraftPreviewActive = false;
   workspaceActive = true;
   if (sceneLifecycleController && typeof sceneLifecycleController.getActiveScene === "function") {

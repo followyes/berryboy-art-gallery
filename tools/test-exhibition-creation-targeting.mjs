@@ -116,7 +116,7 @@ const createEnd = source.indexOf('async function updateGalleryExhibitionMetadata
 const createBody = source.slice(createStart, createEnd);
 assert.ok(!createBody.includes('switchGalleryExhibition(canonicalCreated.id'));
 
-assert.equal(pkg.version, '0.14.4-v14-4-4-shared-asset-gallery-version-gc-authority');
+assert.equal(pkg.version, '0.14.4-v14-4-6-unified-exhibition-save-authority');
 assert.ok(pkg.scripts.test.includes('test:creation-targeting'));
 
 console.log('V14.2.2.1 creation targeting + selector visual invariants remain preserved under V14.2.3.');

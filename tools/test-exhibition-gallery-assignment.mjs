@@ -159,8 +159,8 @@ assert.ok(api.includes('p_published: published === true'));
 assert.ok(api.includes('return this.setPublished(reference, false);'));
 assert.ok(!api.includes('patch.is_published'));
 
-assert.equal(pkg.version, '0.14.4-v14-4-4-shared-asset-gallery-version-gc-authority');
-assert.ok(pkg.description.includes('V14.4.4 Shared Asset + Gallery Version GC Authority'));
+assert.equal(pkg.version, '0.14.4-v14-4-6-unified-exhibition-save-authority');
+assert.ok(pkg.description.includes('V14.4.6 Unified Exhibition Save Authority'));
 assert.ok(pkg.scripts.test.includes('test:gallery-assignment'));
 
 console.log('C6C8C24 backend compatibility invariants remain preserved while V14.2.4 removes normal assignment UI.');
